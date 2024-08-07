@@ -1,25 +1,32 @@
+use crate::middleware::greptime::insert::to_insert_request;
+use crate::process::logline::process_chunk;
+use crate::process::metadata::process_metadata;
 use multipart::server::Multipart;
 use rocket::data::ToByteUnit;
 use rocket::http::ContentType;
+use rocket::http::Status;
 use rocket::post;
 use rocket::Data;
 use shared::db::greptime::connect::GreptimeConnection;
 use shared::types::metadata::Metadata;
 use std::io::Read;
 use std::{io::Cursor, ops::Deref};
-
-use crate::middleware::greptime::insert::to_insert_request;
-use crate::process::logline::process_chunk;
-use crate::process::metadata::process_metadata;
+use tracing::{error, info, warn};
 
 #[post("/class", data = "<data>")]
 pub async fn logline<'a>(
     db: GreptimeConnection,
     content_type: &ContentType,
     data: Data<'a>,
-) -> Result<String, std::io::Error> {
+) -> Result<String, Status> {
     let mut d = Vec::new();
-    data.open(100_u64.mebibytes()).stream_to(&mut d).await?;
+    data.open(100_u64.mebibytes())
+        .stream_to(&mut d)
+        .await
+        .map_err(|e| {
+            error!("Failed to stream data: {}", e);
+            Status::PayloadTooLarge
+        })?;
 
     let boundary = match content_type
         .params()
@@ -28,40 +35,34 @@ pub async fn logline<'a>(
     {
         Some(b) => b,
         None => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Missing boundary in content type",
-            ))
+            error!("Missing boundary in content type");
+            return Err(Status::BadRequest);
         }
     };
 
     let mut multipart = Multipart::with_body(Cursor::new(d.clone()), boundary);
 
     // Check if the multipart data is valid
-    if let Err(e) = multipart.read_entry() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!("Invalid multipart data: {}", e),
-        ));
-    }
-
-    // Create a new Multipart object
-    let mut multipart = Multipart::with_body(Cursor::new(d), boundary);
+    multipart.read_entry().map_err(|e| {
+        error!("Invalid multipart data: {}", e);
+        Status::BadRequest
+    })?;
 
     // Initialize Metadata as None
     let mut metadata: Option<Metadata> = None;
+
+    // Create a new Multipart object
+    let mut multipart = Multipart::with_body(Cursor::new(d), boundary);
 
     while let Ok(Some(mut field)) = multipart.read_entry() {
         match field.headers.name.deref() {
             "metadata" => {
                 let data = field.data;
 
-                if let Err(e) = process_metadata(data, &mut metadata) {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("metadata processing error: {}", e),
-                    ));
-                }
+                process_metadata(data, &mut metadata).map_err(|e| {
+                    error!("Metadata processing error: {}", e);
+                    Status::InternalServerError
+                })?;
             }
             "stream" => {
                 let mut buffer = [0; 262144];
@@ -73,56 +74,53 @@ pub async fn logline<'a>(
                         break;
                     }
                     if n == buffer.len() {
-                        tracing::warn!("Buffer is full");
+                        warn!("Buffer is full");
                     }
-                    let chunk = std::str::from_utf8(&buffer[..n])
-                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+                    let chunk = std::str::from_utf8(&buffer[..n]).map_err(|e| {
+                        error!("Failed to convert buffer to UTF-8: {}", e);
+                        Status::InternalServerError
+                    })?;
                     lines.extend(process_chunk(chunk, &mut remainder));
                 }
                 match metadata {
                     Some(ref metadata) => {
-                        let stream_inserter = db.greptime.streaming_inserter().unwrap();
+                        let stream_inserter = db.greptime.streaming_inserter().map_err(|e| {
+                            error!("Failed to get streaming inserter: {}", e);
+                            Status::InternalServerError
+                        })?;
 
                         let insert_request = to_insert_request(lines, metadata);
 
                         if let Err(e) = stream_inserter.insert(vec![insert_request]).await {
-                            tracing::error!("Error: {e}");
+                            error!("Error during insert: {}", e);
+                            return Err(Status::InternalServerError);
                         }
+
                         match stream_inserter.finish().await {
                             Ok(rows) => {
-                                tracing::info!("Rows written: {rows}");
+                                info!("Rows written: {}", rows);
                             }
                             Err(e) => {
-                                tracing::info!("Error: {e}");
-                                panic!("Error: {e}")
+                                error!("Error during finish: {}", e);
+                                return Err(Status::InternalServerError);
                             }
                         }
-
-                        // locks apps vector only for getting app
-                        tracing::info!("Processed metadata for {}", metadata.filename);
-
-                        return Ok("success".to_string());
+                        return Ok("Success".to_string());
                     }
                     None => {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            "metadata is not set",
-                        ));
+                        error!("Metadata is not set");
+                        return Err(Status::BadRequest);
                     }
                 }
             }
             _ => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("Unexpected field name: {}", field.headers.name),
-                ))
+                error!("Unexpected field name: {}", field.headers.name);
+                return Err(Status::BadRequest);
             }
         }
     }
-    return Err(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        format!("Expected field name: metadata or stream. No data was received."),
-    ));
+    error!("Expected field name: metadata or stream. No data was received.");
+    Err(Status::BadRequest)
 }
 
 #[cfg(test)]
