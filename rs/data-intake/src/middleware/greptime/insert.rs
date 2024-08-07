@@ -1,7 +1,7 @@
 use greptimedb_ingester::api::v1::{column, Column, ColumnDataType, InsertRequest, SemanticType};
 use shared::types::metadata::Metadata;
 
-use crate::process::logline::ParsedLine;
+use crate::process::logs::ParsedLine;
 
 pub fn to_insert_request(logs: Vec<ParsedLine>, metadata: &Metadata) -> InsertRequest {
     let rows = logs.len();

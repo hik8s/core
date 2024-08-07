@@ -1,5 +1,5 @@
 use crate::middleware::greptime::insert::to_insert_request;
-use crate::process::logline::process_chunk;
+use crate::process::logs::process_chunk;
 use crate::process::metadata::process_metadata;
 use multipart::server::Multipart;
 use rocket::data::ToByteUnit;
@@ -13,8 +13,8 @@ use std::io::Read;
 use std::{io::Cursor, ops::Deref};
 use tracing::{error, info, warn};
 
-#[post("/class", data = "<data>")]
-pub async fn logline<'a>(
+#[post("/logs", data = "<data>")]
+pub async fn log_intake<'a>(
     db: GreptimeConnection,
     content_type: &ContentType,
     data: Data<'a>,
@@ -135,7 +135,7 @@ mod tests {
     };
 
     #[rocket::async_test]
-    async fn test_loglines_route() {
+    async fn test_log_intake_route() {
         setup_tracing();
         let client = rocket_test_client().await;
 
@@ -149,7 +149,7 @@ mod tests {
             &Metadata::from_path(&generate_random_filename(), &get_test_path()).unwrap();
         let test_stream =
             get_multipart_stream(&test_metadata.filename, &test_metadata.path, &test_data);
-        let status = post_test_stream(&client, "/class", test_stream).await;
+        let status = post_test_stream(&client, "/logs", test_stream).await;
         assert_eq!(status.code, 200);
     }
 }

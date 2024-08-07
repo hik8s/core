@@ -1,2 +1,2 @@
-pub mod logline;
+pub mod logs;
 pub mod metadata;
