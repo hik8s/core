@@ -1,13 +1,12 @@
 use super::config::GreptimeConfig;
 use greptimedb_ingester::{ClientBuilder, Database};
 use rocket::{request::FromRequest, State};
-use sqlx::mysql::MySqlPoolOptions;
-use std::process;
-
+use sqlx::{postgres::PgPoolOptions, Error, Pool, Postgres};
+use std::{borrow::Cow, process};
 #[derive(Clone)]
 pub struct GreptimeConnection {
     pub greptime: Database,
-    // pub greptime_sql: Pool<MySql>,
+    pub psql: Pool<Postgres>,
 }
 
 impl GreptimeConnection {
@@ -23,26 +22,44 @@ impl GreptimeConnection {
         let grpc_client = ClientBuilder::default()
             .peers(vec![config.get_uri()])
             .build();
-        let greptime = Database::new_with_dbname(config.collection_name.clone(), grpc_client);
+        let greptime = Database::new_with_dbname(config.db_name.clone(), grpc_client);
 
-        // GreptimeDB MySQL
-        let greptime_sql = MySqlPoolOptions::new()
+        // GreptimeDB PostgreSQL
+        let admin_psql = PgPoolOptions::new()
             .max_connections(5)
-            .connect(&config.get_mysql_uri())
+            .connect(&format!(
+                "{psql_uri}/public",
+                psql_uri = config.get_psql_uri()
+            ))
             .await
             .unwrap();
-        sqlx::query(&format!(
-            "CREATE DATABASE IF NOT EXISTS {}",
-            config.collection_name.clone()
-        ))
-        .execute(&greptime_sql)
-        .await
-        .unwrap();
 
-        Ok(Self {
-            greptime,
-            // greptime_sql,
-        })
+        sqlx::query(&format!("CREATE DATABASE {}", config.db_name))
+            .execute(&admin_psql)
+            .await
+            .map_err(|e| match e {
+                Error::Database(ref db_err) if db_err.code() == Some(Cow::Borrowed("22023")) => {
+                    tracing::info!("Database {} already exists.", config.db_name);
+                }
+                _ => {
+                    tracing::warn!("Failed to create database {}: {:?}", config.db_name, e);
+                    process::exit(1);
+                }
+            })
+            .ok();
+
+        // Now connect to the newly created database
+        let psql = PgPoolOptions::new()
+            .max_connections(5)
+            .connect(&format!(
+                "{psql_uri}/{db_name}",
+                psql_uri = config.get_psql_uri(),
+                db_name = config.db_name
+            ))
+            .await
+            .unwrap();
+
+        Ok(Self { greptime, psql })
     }
 }
 
