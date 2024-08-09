@@ -7,6 +7,7 @@ use std::{borrow::Cow, process};
 pub struct GreptimeConnection {
     pub greptime: Database,
     pub psql: Pool<Postgres>,
+    pub config: GreptimeConfig,
 }
 
 impl GreptimeConnection {
@@ -59,7 +60,11 @@ impl GreptimeConnection {
             .await
             .unwrap();
 
-        Ok(Self { greptime, psql })
+        Ok(Self {
+            greptime,
+            psql,
+            config,
+        })
     }
 }
 

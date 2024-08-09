@@ -3,6 +3,7 @@ const DEFAULT_GREPTIME_PSQL_PORT: &str = "4003";
 
 use std::env::var;
 
+#[derive(Clone)]
 pub struct GreptimeConfig {
     pub host: String,
     pub port: String,
