@@ -830,7 +830,6 @@ name = "data-intake"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "chrono",
  "dotenv",
  "greptimedb-ingester",
  "jsonwebtoken",
@@ -858,6 +857,7 @@ dependencies = [
  "fluvio",
  "futures-util",
  "rstest 0.22.0",
+ "serde_json",
  "shared",
  "thiserror",
  "tokio",
@@ -4069,6 +4069,7 @@ name = "shared"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "fluvio",
  "greptimedb-ingester",
  "jsonwebtoken",

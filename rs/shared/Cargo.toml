@@ -5,6 +5,7 @@ version = "0.1.0"
 
 [dependencies]
 anyhow = "1.0.80"
+chrono = {workspace = true}
 fluvio = {workspace = true}
 greptimedb-ingester = {git = "https://github.com/GreptimeTeam/greptimedb-ingester-rust.git", rev = "2e6b0c5eb6a5e7549c3100e4d356b07d15cce66d"}
 jsonwebtoken = {version = "9.3", default-features = false}

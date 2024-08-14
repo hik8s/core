@@ -5,7 +5,9 @@ use fluvio::{
     Offset,
 };
 use futures_util::{Stream, StreamExt};
+use serde_json::from_str;
 use shared::connections::fluvio::connect::ConnectionError;
+use shared::types::parsedline::ParsedLine;
 use shared::{
     connections::fluvio::connect::{FluvioConnection, DEFAULT_TOPIC},
     tracing::setup::setup_tracing,
@@ -31,9 +33,13 @@ async fn main() -> Result<(), ConsumerError> {
     let mut consumer = create_consumer().await?;
 
     while let Some(Ok(record)) = consumer.next().await {
-        println!("{}", String::from_utf8_lossy(record.as_ref()));
+        let payload = record.value();
+        let data_str = String::from_utf8_lossy(payload);
+        match from_str::<ParsedLine>(&data_str) {
+            Ok(parsed_line) => println!("{:?}", parsed_line),
+            Err(e) => error!("Failed to deserialize record: {}", e),
+        }
     }
-
     Ok(())
 }
 
