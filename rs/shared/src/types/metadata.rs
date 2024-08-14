@@ -9,7 +9,6 @@ pub struct Metadata {
     pub pod_name: String,
     pub pod_uid: String,
     pub container: String,
-    pub log_lines: Option<Vec<String>>,
 }
 
 impl Metadata {
@@ -57,7 +56,6 @@ impl Metadata {
             pod_name,
             pod_uid,
             container,
-            log_lines: None,
         })
     }
     pub fn test_path(podname: &str) -> String {
