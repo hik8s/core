@@ -1,0 +1,18 @@
+[package]
+edition = "2021"
+name = "data-processing"
+version = "0.1.0"
+
+[[bin]]
+name = "data-processing"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = {workspace = true}
+dotenv = {workspace = true}
+fluvio = {workspace = true}
+futures-util = {workspace = true}
+rstest = {workspace = true}
+shared = {path = "../shared"}
+tokio = {workspace = true}
+tracing = {workspace = true}
