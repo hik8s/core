@@ -859,6 +859,7 @@ dependencies = [
  "futures-util",
  "rstest 0.22.0",
  "shared",
+ "thiserror",
  "tokio",
  "tracing",
 ]
