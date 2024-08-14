@@ -1,35 +1,39 @@
-use rand::{distributions::Alphanumeric, Rng};
+use std::fmt;
 
-#[derive(Debug, Clone, Copy)]
+use rand::distributions::{Distribution, Uniform};
+
+#[derive(Clone, Copy)]
 pub enum TestCase {
     Simple,
 }
 
-pub fn generate_random_filename() -> String {
-    let random_string: String = rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(6)
-        .map(char::from)
-        .collect();
+impl fmt::Display for TestCase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            TestCase::Simple => "simple",
+        };
+        write!(f, "{}", name)
+    }
+}
 
+fn generate_random_string(length: usize) -> String {
+    let charset: Vec<char> = "abcdefghijklmnopqrstuvwxyz0123456789".chars().collect();
+    let mut rng = rand::thread_rng();
+    let uniform = Uniform::from(0..charset.len());
+    (0..length)
+        .map(|_| charset[uniform.sample(&mut rng)])
+        .collect()
+}
+
+pub fn generate_random_filename() -> String {
+    let random_string = generate_random_string(6);
     format!("test-{}.txt", random_string)
 }
 
 pub fn generate_podname(case: TestCase) -> String {
-    let rng = rand::thread_rng();
-    let part1: String = rng
-        .clone()
-        .sample_iter(&Alphanumeric)
-        .take(9)
-        .map(char::from)
-        .collect();
-    let part2: String = rng
-        .sample_iter(&Alphanumeric)
-        .take(5)
-        .map(char::from)
-        .collect();
-
-    format!("{case:?}-{part1}-{part2}")
+    let part1 = generate_random_string(9);
+    let part2 = generate_random_string(5);
+    format!("{case}-{part1}-{part2}")
 }
 
 pub fn get_test_path() -> String {

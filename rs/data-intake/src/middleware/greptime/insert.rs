@@ -1,10 +1,9 @@
 use greptimedb_ingester::api::v1::{column, Column, ColumnDataType, InsertRequest, SemanticType};
 use shared::types::metadata::Metadata;
-use uuid::Uuid;
 
 use crate::process::logs::ParsedLine;
 
-pub fn to_insert_request(logs: Vec<ParsedLine>, metadata: &Metadata) -> InsertRequest {
+pub fn to_insert_request(logs: &Vec<ParsedLine>, metadata: &Metadata) -> InsertRequest {
     let rows = logs.len();
 
     let (ts, text, id) = logs.into_iter().fold(
@@ -14,9 +13,9 @@ pub fn to_insert_request(logs: Vec<ParsedLine>, metadata: &Metadata) -> InsertRe
             Vec::with_capacity(rows),
         ),
         |mut acc, log| {
-            acc.0.push(log.dt.timestamp_millis());
-            acc.1.push(log.text);
-            acc.2.push(Uuid::new_v4().to_string()); // id column with UUID
+            acc.0.push(log.timestamp);
+            acc.1.push(log.text.clone());
+            acc.2.push(log.id.clone());
             acc
         },
     );

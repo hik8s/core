@@ -1,4 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use serde::Serialize;
+use uuid::Uuid;
 
 pub fn process_chunk(chunk: &str, remainder: &mut String) -> Vec<ParsedLine> {
     // Split the chunk into lines
@@ -25,21 +27,25 @@ pub fn process_chunk(chunk: &str, remainder: &mut String) -> Vec<ParsedLine> {
         .collect()
 }
 
+#[derive(Debug, Serialize)]
 pub struct ParsedLine {
-    pub dt: DateTime<Utc>,
+    pub timestamp: i64,
     pub text: String,
+    pub id: String,
 }
 
 impl ParsedLine {
     pub fn new(ts: &str, text: &str) -> Result<Self, chrono::ParseError> {
-        let dt = dt_from_ts(ts);
+        let timestamp = dt_from_ts(ts)?.timestamp_millis();
         let text = text.to_string();
 
-        match dt {
-            Ok(dt) => Ok(ParsedLine { dt, text }),
-            Err(e) => Err(e),
-        }
+        Ok(ParsedLine {
+            timestamp,
+            text,
+            id: Uuid::new_v4().to_string(),
+        })
     }
+
     pub fn from_line(line: &str) -> Self {
         let mut split = line.splitn(2, 'Z');
         let datetime_str = match split.next() {
@@ -47,15 +53,20 @@ impl ParsedLine {
             None => {
                 tracing::warn!("Failed to parse datetime from line: {}", line);
                 return ParsedLine {
-                    dt: Utc.with_ymd_and_hms(1970, 0, 0, 0, 0, 0).unwrap(),
+                    timestamp: 0,
                     text: line.to_string(),
+                    id: Uuid::new_v4().to_string(),
                 };
             }
         };
 
         let text = split.next().unwrap_or(line);
 
-        ParsedLine::new(datetime_str, text).ok().unwrap()
+        ParsedLine::new(datetime_str, text).unwrap_or_else(|_| ParsedLine {
+            timestamp: 0,
+            text: line.to_string(),
+            id: Uuid::new_v4().to_string(),
+        })
     }
 }
 
