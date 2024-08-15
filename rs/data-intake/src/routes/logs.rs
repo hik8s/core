@@ -107,10 +107,13 @@ pub async fn log_intake<'a>(
                                 return Err(Status::InternalServerError);
                             }
                         }
-                        fluvio_connection.send_batch(lines).await.map_err(|e| {
-                            error!("Failed to send batch to Fluvio topic: {}", e);
-                            Status::InternalServerError
-                        })?;
+                        fluvio_connection
+                            .send_batch(lines, metadata)
+                            .await
+                            .map_err(|e| {
+                                error!("Failed to send batch to Fluvio topic: {}", e);
+                                Status::InternalServerError
+                            })?;
 
                         return Ok("Success".to_string());
                     }
