@@ -1,11 +1,19 @@
 use anyhow::Error as AnyhowError;
+use fluvio::dataplane::link::ErrorCode;
+use fluvio::dataplane::record::ConsumerRecord;
+use fluvio::{
+    consumer::{ConsumerConfigExtBuilder, OffsetManagementStrategy},
+    Offset,
+};
 use fluvio::{
     metadata::topic::TopicSpec, spu::SpuSocketPool, Fluvio, FluvioAdmin, FluvioError, RecordKey,
     TopicProducer,
 };
+use futures_util::Stream;
 use rocket::{request::FromRequest, State};
 use std::sync::Arc;
 use thiserror::Error;
+use tracing::error;
 
 pub const DEFAULT_TOPIC: &str = "logs";
 const DEFAULT_PARTITIONS: u32 = 2;
@@ -25,6 +33,10 @@ pub enum ConnectionError {
     Rocket(String),
     #[error("Anyhow error: {0}")]
     Anyhow(#[from] AnyhowError),
+    #[error("Consumer config error: {0}")]
+    ConsumerConfigError(String),
+    #[error("Consumer error: {0}")]
+    ConsumerError(String),
 }
 
 impl FluvioConnection {
@@ -70,6 +82,26 @@ impl FluvioConnection {
             .create(topic_name.to_owned(), false, topic_spec)
             .await
             .map_err(ConnectionError::from)
+    }
+
+    pub async fn create_consumer(
+        &self,
+    ) -> Result<impl Stream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin, ConnectionError>
+    {
+        let consumer = self
+            .fluvio
+            .consumer_with_config(
+                ConsumerConfigExtBuilder::default()
+                    .topic(DEFAULT_TOPIC.to_string())
+                    // .offset_consumer("my-consumer".to_string())
+                    .offset_start(Offset::beginning())
+                    .offset_strategy(OffsetManagementStrategy::Auto)
+                    .build()
+                    .map_err(|e| ConnectionError::ConsumerConfigError(e.to_string()))?,
+            )
+            .await
+            .map_err(|e| ConnectionError::ConsumerError(e.to_string()))?;
+        Ok(consumer)
     }
 }
 
