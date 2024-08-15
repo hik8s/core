@@ -1,6 +1,5 @@
 use anyhow::Error as AnyhowError;
-use fluvio::dataplane::link::ErrorCode;
-use fluvio::dataplane::record::ConsumerRecord;
+use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::{
     consumer::{ConsumerConfigExtBuilder, OffsetManagementStrategy},
     Offset,
