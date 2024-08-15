@@ -13,19 +13,18 @@ use rocket::{request::FromRequest, State};
 use serde_json::to_string;
 use std::sync::Arc;
 use thiserror::Error;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::types::metadata::Metadata;
 use crate::types::parsedline::ParsedLine;
 
 pub const DEFAULT_TOPIC: &str = "logs";
-const DEFAULT_PARTITIONS: u32 = 2;
-const BATCH_SIZE: usize = 100;
+pub const PARTITIONS: u32 = 2;
+pub const BATCH_SIZE: usize = 100;
 
 #[derive(Clone)]
 pub struct FluvioConnection {
     pub fluvio: Arc<Fluvio>,
-    pub admin: Arc<FluvioAdmin>,
     pub producer: Arc<TopicProducer<SpuSocketPool>>,
 }
 
@@ -46,50 +45,24 @@ pub enum ConnectionError {
 impl FluvioConnection {
     pub async fn new() -> Result<Self, ConnectionError> {
         let fluvio = Fluvio::connect().await.map_err(ConnectionError::from)?;
+
+        let admin = fluvio.admin().await;
+        create_topic(admin, DEFAULT_TOPIC, PARTITIONS).await?;
+
         let producer = fluvio
             .topic_producer(DEFAULT_TOPIC.to_string())
             .await
             .map_err(ConnectionError::from)?;
-        let admin = fluvio.admin().await;
 
         let fluvio = Arc::new(fluvio);
-        let admin = Arc::new(admin);
         let producer = Arc::new(producer);
 
-        let connection = FluvioConnection {
-            fluvio,
-            producer,
-            admin,
-        };
-
-        connection
-            .create_topic(DEFAULT_TOPIC, DEFAULT_PARTITIONS)
-            .await?;
-
-        Ok(connection)
-    }
-
-    pub async fn create_topic(
-        &self,
-        topic_name: &str,
-        partitions: u32,
-    ) -> Result<(), ConnectionError> {
-        // Check if the topic already exists
-        let topics = self.admin.list::<TopicSpec, String>(vec![]).await?;
-        if topics.iter().any(|topic| topic.name == topic_name) {
-            return Ok(());
-        }
-
-        // Create the topic if it does not exist
-        let topic_spec = TopicSpec::new_computed(partitions, 1, None);
-        self.admin
-            .create(topic_name.to_owned(), false, topic_spec)
-            .await
-            .map_err(ConnectionError::from)
+        Ok(Self { fluvio, producer })
     }
 
     pub async fn create_consumer(
         &self,
+        partition_id: u32,
     ) -> Result<impl Stream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin, ConnectionError>
     {
         let consumer = self
@@ -97,7 +70,7 @@ impl FluvioConnection {
             .consumer_with_config(
                 ConsumerConfigExtBuilder::default()
                     .topic(DEFAULT_TOPIC.to_string())
-                    // .offset_consumer("my-consumer".to_string())
+                    .partition(partition_id)
                     .offset_start(Offset::beginning())
                     .offset_strategy(OffsetManagementStrategy::Auto)
                     .build()
@@ -146,6 +119,28 @@ impl FluvioConnection {
 
         Ok(())
     }
+}
+
+pub async fn create_topic(
+    admin: FluvioAdmin,
+    topic_name: &str,
+    partitions: u32,
+) -> Result<(), ConnectionError> {
+    // Check if the topic already exists
+    let topics = admin.list::<TopicSpec, String>(vec![]).await?;
+    if topics.iter().any(|topic| topic.name == topic_name) {
+        info!("Topic '{}' already exists", topic_name);
+        return Ok(());
+    }
+
+    // Create the topic if it does not exist
+    let topic_spec = TopicSpec::new_computed(partitions, 1, None);
+    admin
+        .create(topic_name.to_owned(), false, topic_spec)
+        .await
+        .map_err(ConnectionError::from)?;
+    info!("Topic '{}' created", topic_name);
+    Ok(())
 }
 
 pub fn create_record_key(id: String) -> RecordKey {
