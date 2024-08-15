@@ -16,6 +16,7 @@ use std::sync::Arc;
 use thiserror::Error;
 use tracing::error;
 
+use crate::types::metadata::Metadata;
 use crate::types::parsedline::ParsedLine;
 
 pub const DEFAULT_TOPIC: &str = "logs";
@@ -108,12 +109,19 @@ impl FluvioConnection {
         Ok(consumer)
     }
 
-    pub async fn send_batch(&self, lines: Vec<ParsedLine>) -> Result<(), ConnectionError> {
+    pub async fn send_batch(
+        &self,
+        lines: Vec<ParsedLine>,
+        metadata: &Metadata,
+    ) -> Result<(), ConnectionError> {
         let mut batch = Vec::with_capacity(BATCH_SIZE);
 
         for line in &lines {
             let serialized_record = to_string(&line).expect("Failed to serialize record");
-            batch.push((create_record_key(line.id.clone()), serialized_record));
+            batch.push((
+                create_record_key(metadata.pod_name.to_owned()),
+                serialized_record,
+            ));
 
             if batch.len() == BATCH_SIZE {
                 self.producer

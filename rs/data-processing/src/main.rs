@@ -23,9 +23,11 @@ async fn main() -> Result<(), DataProcessingError> {
 
     while let Some(Ok(record)) = consumer.next().await {
         let payload = record.value();
+        let key = record.key();
         let data_str = String::from_utf8_lossy(payload);
+        let key_str = String::from_utf8_lossy(key.unwrap_or_default()).to_string();
         match from_str::<ParsedLine>(&data_str) {
-            Ok(parsed_line) => println!("{:?}", parsed_line),
+            Ok(parsed_line) => println!("key: {:?} payload: {:?}", key_str, parsed_line),
             Err(e) => error!("Failed to deserialize record: {}", e),
         }
     }
