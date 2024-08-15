@@ -4079,6 +4079,7 @@ dependencies = [
  "rstest 0.22.0",
  "rustls 0.23.12",
  "serde",
+ "serde_json",
  "sqlx",
  "thiserror",
  "tokio",

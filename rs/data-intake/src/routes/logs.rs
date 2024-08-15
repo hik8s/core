@@ -7,8 +7,6 @@ use rocket::http::ContentType;
 use rocket::http::Status;
 use rocket::post;
 use rocket::Data;
-use serde_json::to_string;
-use shared::connections::fluvio::connect::create_record_key;
 use shared::connections::fluvio::connect::FluvioConnection;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::types::metadata::Metadata;
@@ -19,7 +17,7 @@ use tracing::{error, info, warn};
 #[post("/logs", data = "<data>")]
 pub async fn log_intake<'a>(
     db: GreptimeConnection,
-    broker: FluvioConnection,
+    fluvio_connection: FluvioConnection,
     content_type: &ContentType,
     data: Data<'a>,
 ) -> Result<String, Status> {
@@ -109,45 +107,8 @@ pub async fn log_intake<'a>(
                                 return Err(Status::InternalServerError);
                             }
                         }
-                        let batch_size = 100; // Define the batch size
-                        let mut batch = Vec::with_capacity(batch_size);
-
-                        for line in &lines {
-                            info!("Line: {:?}", line);
-                            let serialized_record =
-                                to_string(&line).expect("Failed to serialize record");
-                            batch.push((
-                                create_record_key(metadata.pod_name.clone()),
-                                serialized_record,
-                            ));
-
-                            if batch.len() == batch_size {
-                                broker
-                                    .producer
-                                    .send_all(batch.drain(..))
-                                    .await
-                                    .map_err(|e| {
-                                        error!("Failed to send batch to Fluvio topic: {}", e);
-                                        Status::InternalServerError
-                                    })?;
-                            }
-                        }
-
-                        // Send any remaining lines in the batch
-                        if !batch.is_empty() {
-                            info!("Sending remaining batch to Fluvio topic: {:?}", batch.len());
-                            broker
-                                .producer
-                                .send_all(batch.drain(..))
-                                .await
-                                .map_err(|e| {
-                                    error!("Failed to send remaining batch to Fluvio topic: {}", e);
-                                    Status::InternalServerError
-                                })?;
-                        }
-                        // Ensure the producer flushes the messages
-                        broker.producer.flush().await.map_err(|e| {
-                            error!("Failed to flush producer: {}", e);
+                        fluvio_connection.send_batch(lines).await.map_err(|e| {
+                            error!("Failed to send batch to Fluvio topic: {}", e);
                             Status::InternalServerError
                         })?;
 

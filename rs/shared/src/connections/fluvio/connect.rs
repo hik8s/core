@@ -11,12 +11,16 @@ use fluvio::{
 };
 use futures_util::Stream;
 use rocket::{request::FromRequest, State};
+use serde_json::to_string;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::error;
 
+use crate::types::parsedline::ParsedLine;
+
 pub const DEFAULT_TOPIC: &str = "logs";
 const DEFAULT_PARTITIONS: u32 = 2;
+const BATCH_SIZE: usize = 100;
 
 #[derive(Clone)]
 pub struct FluvioConnection {
@@ -102,6 +106,38 @@ impl FluvioConnection {
             .await
             .map_err(|e| ConnectionError::ConsumerError(e.to_string()))?;
         Ok(consumer)
+    }
+
+    pub async fn send_batch(&self, lines: Vec<ParsedLine>) -> Result<(), ConnectionError> {
+        let mut batch = Vec::with_capacity(BATCH_SIZE);
+
+        for line in &lines {
+            let serialized_record = to_string(&line).expect("Failed to serialize record");
+            batch.push((create_record_key(line.id.clone()), serialized_record));
+
+            if batch.len() == BATCH_SIZE {
+                self.producer
+                    .send_all(batch.drain(..))
+                    .await
+                    .map_err(ConnectionError::Anyhow)?;
+            }
+        }
+
+        // Send any remaining lines in the batch
+        if !batch.is_empty() {
+            self.producer
+                .send_all(batch.drain(..))
+                .await
+                .map_err(ConnectionError::Anyhow)?;
+        }
+
+        // Ensure the producer flushes the messages
+        self.producer
+            .flush()
+            .await
+            .map_err(ConnectionError::Anyhow)?;
+
+        Ok(())
     }
 }
 

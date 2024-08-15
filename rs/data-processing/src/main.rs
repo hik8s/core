@@ -10,10 +10,6 @@ use tracing::error;
 pub enum DataProcessingError {
     #[error("Fluvio connection error: {0}")]
     FluvioConnectionError(#[from] ConnectionError),
-    #[error("Consumer config error: {0}")]
-    ConsumerConfigError(String),
-    #[error("Consumer error: {0}")]
-    ConsumerError(String),
     #[error("Other error: {0}")]
     Other(#[from] Box<dyn std::error::Error>),
 }
