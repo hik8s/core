@@ -1,14 +1,26 @@
 use anyhow::Error as AnyhowError;
+use fluvio::dataplane::link::ErrorCode;
+use fluvio::dataplane::record::ConsumerRecord;
+use fluvio::{
+    consumer::{ConsumerConfigExtBuilder, OffsetManagementStrategy},
+    Offset,
+};
 use fluvio::{
     metadata::topic::TopicSpec, spu::SpuSocketPool, Fluvio, FluvioAdmin, FluvioError, RecordKey,
     TopicProducer,
 };
+use futures_util::Stream;
 use rocket::{request::FromRequest, State};
+use serde_json::to_string;
 use std::sync::Arc;
 use thiserror::Error;
+use tracing::error;
+
+use crate::types::parsedline::ParsedLine;
 
 pub const DEFAULT_TOPIC: &str = "logs";
 const DEFAULT_PARTITIONS: u32 = 2;
+const BATCH_SIZE: usize = 100;
 
 #[derive(Clone)]
 pub struct FluvioConnection {
@@ -25,6 +37,10 @@ pub enum ConnectionError {
     Rocket(String),
     #[error("Anyhow error: {0}")]
     Anyhow(#[from] AnyhowError),
+    #[error("Consumer config error: {0}")]
+    ConsumerConfigError(String),
+    #[error("Consumer error: {0}")]
+    ConsumerError(String),
 }
 
 impl FluvioConnection {
@@ -70,6 +86,58 @@ impl FluvioConnection {
             .create(topic_name.to_owned(), false, topic_spec)
             .await
             .map_err(ConnectionError::from)
+    }
+
+    pub async fn create_consumer(
+        &self,
+    ) -> Result<impl Stream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin, ConnectionError>
+    {
+        let consumer = self
+            .fluvio
+            .consumer_with_config(
+                ConsumerConfigExtBuilder::default()
+                    .topic(DEFAULT_TOPIC.to_string())
+                    // .offset_consumer("my-consumer".to_string())
+                    .offset_start(Offset::beginning())
+                    .offset_strategy(OffsetManagementStrategy::Auto)
+                    .build()
+                    .map_err(|e| ConnectionError::ConsumerConfigError(e.to_string()))?,
+            )
+            .await
+            .map_err(|e| ConnectionError::ConsumerError(e.to_string()))?;
+        Ok(consumer)
+    }
+
+    pub async fn send_batch(&self, lines: Vec<ParsedLine>) -> Result<(), ConnectionError> {
+        let mut batch = Vec::with_capacity(BATCH_SIZE);
+
+        for line in &lines {
+            let serialized_record = to_string(&line).expect("Failed to serialize record");
+            batch.push((create_record_key(line.id.clone()), serialized_record));
+
+            if batch.len() == BATCH_SIZE {
+                self.producer
+                    .send_all(batch.drain(..))
+                    .await
+                    .map_err(ConnectionError::Anyhow)?;
+            }
+        }
+
+        // Send any remaining lines in the batch
+        if !batch.is_empty() {
+            self.producer
+                .send_all(batch.drain(..))
+                .await
+                .map_err(ConnectionError::Anyhow)?;
+        }
+
+        // Ensure the producer flushes the messages
+        self.producer
+            .flush()
+            .await
+            .map_err(ConnectionError::Anyhow)?;
+
+        Ok(())
     }
 }
 
