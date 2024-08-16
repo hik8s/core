@@ -1,2 +1,2 @@
 pub mod classification;
-pub mod types;
+mod types;

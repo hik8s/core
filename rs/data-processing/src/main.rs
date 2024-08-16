@@ -1,4 +1,3 @@
-use logs::types::appstate::AppStateError;
 use shared::connections::fluvio::connect::{ConnectionError, BATCH_SIZE, PARTITIONS};
 use shared::{connections::fluvio::connect::FluvioConnection, tracing::setup::setup_tracing};
 use thiserror::Error;
@@ -8,15 +7,12 @@ use threads::types::communication::{ClassificationResult, ClassificationTask};
 use tokio::sync::mpsc;
 use tracing::error;
 
-pub mod logs;
 pub mod threads;
 
 #[derive(Error, Debug)]
 pub enum DataProcessingError {
     #[error("Fluvio connection error: {0}")]
     FluvioConnectionError(#[from] ConnectionError),
-    #[error("App state error: {0}")]
-    AppStateError(#[from] AppStateError),
     #[error("Task join error: {0}")]
     JoinError(#[from] tokio::task::JoinError),
     #[error("Other error: {0}")]
@@ -27,8 +23,6 @@ pub enum DataProcessingError {
 async fn main() -> Result<(), DataProcessingError> {
     setup_tracing();
     let fluvio_connection = FluvioConnection::new().await?;
-
-    // Create a single result sender and receiver
 
     // Vector to hold all spawned threads
     let mut threads = Vec::new();

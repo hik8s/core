@@ -1,0 +1,8 @@
+[package]
+edition.workspace = true
+name = "log-classification"
+version = "0.1.0"
+
+[dependencies]
+shared = {path = "../shared"}
+tracing = {workspace = true}

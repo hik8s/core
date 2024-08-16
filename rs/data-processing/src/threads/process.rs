@@ -1,9 +1,9 @@
 use tokio::sync::mpsc;
 use tracing::error;
 
-use crate::logs::classification::Classifier;
-
 use super::types::communication::{ClassificationResult, ClassificationTask};
+
+use log_classification::classification::Classifier;
 
 pub async fn process_logs(
     mut receiver: mpsc::Receiver<ClassificationTask>,
@@ -11,7 +11,7 @@ pub async fn process_logs(
 ) {
     let classifier = Classifier::new(None);
     while let Some(task) = receiver.recv().await {
-        classifier.classify(&task.parsed_line, &task.key).await;
+        classifier.classify(&task.parsed_line, task.key);
         let success = true;
         let result = ClassificationResult {
             key: task.key,

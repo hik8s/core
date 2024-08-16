@@ -12,6 +12,7 @@ anyhow = {workspace = true}
 dotenv = {workspace = true}
 fluvio = {workspace = true}
 futures-util = {workspace = true}
+log-classification = {path = "../log-classification"}
 rstest = {workspace = true}
 serde_json = {workspace = true}
 shared = {path = "../shared"}
