@@ -837,14 +837,13 @@ dependencies = [
  "rand 0.8.5",
  "reqwest",
  "rocket",
- "rstest 0.18.2",
+ "rstest",
  "rustls 0.23.12",
  "serde",
  "serde_json",
  "shared",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -856,7 +855,8 @@ dependencies = [
  "dotenv",
  "fluvio",
  "futures-util",
- "rstest 0.22.0",
+ "rstest",
+ "serde",
  "serde_json",
  "shared",
  "thiserror",
@@ -3668,43 +3668,14 @@ dependencies = [
 
 [[package]]
 name = "rstest"
-version = "0.18.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97eeab2f3c0a199bc4be135c36c924b6590b88c377d416494288c14f2db30199"
-dependencies = [
- "futures",
- "futures-timer",
- "rstest_macros 0.18.2",
- "rustc_version",
-]
-
-[[package]]
-name = "rstest"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b423f0e62bdd61734b67cd21ff50871dfaeb9cc74f869dcd6af974fbcb19936"
 dependencies = [
  "futures",
  "futures-timer",
- "rstest_macros 0.22.0",
+ "rstest_macros",
  "rustc_version",
-]
-
-[[package]]
-name = "rstest_macros"
-version = "0.18.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d428f8247852f894ee1be110b375111b586d4fa431f6c46e64ba5a0dcccbe605"
-dependencies = [
- "cfg-if",
- "glob",
- "proc-macro2",
- "quote",
- "regex",
- "relative-path",
- "rustc_version",
- "syn 2.0.72",
- "unicode-ident",
 ]
 
 [[package]]
@@ -4076,7 +4047,7 @@ dependencies = [
  "jsonwebtoken",
  "reqwest",
  "rocket",
- "rstest 0.22.0",
+ "rstest",
  "rustls 0.23.12",
  "serde",
  "serde_json",
