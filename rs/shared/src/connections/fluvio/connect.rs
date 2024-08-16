@@ -1,4 +1,5 @@
 use anyhow::Error as AnyhowError;
+use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::{
     consumer::{ConsumerConfigExtBuilder, OffsetManagementStrategy},
@@ -8,7 +9,6 @@ use fluvio::{
     metadata::topic::TopicSpec, spu::SpuSocketPool, Fluvio, FluvioAdmin, FluvioError, RecordKey,
     TopicProducer,
 };
-use futures_util::Stream;
 use rocket::{request::FromRequest, State};
 use serde_json::to_string;
 use std::sync::Arc;
@@ -63,16 +63,19 @@ impl FluvioConnection {
     pub async fn create_consumer(
         &self,
         partition_id: u32,
-    ) -> Result<impl Stream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin, ConnectionError>
-    {
+    ) -> Result<
+        impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
+        ConnectionError,
+    > {
         let consumer = self
             .fluvio
             .consumer_with_config(
                 ConsumerConfigExtBuilder::default()
                     .topic(DEFAULT_TOPIC.to_string())
                     .partition(partition_id)
+                    .offset_consumer(format!("consumer_{}", partition_id))
                     .offset_start(Offset::beginning())
-                    .offset_strategy(OffsetManagementStrategy::Auto)
+                    .offset_strategy(OffsetManagementStrategy::Manual)
                     .build()
                     .map_err(|e| ConnectionError::ConsumerConfigError(e.to_string()))?,
             )

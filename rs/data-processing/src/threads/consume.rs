@@ -1,14 +1,18 @@
 use crate::ClassificationTask;
+use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
-use futures_util::{Stream, StreamExt};
+use futures_util::StreamExt;
 use serde_json::from_str;
 use shared::types::parsedline::ParsedLine;
 use tokio::sync::mpsc;
 use tracing::error;
 
+use super::types::communication::ClassificationResult;
+
 pub async fn consume_logs(
-    mut consumer: impl Stream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
+    mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
     sender: mpsc::Sender<ClassificationTask>,
+    mut receiver: mpsc::Receiver<ClassificationResult>,
 ) {
     while let Some(Ok(record)) = consumer.next().await {
         let payload = record.value().to_vec();
@@ -28,6 +32,19 @@ pub async fn consume_logs(
                 }
             }
             Err(e) => error!("Failed to deserialize record: {}", e),
+        }
+
+        if let Some(ClassificationResult { key, success, id }) = receiver.recv().await {
+            if success {
+                if let Err(e) = consumer.offset_commit() {
+                    error!("Failed to commit offset for key {}: {}. ID: {}", key, e, id);
+                }
+                if let Err(e) = consumer.offset_flush().await {
+                    error!("Failed to flush offset for key {}: {}. ID: {}", key, e, id);
+                }
+            } else {
+                error!("Processing failed for key {}. ID: {}", key, id);
+            }
         }
     }
 }

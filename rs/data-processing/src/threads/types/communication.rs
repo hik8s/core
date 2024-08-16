@@ -8,4 +8,5 @@ pub struct ClassificationTask {
 pub struct ClassificationResult {
     pub key: String,
     pub success: bool,
+    pub id: String,
 }
