@@ -829,7 +829,6 @@ dependencies = [
 name = "data-intake"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "dotenv",
  "greptimedb-ingester",
  "jsonwebtoken",
@@ -839,26 +838,21 @@ dependencies = [
  "rocket",
  "rstest",
  "rustls 0.23.12",
- "serde",
  "serde_json",
  "shared",
  "tokio",
  "tracing",
- "uuid",
 ]
 
 [[package]]
 name = "data-processing"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "dotenv",
  "fluvio",
  "futures-util",
  "log-classification",
  "rstest",
- "serde",
- "serde_json",
  "shared",
  "thiserror",
  "tokio",
@@ -2410,7 +2404,10 @@ dependencies = [
 name = "log-classification"
 version = "0.1.0"
 dependencies = [
+ "rstest",
+ "serde_json",
  "shared",
+ "thiserror",
  "tracing",
 ]
 

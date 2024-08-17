@@ -1,2 +1,3 @@
-pub mod classification;
-mod types;
+pub mod algorithm;
+pub mod process;
+pub mod types;

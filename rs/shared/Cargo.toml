@@ -28,4 +28,4 @@ thiserror = {workspace = true}
 tokio = {workspace = true}
 tracing = {workspace = true}
 tracing-subscriber = {workspace = true}
-uuid = "1.8.0"
+uuid = {workspace = true}

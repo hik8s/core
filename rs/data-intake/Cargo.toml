@@ -8,7 +8,6 @@ name = "data-intake"
 path = "src/main.rs"
 
 [dependencies]
-anyhow = {workspace = true}
 dotenv = {workspace = true}
 greptimedb-ingester = {git = "https://github.com/GreptimeTeam/greptimedb-ingester-rust.git", rev = "2e6b0c5eb6a5e7549c3100e4d356b07d15cce66d"}
 jsonwebtoken = {version = "9.3", default-features = false}
@@ -18,12 +17,10 @@ reqwest = {version = "0.12", default-features = false, features = [
     "json",
     "rustls-tls",
 ]}
-rocket = {version = "0.5.0-rc.3", features = ["json"]}
+rocket = {workspace = true}
 rstest = {workspace = true}
 rustls = {workspace = true}
-serde = {workspace = true}
 serde_json = {workspace = true}
 shared = {path = "../shared"}
 tokio = {workspace = true}
 tracing = {workspace = true}
-uuid = {workspace = true}

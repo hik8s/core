@@ -4,8 +4,10 @@ use tracing::error;
 
 use super::types::communication::{ClassificationResult, ClassificationTask};
 
-use log_classification::classifier::Classifier;
-use log_classification::types::state::{ClassifierState, ClassifierStateError};
+use log_classification::{
+    algorithm::deterministic::classifier::Classifier,
+    types::state::{ClassifierState, ClassifierStateError},
+};
 
 #[derive(Error, Debug)]
 pub enum ProcessThreadError {
@@ -24,19 +26,21 @@ pub async fn process_logs(
     let state = ClassifierState::new();
     let classifier = Classifier::new(None);
     while let Some(task) = receiver.recv().await {
-        let classes = state.get_or_create(&task.key).await?;
-        classifier.classify(&task.parsed_line, classes).await;
-        let success = true;
-        let result = ClassificationResult {
-            key: task.key,
-            success,
-            id: task.parsed_line.id,
-        };
-        sender
-            .send(result)
-            .await
-            // maybe tolerate this error
-            .map_err(ProcessThreadError::SendError)?;
+        let key = task.key.to_owned();
+        let id = task.parsed_line.id.to_owned();
+        let classes = state.get_or_create(&key).await?;
+
+        match classifier.classify(&task.parsed_line, classes) {
+            Ok(()) => {
+                let result = ClassificationResult::with_success(&task);
+                sender
+                    .send(result)
+                    .await
+                    // maybe tolerate this error
+                    .map_err(ProcessThreadError::SendError)?;
+            }
+            Err(e) => error!("{e}: key: {key}, log id: {id}"),
+        }
     }
     Ok(())
 }

@@ -1,6 +1,9 @@
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::from_str;
+use thiserror::Error;
 use uuid::Uuid;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ParsedLine {
     pub timestamp: i64,
@@ -8,8 +11,16 @@ pub struct ParsedLine {
     pub id: String,
 }
 
+#[derive(Debug, Error)]
+pub enum ParsedLineError {
+    #[error("Failed to deserialize ParsedLine: {0}")]
+    DeserializeError(#[from] serde_json::Error),
+    #[error("Failed to parse datetime: {0}")]
+    ParseError(#[from] chrono::ParseError),
+}
+
 impl ParsedLine {
-    pub fn new(ts: &str, text: &str) -> Result<Self, chrono::ParseError> {
+    pub fn new(ts: &str, text: &str) -> Result<Self, ParsedLineError> {
         let timestamp = dt_from_ts(ts)?.timestamp_millis();
         let text = text.to_string();
 
@@ -41,6 +52,10 @@ impl ParsedLine {
             text: line.to_string(),
             id: Uuid::new_v4().to_string(),
         })
+    }
+
+    pub fn from_str(data_str: &str) -> Result<Self, ParsedLineError> {
+        from_str::<ParsedLine>(data_str).map_err(ParsedLineError::from)
     }
 }
 

@@ -2,11 +2,10 @@ use crate::ClassificationTask;
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use futures_util::StreamExt;
-use serde_json::from_str;
-use shared::types::parsedline::ParsedLine;
+use shared::types::parsedline::{ParsedLine, ParsedLineError};
 use thiserror::Error;
 use tokio::sync::mpsc;
-use tracing::error;
+use tracing::{error, info};
 
 use super::types::communication::ClassificationResult;
 
@@ -14,8 +13,8 @@ use super::types::communication::ClassificationResult;
 pub enum ConsumerThreadError {
     #[error("Failed to send task to worker: {0}")]
     SendError(#[from] mpsc::error::SendError<ClassificationTask>),
-    #[error("Failed to deserialize record: {0}")]
-    DeserializeError(#[from] serde_json::Error),
+    #[error("Failed to parse line: {0}")]
+    ParsedLineError(#[from] ParsedLineError),
     #[error("Failed to commit offset for key {key}: {source}. ID: {id}")]
     OffsetCommitError {
         key: String,
@@ -62,7 +61,7 @@ pub async fn consume_logs(
         let data_str = String::from_utf8_lossy(&payload);
         let key_str = String::from_utf8_lossy(&key.unwrap_or_default()).to_string();
 
-        match from_str::<ParsedLine>(&data_str) {
+        match ParsedLine::from_str(&data_str) {
             Ok(parsed_line) => {
                 let task = ClassificationTask {
                     parsed_line,
@@ -70,11 +69,12 @@ pub async fn consume_logs(
                 };
                 sender.send(task).await?;
             }
-            Err(e) => return Err(ConsumerThreadError::DeserializeError(e)),
+            Err(e) => error!("{e}"), // tolerate potential parsing errors
         }
 
         if let Some(ClassificationResult { key, success, id }) = receiver.recv().await {
             if success {
+                info!("Successfully processed log with key: {}, id: {}", key, id);
                 let idc = id.clone();
                 if let Err(e) = consumer.offset_commit().map_err(|e| {
                     ConsumerThreadError::from((OffsetErrorType::OffsetCommit, e, key.clone(), idc))
