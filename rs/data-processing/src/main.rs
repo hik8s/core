@@ -1,8 +1,8 @@
 use shared::connections::fluvio::connect::{ConnectionError, BATCH_SIZE, PARTITIONS};
 use shared::{connections::fluvio::connect::FluvioConnection, tracing::setup::setup_tracing};
 use thiserror::Error;
-use threads::consume::consume_logs;
-use threads::process::process_logs;
+use threads::consume::{consume_logs, ConsumerThreadError};
+use threads::process::{process_logs, ProcessThreadError};
 use threads::types::communication::{ClassificationResult, ClassificationTask};
 use tokio::sync::mpsc;
 use tracing::error;
@@ -15,8 +15,12 @@ pub enum DataProcessingError {
     FluvioConnectionError(#[from] ConnectionError),
     #[error("Task join error: {0}")]
     JoinError(#[from] tokio::task::JoinError),
+    #[error("Process thread error: {0}")]
+    ProcessThreadError(#[from] ProcessThreadError),
+    #[error("Consumer thread error: {0}")]
+    ConsumerThreadError(#[from] ConsumerThreadError),
     #[error("Other error: {0}")]
-    Other(#[from] Box<dyn std::error::Error>),
+    Other(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 #[tokio::main]
@@ -35,18 +39,20 @@ async fn main() -> Result<(), DataProcessingError> {
 
         // Spawn worker thread for each partition
         threads.push(tokio::spawn(async move {
-            process_logs(data_receiver, result_sender).await;
+            process_logs(data_receiver, result_sender).await?;
+            Ok::<(), DataProcessingError>(())
         }));
 
         // Spawn a thread to consume logs for each partition
         threads.push(tokio::spawn(async move {
-            consume_logs(consumer, data_sender, result_receiver).await;
+            consume_logs(consumer, data_sender, result_receiver).await?;
+            Ok::<(), DataProcessingError>(())
         }));
     }
 
     // Wait for all threads to complete
     for thread in threads {
-        thread.await.map_err(DataProcessingError::from)?;
+        thread.await??;
     }
 
     Ok(())
