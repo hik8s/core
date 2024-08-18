@@ -4,26 +4,19 @@ name = "shared"
 version = "0.1.0"
 
 [dependencies]
-anyhow = "1.0.80"
+anyhow = {workspace = true}
 chrono = {workspace = true}
 fluvio = {workspace = true}
 futures-util = {workspace = true}
-greptimedb-ingester = {git = "https://github.com/GreptimeTeam/greptimedb-ingester-rust.git", rev = "2e6b0c5eb6a5e7549c3100e4d356b07d15cce66d"}
-jsonwebtoken = {version = "9.3", default-features = false}
-reqwest = {version = "0.12", default-features = false, features = [
-    "json",
-    "rustls-tls",
-]}
-rocket = {version = "0.5.0-rc.3", features = ["json"]}
+greptimedb-ingester = {workspace = true}
+jsonwebtoken = {workspace = true}
+reqwest = {workspace = true}
+rocket = {workspace = true}
 rstest = {workspace = true}
 rustls = {workspace = true}
 serde = {workspace = true}
-serde_json = {workspace = true, features = ["preserve_order"]}
-sqlx = {workspace = true, features = [
-    "postgres",
-    "runtime-tokio",
-    "tls-rustls",
-]}
+serde_json = {workspace = true}
+sqlx = {workspace = true}
 thiserror = {workspace = true}
 tokio = {workspace = true}
 tracing = {workspace = true}

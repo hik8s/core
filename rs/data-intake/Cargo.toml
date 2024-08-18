@@ -9,18 +9,13 @@ path = "src/main.rs"
 
 [dependencies]
 dotenv = {workspace = true}
-greptimedb-ingester = {git = "https://github.com/GreptimeTeam/greptimedb-ingester-rust.git", rev = "2e6b0c5eb6a5e7549c3100e4d356b07d15cce66d"}
-jsonwebtoken = {version = "9.3", default-features = false}
-multipart = "0.18.0"
-rand = "0.8.5"
-reqwest = {version = "0.12", default-features = false, features = [
-    "json",
-    "rustls-tls",
-]}
+greptimedb-ingester = {workspace = true}
+multipart = {workspace = true}
+rand = {workspace = true}
 rocket = {workspace = true}
 rstest = {workspace = true}
 rustls = {workspace = true}
 serde_json = {workspace = true}
-shared = {path = "../shared"}
+shared = {workspace = true}
 tokio = {workspace = true}
 tracing = {workspace = true}
