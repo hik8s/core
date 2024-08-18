@@ -4,8 +4,8 @@ use tracing::error;
 
 use super::types::communication::{ClassificationResult, ClassificationTask};
 
-use log_classification::{
-    algorithm::deterministic::classifier::Classifier,
+use algorithm::{
+    classification::deterministic::classifier::Classifier,
     types::state::{ClassifierState, ClassifierStateError},
 };
 

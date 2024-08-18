@@ -1,11 +1,10 @@
 [package]
 edition.workspace = true
-name = "log-classification"
+name = "algorithm"
 version = "0.1.0"
 
 [dependencies]
 rstest = {workspace = true}
-serde_json = {workspace = true, features = ["preserve_order"]}
 shared = {path = "../shared"}
 thiserror = {workspace = true}
 tracing = {workspace = true}

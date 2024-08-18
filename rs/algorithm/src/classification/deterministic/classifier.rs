@@ -1,8 +1,10 @@
-use shared::types::parsedline::ParsedLine;
+use shared::{
+    process::logs::{compare_loglines, process_logline},
+    types::parsedline::ParsedLine,
+};
 use std::env::var;
 use thiserror::Error;
 
-use crate::process::logs::{compare_loglines, process_logline};
 use crate::types::class::Class;
 
 #[derive(Debug, Clone)]

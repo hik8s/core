@@ -8,10 +8,10 @@ name = "data-processing"
 path = "src/main.rs"
 
 [dependencies]
+algorithm = {path = "../algorithm"}
 dotenv = {workspace = true}
 fluvio = {workspace = true}
 futures-util = {workspace = true}
-log-classification = {path = "../log-classification"}
 rstest = {workspace = true}
 shared = {path = "../shared"}
 thiserror = {workspace = true}

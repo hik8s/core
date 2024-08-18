@@ -1,12 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = [
-    "rs/data-intake",
-    "rs/data-processing",
-    "rs/log-classification",
-    "rs/shared",
-]
+members = ["rs/algorithm", "rs/data-intake", "rs/data-processing", "rs/shared"]
 
 [workspace.package]
 edition = "2021"

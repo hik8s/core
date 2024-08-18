@@ -85,10 +85,11 @@ fn flatten_json_recursive(json: &Value, result: &mut Vec<String>, prefix: String
 #[cfg(test)]
 mod tests {
 
+    use crate::tracing::setup::setup_tracing;
+
     use super::*;
     use rstest::rstest;
     use serde_json::json;
-    use shared::tracing::setup::setup_tracing;
 
     #[rstest]
     #[case("stderr F {\"level\":\"info\",\"ts\":\"2024-03-16T05:28:18.752849Z\",\"caller\":\"mvcc/hash.go:137\",\"msg\":\"storing new hash\",\"hash\":3811437805,\"revision\":108791,\"compact-revision\":108342}",
