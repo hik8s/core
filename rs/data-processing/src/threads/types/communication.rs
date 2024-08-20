@@ -19,7 +19,7 @@ impl ClassificationResult {
         ClassificationResult {
             key: task.key.to_owned(),
             class_id,
-            log_id: task.log_record.id.to_owned(),
+            log_id: task.log_record.record_id.to_owned(),
         }
     }
 }

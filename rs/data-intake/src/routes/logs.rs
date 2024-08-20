@@ -69,7 +69,7 @@ pub async fn log_intake<'a>(
             "stream" => {
                 let mut buffer = [0; 262144];
                 let mut remainder = String::new();
-                let mut lines = Vec::new();
+                let mut logs = Vec::new();
 
                 while let Ok(n) = field.data.read(&mut buffer) {
                     if n == 0 {
@@ -82,7 +82,7 @@ pub async fn log_intake<'a>(
                         error!("Failed to convert buffer to UTF-8: {}", e);
                         Status::InternalServerError
                     })?;
-                    lines.extend(process_chunk(chunk, &mut remainder));
+                    logs.extend(process_chunk(chunk, &mut remainder));
                 }
                 match metadata {
                     Some(ref metadata) => {
@@ -91,7 +91,7 @@ pub async fn log_intake<'a>(
                             Status::InternalServerError
                         })?;
 
-                        let insert_request = to_insert_request(&lines, metadata);
+                        let insert_request = to_insert_request(&logs, metadata);
 
                         if let Err(e) = stream_inserter.insert(vec![insert_request]).await {
                             error!("Error during insert: {}", e);
@@ -108,7 +108,7 @@ pub async fn log_intake<'a>(
                             }
                         }
                         fluvio_connection
-                            .send_batch(lines, metadata)
+                            .send_batch(logs, metadata)
                             .await
                             .map_err(|e| {
                                 error!("Failed to send batch to Fluvio topic: {}", e);

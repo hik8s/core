@@ -50,7 +50,7 @@ impl Classifier {
         mut classes: Vec<Class>,
     ) -> Result<String, ClassificationError> {
         // this can fail and we should probably allow it to fail
-        let items = process_logline(&line.text);
+        let items = process_logline(&line.message);
 
         let mut best_match: Option<Class> = None;
         let mut highest_similarity = 0.0;

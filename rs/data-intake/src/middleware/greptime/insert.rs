@@ -12,8 +12,8 @@ pub fn to_insert_request(logs: &Vec<LogRecord>, metadata: &Metadata) -> InsertRe
         ),
         |mut acc, log| {
             acc.0.push(log.timestamp);
-            acc.1.push(log.text.clone());
-            acc.2.push(log.id.clone());
+            acc.1.push(log.message.clone());
+            acc.2.push(log.record_id.clone());
             acc
         },
     );

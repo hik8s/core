@@ -27,10 +27,10 @@ pub async fn process_logs(
     let classifier = Classifier::new(None);
     while let Some(task) = receiver.recv().await {
         let key = task.key.to_owned();
-        let id = task.parsed_line.id.to_owned();
+        let id = task.log_record.record_id.to_owned();
         let classes = state.get_or_create(&key).await?;
 
-        match classifier.classify(&task.parsed_line, classes) {
+        match classifier.classify(&task.log_record, classes) {
             Ok(class_id) => {
                 let result = ClassificationResult::new(&task, class_id);
                 // if this is not in batches, writing single logs with their class is not efficient

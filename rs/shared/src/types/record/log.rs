@@ -7,8 +7,8 @@ use uuid::Uuid;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LogRecord {
     pub timestamp: i64,
-    pub text: String,
-    pub id: String,
+    pub message: String,
+    pub record_id: String,
 }
 
 #[derive(Debug, Error)]
@@ -20,37 +20,36 @@ pub enum LogRecordError {
 }
 
 impl LogRecord {
-    pub fn new(ts: &str, text: &str) -> Result<Self, LogRecordError> {
+    pub fn new(ts: &str, message: &str) -> Result<Self, LogRecordError> {
         let timestamp = dt_from_ts(ts)?.timestamp_millis();
-        let text = text.to_string();
 
         Ok(LogRecord {
             timestamp,
-            text,
-            id: Uuid::new_v4().to_string(),
+            message: message.to_owned(),
+            record_id: Uuid::new_v4().to_string(),
         })
     }
 
-    pub fn from_line(line: &str) -> Self {
-        let mut split = line.splitn(2, 'Z');
+    pub fn from_line(raw_message: &str) -> Self {
+        let mut split = raw_message.splitn(2, 'Z');
         let datetime_str = match split.next() {
             Some(s) => s,
             None => {
-                tracing::warn!("Failed to parse datetime from line: {}", line);
+                tracing::warn!("Failed to parse datetime from line: {}", raw_message);
                 return LogRecord {
                     timestamp: 0,
-                    text: line.to_string(),
-                    id: Uuid::new_v4().to_string(),
+                    message: raw_message.to_string(),
+                    record_id: Uuid::new_v4().to_string(),
                 };
             }
         };
 
-        let text = split.next().unwrap_or(line);
+        let text = split.next().unwrap_or(raw_message);
 
         LogRecord::new(datetime_str, text).unwrap_or_else(|_| LogRecord {
             timestamp: 0,
-            text: line.to_string(),
-            id: Uuid::new_v4().to_string(),
+            message: raw_message.to_string(),
+            record_id: Uuid::new_v4().to_string(),
         })
     }
 
