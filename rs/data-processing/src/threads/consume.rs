@@ -2,12 +2,12 @@ use crate::ClassificationTask;
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use futures_util::StreamExt;
-use shared::types::record::log::{LogRecord, LogRecordError};
+use shared::types::record::log::LogRecordError;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::{error, info};
 
-use super::types::communication::ClassificationResult;
+use super::types::communication::{ClassificationResult, ConsumerRecordError};
 
 #[derive(Error, Debug)]
 pub enum ConsumerThreadError {
@@ -29,6 +29,8 @@ pub enum ConsumerThreadError {
     },
     #[error("Processing failed for key {key}. ID: {id}")]
     ProcessingFailed { key: String, id: String },
+    #[error("Failed to parse fluvio consumer record: {0}")]
+    ConsumerRecordError(#[from] ConsumerRecordError),
 }
 
 enum OffsetErrorType {
@@ -55,23 +57,9 @@ pub async fn consume_logs(
     mut receiver: mpsc::Receiver<ClassificationResult>,
 ) -> Result<(), ConsumerThreadError> {
     while let Some(Ok(record)) = consumer.next().await {
-        // feat(shared,log-record): impl from record
-        let payload = record.value().to_vec();
-        let key = record.key().map(|k| k.to_vec());
-
-        let data_str = String::from_utf8_lossy(&payload);
-        let key_str = String::from_utf8_lossy(&key.unwrap_or_default()).to_string();
-
-        match LogRecord::from_str(&data_str) {
-            Ok(parsed_line) => {
-                let task = ClassificationTask {
-                    parsed_line,
-                    key: key_str,
-                };
-                sender.send(task).await?;
-            }
-            Err(e) => error!("{e}"), // tolerate potential parsing errors
-        }
+        let task = ClassificationTask::try_from(record)?;
+        // receiver is process thread found in ../process.rs
+        sender.send(task).await?;
 
         if let Some(classification_result) = receiver.recv().await {
             info!(

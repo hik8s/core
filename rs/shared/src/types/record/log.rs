@@ -59,6 +59,17 @@ impl LogRecord {
     }
 }
 
+use std::convert::TryFrom;
+
+impl TryFrom<Vec<u8>> for LogRecord {
+    type Error = LogRecordError;
+
+    fn try_from(payload: Vec<u8>) -> Result<Self, Self::Error> {
+        let data_str = String::from_utf8_lossy(&payload);
+        from_str::<LogRecord>(&data_str).map_err(LogRecordError::from)
+    }
+}
+
 pub fn dt_from_ts(ts: &str) -> Result<DateTime<Utc>, chrono::ParseError> {
     match NaiveDateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%S%.f")
         .or_else(|_| NaiveDateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%S"))
