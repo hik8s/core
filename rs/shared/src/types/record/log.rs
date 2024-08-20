@@ -5,26 +5,26 @@ use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ParsedLine {
+pub struct LogRecord {
     pub timestamp: i64,
     pub text: String,
     pub id: String,
 }
 
 #[derive(Debug, Error)]
-pub enum ParsedLineError {
-    #[error("Failed to deserialize ParsedLine: {0}")]
+pub enum LogRecordError {
+    #[error("Failed to deserialize LogRecord: {0}")]
     DeserializeError(#[from] serde_json::Error),
     #[error("Failed to parse datetime: {0}")]
     ParseError(#[from] chrono::ParseError),
 }
 
-impl ParsedLine {
-    pub fn new(ts: &str, text: &str) -> Result<Self, ParsedLineError> {
+impl LogRecord {
+    pub fn new(ts: &str, text: &str) -> Result<Self, LogRecordError> {
         let timestamp = dt_from_ts(ts)?.timestamp_millis();
         let text = text.to_string();
 
-        Ok(ParsedLine {
+        Ok(LogRecord {
             timestamp,
             text,
             id: Uuid::new_v4().to_string(),
@@ -37,7 +37,7 @@ impl ParsedLine {
             Some(s) => s,
             None => {
                 tracing::warn!("Failed to parse datetime from line: {}", line);
-                return ParsedLine {
+                return LogRecord {
                     timestamp: 0,
                     text: line.to_string(),
                     id: Uuid::new_v4().to_string(),
@@ -47,15 +47,15 @@ impl ParsedLine {
 
         let text = split.next().unwrap_or(line);
 
-        ParsedLine::new(datetime_str, text).unwrap_or_else(|_| ParsedLine {
+        LogRecord::new(datetime_str, text).unwrap_or_else(|_| LogRecord {
             timestamp: 0,
             text: line.to_string(),
             id: Uuid::new_v4().to_string(),
         })
     }
 
-    pub fn from_str(data_str: &str) -> Result<Self, ParsedLineError> {
-        from_str::<ParsedLine>(data_str).map_err(ParsedLineError::from)
+    pub fn from_str(data_str: &str) -> Result<Self, LogRecordError> {
+        from_str::<LogRecord>(data_str).map_err(LogRecordError::from)
     }
 }
 

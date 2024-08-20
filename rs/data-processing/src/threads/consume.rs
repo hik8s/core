@@ -2,7 +2,7 @@ use crate::ClassificationTask;
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use futures_util::StreamExt;
-use shared::types::parsedline::{ParsedLine, ParsedLineError};
+use shared::types::record::log::{LogRecord, LogRecordError};
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::{error, info};
@@ -13,8 +13,8 @@ use super::types::communication::ClassificationResult;
 pub enum ConsumerThreadError {
     #[error("Failed to send task to worker: {0}")]
     SendError(#[from] mpsc::error::SendError<ClassificationTask>),
-    #[error("Failed to parse line: {0}")]
-    ParsedLineError(#[from] ParsedLineError),
+    #[error("Failed to parse log record: {0}")]
+    LogRecordError(#[from] LogRecordError),
     #[error("Failed to commit offset for key {key}: {source}. ID: {id}")]
     OffsetCommitError {
         key: String,
@@ -55,13 +55,14 @@ pub async fn consume_logs(
     mut receiver: mpsc::Receiver<ClassificationResult>,
 ) -> Result<(), ConsumerThreadError> {
     while let Some(Ok(record)) = consumer.next().await {
+        // feat(shared,log-record): impl from record
         let payload = record.value().to_vec();
         let key = record.key().map(|k| k.to_vec());
 
         let data_str = String::from_utf8_lossy(&payload);
         let key_str = String::from_utf8_lossy(&key.unwrap_or_default()).to_string();
 
-        match ParsedLine::from_str(&data_str) {
+        match LogRecord::from_str(&data_str) {
             Ok(parsed_line) => {
                 let task = ClassificationTask {
                     parsed_line,

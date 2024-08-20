@@ -1,6 +1,6 @@
 use shared::{
     process::logs::{compare_loglines, process_logline},
-    types::parsedline::ParsedLine,
+    types::record::log::LogRecord,
 };
 use std::env::var;
 use thiserror::Error;
@@ -46,7 +46,7 @@ impl Classifier {
 
     pub fn classify(
         &self,
-        line: &ParsedLine,
+        line: &LogRecord,
         mut classes: Vec<Class>,
     ) -> Result<String, ClassificationError> {
         // this can fail and we should probably allow it to fail

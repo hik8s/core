@@ -1,7 +1,7 @@
 use greptimedb_ingester::api::v1::{column, Column, ColumnDataType, InsertRequest, SemanticType};
-use shared::types::{metadata::Metadata, parsedline::ParsedLine};
+use shared::types::{metadata::Metadata, record::log::LogRecord};
 
-pub fn to_insert_request(logs: &Vec<ParsedLine>, metadata: &Metadata) -> InsertRequest {
+pub fn to_insert_request(logs: &Vec<LogRecord>, metadata: &Metadata) -> InsertRequest {
     let rows = logs.len();
 
     let (ts, text, id) = logs.into_iter().fold(

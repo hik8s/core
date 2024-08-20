@@ -16,7 +16,7 @@ use thiserror::Error;
 use tracing::{error, info};
 
 use crate::types::metadata::Metadata;
-use crate::types::parsedline::ParsedLine;
+use crate::types::record::log::LogRecord;
 
 pub const DEFAULT_TOPIC: &str = "logs";
 pub const PARTITIONS: u32 = 2;
@@ -86,7 +86,7 @@ impl FluvioConnection {
 
     pub async fn send_batch(
         &self,
-        lines: Vec<ParsedLine>,
+        lines: Vec<LogRecord>,
         metadata: &Metadata,
     ) -> Result<(), ConnectionError> {
         let mut batch = Vec::with_capacity(BATCH_SIZE);

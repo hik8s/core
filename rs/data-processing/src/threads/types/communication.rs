@@ -1,7 +1,7 @@
-use shared::types::parsedline::ParsedLine;
+use shared::types::record::log::LogRecord;
 
 pub struct ClassificationTask {
-    pub parsed_line: ParsedLine,
+    pub parsed_line: LogRecord,
     pub key: String,
 }
 

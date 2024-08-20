@@ -1,6 +1,6 @@
-use shared::types::parsedline::ParsedLine;
+use shared::types::record::log::LogRecord;
 
-pub fn process_chunk(chunk: &str, remainder: &mut String) -> Vec<ParsedLine> {
+pub fn process_chunk(chunk: &str, remainder: &mut String) -> Vec<LogRecord> {
     // Split the chunk into lines
     let mut log_lines: Vec<String> = chunk.split('\n').map(|line| line.to_string()).collect();
 
@@ -21,6 +21,6 @@ pub fn process_chunk(chunk: &str, remainder: &mut String) -> Vec<ParsedLine> {
     log_lines
         .into_iter()
         .filter(|s| !s.trim().is_empty())
-        .map(|line| ParsedLine::from_line(&line))
+        .map(|line| LogRecord::from_line(&line))
         .collect()
 }
