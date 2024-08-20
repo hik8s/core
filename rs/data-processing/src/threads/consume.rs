@@ -3,7 +3,7 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use futures_util::StreamExt;
 use shared::connections::fluvio::connect::{commit_and_flush_offsets, OffsetError};
-use shared::types::record::log::LogRecordError;
+use shared::types::record::log::LogParseError;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::{error, info};
@@ -15,7 +15,7 @@ pub enum ConsumerThreadError {
     #[error("Failed to send task to worker: {0}")]
     SendError(#[from] mpsc::error::SendError<ClassificationTask>),
     #[error("Failed to parse log record: {0}")]
-    LogRecordError(#[from] LogRecordError),
+    LogRecordError(#[from] LogParseError),
     #[error("Fluvio offset error: {0}")]
     OffsetError(#[from] OffsetError),
     #[error("Processing failed for key {key}. ID: {id}")]

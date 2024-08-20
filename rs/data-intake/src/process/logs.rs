@@ -21,6 +21,6 @@ pub fn process_chunk(chunk: &str, remainder: &mut String) -> Vec<LogRecord> {
     log_lines
         .into_iter()
         .filter(|s| !s.trim().is_empty())
-        .map(|line| LogRecord::from_line(&line))
+        .map(|line| LogRecord::from(&line))
         .collect()
 }
