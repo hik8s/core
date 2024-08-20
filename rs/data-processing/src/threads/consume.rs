@@ -18,8 +18,6 @@ pub enum ConsumerThreadError {
     LogRecordError(#[from] LogParseError),
     #[error("Fluvio offset error: {0}")]
     OffsetError(#[from] OffsetError),
-    #[error("Processing failed for key {key}. ID: {id}")]
-    ProcessingFailed { key: String, id: String },
     #[error("Failed to parse fluvio consumer record: {0}")]
     ConsumerRecordError(#[from] ConsumerRecordError),
 }

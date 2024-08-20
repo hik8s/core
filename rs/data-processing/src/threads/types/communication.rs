@@ -1,5 +1,5 @@
 use fluvio::dataplane::record::ConsumerRecord;
-use shared::types::record::log::{LogRecord, LogRecordError};
+use shared::types::record::log::{LogParseError, LogRecord};
 use std::convert::TryInto;
 use thiserror::Error;
 
@@ -34,8 +34,8 @@ impl From<(LogRecord, String)> for ClassificationTask {
 pub enum ConsumerRecordError {
     #[error("UTF-8 conversion error: {0}")]
     Utf8Error(#[from] std::string::FromUtf8Error),
-    #[error("LogRecord error: {source}, key: {key}, record_id could not be deserialized")]
-    LogRecordError { source: LogRecordError, key: String },
+    #[error("LogRecord error: {1}, key: {0}, record_id could not be deserialized")]
+    LogRecordError(String, LogParseError),
     #[error("Missing key in ConsumerRecord")]
     MissingKey,
 }
@@ -51,13 +51,9 @@ impl TryFrom<ConsumerRecord> for ClassificationTask {
             .ok_or(ConsumerRecordError::MissingKey)?;
         let key_str = String::from_utf8(key)?;
 
-        let log_record: LogRecord =
-            payload
-                .try_into()
-                .map_err(|e| ConsumerRecordError::LogRecordError {
-                    source: e,
-                    key: key_str.clone(),
-                })?;
+        let log_record: LogRecord = payload
+            .try_into()
+            .map_err(|e| ConsumerRecordError::LogRecordError(key_str.clone(), e))?;
 
         Ok(ClassificationTask {
             log_record,
