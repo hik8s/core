@@ -1,6 +1,6 @@
 pub mod middleware;
 pub mod process;
-pub mod routes;
+pub mod route;
 pub mod utils;
 
 #[cfg(test)]
