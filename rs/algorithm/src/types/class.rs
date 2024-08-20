@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use super::item::Item;
 
 #[derive(Clone)]
@@ -5,6 +7,7 @@ pub struct Class {
     pub items: Vec<Item>,
     pub count: i32,
     pub length: usize,
+    pub id: String,
 }
 impl Class {
     pub fn new(texts: Vec<String>) -> Self {
@@ -13,6 +16,7 @@ impl Class {
             length: items.len().clone(),
             items,
             count: 1,
+            id: Uuid::new_v4().to_string(),
         }
     }
 

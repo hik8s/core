@@ -48,7 +48,7 @@ impl Classifier {
         &self,
         line: &ParsedLine,
         mut classes: Vec<Class>,
-    ) -> Result<(), ClassificationError> {
+    ) -> Result<String, ClassificationError> {
         // this can fail and we should probably allow it to fail
         let items = process_logline(&line.text);
 
@@ -73,11 +73,12 @@ impl Classifier {
             if highest_similarity >= self.threshold {
                 class.count += 1;
                 class.update_items(&items);
+                return Ok(class.id);
             }
-        } else {
-            // add new class
-            classes.push(Class::new(items));
         }
-        Ok(())
+        // add new class
+        let class = Class::new(items);
+        classes.push(class.to_owned());
+        return Ok(class.id);
     }
 }

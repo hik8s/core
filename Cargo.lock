@@ -46,6 +46,7 @@ dependencies = [
  "shared",
  "thiserror",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

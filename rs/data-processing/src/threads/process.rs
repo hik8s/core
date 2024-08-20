@@ -31,8 +31,9 @@ pub async fn process_logs(
         let classes = state.get_or_create(&key).await?;
 
         match classifier.classify(&task.parsed_line, classes) {
-            Ok(()) => {
-                let result = ClassificationResult::with_success(&task);
+            Ok(class_id) => {
+                let result = ClassificationResult::new(&task, class_id);
+                // if this is not in batches, writing single logs with their class is not efficient
                 sender
                     .send(result)
                     .await

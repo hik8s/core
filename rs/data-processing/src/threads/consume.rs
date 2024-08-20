@@ -72,23 +72,31 @@ pub async fn consume_logs(
             Err(e) => error!("{e}"), // tolerate potential parsing errors
         }
 
-        if let Some(ClassificationResult { key, success, id }) = receiver.recv().await {
-            if success {
-                info!("Successfully processed log with key: {}, id: {}", key, id);
-                let idc = id.clone();
-                if let Err(e) = consumer.offset_commit().map_err(|e| {
-                    ConsumerThreadError::from((OffsetErrorType::OffsetCommit, e, key.clone(), idc))
-                }) {
-                    // maybe tolerate this error
-                    return Err(e);
-                }
-                if let Err(e) = consumer.offset_flush().await.map_err(|e| {
-                    ConsumerThreadError::from((OffsetErrorType::OffsetFlush, e, key.clone(), id))
-                }) {
-                    return Err(e);
-                }
-            } else {
-                return Err(ConsumerThreadError::ProcessingFailed { key, id });
+        if let Some(classification_result) = receiver.recv().await {
+            info!(
+                "Successfully processed log with key: {}, id: {}",
+                classification_result.key, classification_result.log_id
+            );
+            if let Err(e) = consumer.offset_commit().map_err(|e| {
+                ConsumerThreadError::from((
+                    OffsetErrorType::OffsetCommit,
+                    e,
+                    classification_result.key.clone(),
+                    classification_result.log_id.clone(),
+                ))
+            }) {
+                // maybe tolerate this error
+                return Err(e);
+            }
+            if let Err(e) = consumer.offset_flush().await.map_err(|e| {
+                ConsumerThreadError::from((
+                    OffsetErrorType::OffsetFlush,
+                    e,
+                    classification_result.key,
+                    classification_result.log_id,
+                ))
+            }) {
+                return Err(e);
             }
         }
     }
