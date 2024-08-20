@@ -1,5 +1,5 @@
 use crate::middleware::greptime::insert::to_insert_request;
-use crate::process::logs::process_chunk;
+use crate::process::log::process_chunk;
 use crate::process::metadata::process_metadata;
 use multipart::server::Multipart;
 use rocket::data::ToByteUnit;

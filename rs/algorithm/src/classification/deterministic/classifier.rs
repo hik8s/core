@@ -1,5 +1,5 @@
 use shared::{
-    process::logs::{compare_loglines, process_logline},
+    process::log::{compare_loglines, process_logline},
     types::record::log::LogRecord,
 };
 use std::env::var;
