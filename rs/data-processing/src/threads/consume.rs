@@ -2,6 +2,7 @@ use crate::ClassificationTask;
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use futures_util::StreamExt;
+use shared::connections::fluvio::connect::{commit_and_flush_offsets, OffsetError};
 use shared::types::record::log::LogRecordError;
 use thiserror::Error;
 use tokio::sync::mpsc;
@@ -15,40 +16,12 @@ pub enum ConsumerThreadError {
     SendError(#[from] mpsc::error::SendError<ClassificationTask>),
     #[error("Failed to parse log record: {0}")]
     LogRecordError(#[from] LogRecordError),
-    #[error("Failed to commit offset for key {key}: {source}. ID: {id}")]
-    OffsetCommitError {
-        key: String,
-        source: ErrorCode,
-        id: String,
-    },
-    #[error("Failed to flush offset for key {key}: {source}. ID: {id}")]
-    OffsetFlushError {
-        key: String,
-        source: ErrorCode,
-        id: String,
-    },
+    #[error("Fluvio offset error: {0}")]
+    OffsetError(#[from] OffsetError),
     #[error("Processing failed for key {key}. ID: {id}")]
     ProcessingFailed { key: String, id: String },
     #[error("Failed to parse fluvio consumer record: {0}")]
     ConsumerRecordError(#[from] ConsumerRecordError),
-}
-
-enum OffsetErrorType {
-    OffsetCommit,
-    OffsetFlush,
-}
-
-impl From<(OffsetErrorType, ErrorCode, String, String)> for ConsumerThreadError {
-    fn from((error_type, source, key, id): (OffsetErrorType, ErrorCode, String, String)) -> Self {
-        match error_type {
-            OffsetErrorType::OffsetCommit => {
-                ConsumerThreadError::OffsetCommitError { key, source, id }
-            }
-            OffsetErrorType::OffsetFlush => {
-                ConsumerThreadError::OffsetFlushError { key, source, id }
-            }
-        }
-    }
 }
 
 pub async fn consume_logs(
@@ -66,27 +39,12 @@ pub async fn consume_logs(
                 "Successfully processed log with key: {}, id: {}",
                 classification_result.key, classification_result.log_id
             );
-            if let Err(e) = consumer.offset_commit().map_err(|e| {
-                ConsumerThreadError::from((
-                    OffsetErrorType::OffsetCommit,
-                    e,
-                    classification_result.key.clone(),
-                    classification_result.log_id.clone(),
-                ))
-            }) {
-                // maybe tolerate this error
-                return Err(e);
-            }
-            if let Err(e) = consumer.offset_flush().await.map_err(|e| {
-                ConsumerThreadError::from((
-                    OffsetErrorType::OffsetFlush,
-                    e,
-                    classification_result.key,
-                    classification_result.log_id,
-                ))
-            }) {
-                return Err(e);
-            }
+            commit_and_flush_offsets(
+                &mut consumer,
+                classification_result.key.clone(),
+                classification_result.log_id.clone(),
+            )
+            .await?;
         }
     }
     Ok(())

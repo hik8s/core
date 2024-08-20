@@ -146,6 +146,39 @@ pub async fn create_topic(
     Ok(())
 }
 
+#[derive(Error, Debug)]
+pub enum OffsetError {
+    #[error("Failed to commit offset for key {key}: {source}. ID: {id}")]
+    Commit {
+        key: String,
+        source: ErrorCode,
+        id: String,
+    },
+    #[error("Failed to flush offset for key {key}: {source}. ID: {id}")]
+    Flush {
+        key: String,
+        source: ErrorCode,
+        id: String,
+    },
+}
+
+pub async fn commit_and_flush_offsets(
+    consumer: &mut (impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin),
+    key: String,
+    id: String,
+) -> Result<(), OffsetError> {
+    consumer.offset_commit().map_err(|e| OffsetError::Commit {
+        key: key.clone(),
+        source: e,
+        id: id.clone(),
+    })?;
+    consumer
+        .offset_flush()
+        .await
+        .map_err(|e| OffsetError::Flush { key, source: e, id })?;
+    Ok(())
+}
+
 pub fn create_record_key(id: String) -> RecordKey {
     RecordKey::from(id)
 }
