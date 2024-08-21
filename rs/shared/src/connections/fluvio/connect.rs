@@ -86,13 +86,13 @@ impl FluvioConnection {
 
     pub async fn send_batch(
         &self,
-        lines: Vec<LogRecord>,
+        logs: Vec<LogRecord>,
         metadata: &Metadata,
     ) -> Result<(), ConnectionError> {
         let mut batch = Vec::with_capacity(BATCH_SIZE);
 
-        for line in &lines {
-            let serialized_record = to_string(&line).expect("Failed to serialize record");
+        for log in &logs {
+            let serialized_record = to_string(&log).expect("Failed to serialize record");
             batch.push((
                 create_record_key(metadata.pod_name.to_owned()),
                 serialized_record,
@@ -106,7 +106,7 @@ impl FluvioConnection {
             }
         }
 
-        // Send any remaining lines in the batch
+        // Send any remaining logs in the batch
         if !batch.is_empty() {
             self.producer
                 .send_all(batch.drain(..))

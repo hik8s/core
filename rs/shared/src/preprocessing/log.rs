@@ -11,7 +11,7 @@ pub fn compare_loglines(output1: Vec<String>, output2: Vec<String>) -> Vec<bool>
     result
 }
 
-pub fn process_logline(input: &str) -> Vec<String> {
+pub fn preprocess_log(input: &str) -> Vec<String> {
     let mut result = Vec::new();
 
     // Check if the input string contains a JSON object
@@ -109,7 +109,7 @@ mod tests {
     #[case("stderr F I0315 10:44:54.473228       1 main.go:227] handling current node", vec!["stderr", "F", "I0315", "10:44:54.473228", "1", "main.go:227]", "handling", "current", "node"])]
     fn test_process_logline(#[case] input: &str, #[case] expected: Vec<&str>) {
         setup_tracing();
-        assert_eq!(process_logline(input), expected);
+        assert_eq!(preprocess_log(input), expected);
     }
 
     #[rstest]
@@ -171,8 +171,8 @@ mod tests {
     fn test_compare_loglines(#[case] inputs: (&str, &str), #[case] expected: Vec<bool>) {
         setup_tracing();
         let (input1, input2) = inputs;
-        let processed1 = process_logline(input1);
-        let processed2 = process_logline(input2);
+        let processed1 = preprocess_log(input1);
+        let processed2 = preprocess_log(input2);
         let comparison = compare_loglines(processed1, processed2);
         assert_eq!(comparison, expected, "All items should match");
     }

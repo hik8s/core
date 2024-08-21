@@ -1,5 +1,5 @@
 use shared::{
-    process::log::{compare_loglines, process_logline},
+    preprocessing::log::{compare_loglines, preprocess_log},
     types::record::log::LogRecord,
 };
 use std::env::var;
@@ -14,8 +14,6 @@ pub struct Classifier {
 
 #[derive(Error, Debug)]
 pub enum ClassificationError {
-    #[error("Failed to process log line")]
-    ProcessLogLineError,
     #[error("Comparison error")]
     ComparisonError,
 }
@@ -46,11 +44,11 @@ impl Classifier {
 
     pub fn classify(
         &self,
-        line: &LogRecord,
+        log: &LogRecord,
         mut classes: Vec<Class>,
     ) -> Result<String, ClassificationError> {
         // this can fail and we should probably allow it to fail
-        let items = process_logline(&line.message);
+        let items = preprocess_log(&log.message);
 
         let mut best_match: Option<Class> = None;
         let mut highest_similarity = 0.0;
