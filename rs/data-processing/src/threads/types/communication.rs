@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use thiserror::Error;
 
 pub struct ClassificationTask {
-    pub log_record: LogRecord,
+    pub log: LogRecord,
     pub key: String,
 }
 
@@ -15,18 +15,18 @@ pub struct ClassificationResult {
 }
 
 impl ClassificationResult {
-    pub fn new(task: &ClassificationTask, class_id: String) -> Self {
+    pub fn new(key: &String, record_id: &String, class_id: String) -> Self {
         ClassificationResult {
-            key: task.key.to_owned(),
+            key: key.to_owned(),
             class_id,
-            log_id: task.log_record.record_id.to_owned(),
+            log_id: record_id.to_owned(),
         }
     }
 }
 
 impl From<(LogRecord, String)> for ClassificationTask {
-    fn from((log_record, key): (LogRecord, String)) -> Self {
-        ClassificationTask { log_record, key }
+    fn from((log, key): (LogRecord, String)) -> Self {
+        ClassificationTask { log, key }
     }
 }
 
@@ -51,13 +51,10 @@ impl TryFrom<ConsumerRecord> for ClassificationTask {
             .ok_or(ConsumerRecordError::MissingKey)?;
         let key_str = String::from_utf8(key)?;
 
-        let log_record: LogRecord = payload
+        let log: LogRecord = payload
             .try_into()
             .map_err(|e| ConsumerRecordError::LogRecordError(key_str.clone(), e))?;
 
-        Ok(ClassificationTask {
-            log_record,
-            key: key_str,
-        })
+        Ok(ClassificationTask { log, key: key_str })
     }
 }

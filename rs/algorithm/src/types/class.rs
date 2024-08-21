@@ -1,3 +1,4 @@
+use shared::types::record::preprocessed::PreprocessedLogRecord;
 use uuid::Uuid;
 
 use super::item::Item;
@@ -30,13 +31,30 @@ impl Class {
             .collect()
     }
 
-    pub fn update_items(&mut self, texts: &Vec<String>) {
-        for (item, text) in self.items.iter_mut().zip(texts) {
+    pub fn update_items(&mut self, log: &PreprocessedLogRecord) {
+        for (item, text) in self.items.iter_mut().zip(&log.preprocessed_message) {
             if let Item::Fix(item_str) = item {
                 if text != item_str {
                     *item = Item::Var;
                 }
             }
+        }
+    }
+}
+
+impl From<&PreprocessedLogRecord> for Class {
+    fn from(log: &PreprocessedLogRecord) -> Self {
+        let items: Vec<Item> = log
+            .preprocessed_message
+            .clone()
+            .into_iter()
+            .map(Item::Fix)
+            .collect();
+        Self {
+            length: items.len(),
+            items,
+            count: 1,
+            id: Uuid::new_v4().to_string(),
         }
     }
 }

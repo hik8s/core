@@ -30,6 +30,7 @@ impl ClassifierState {
     }
 
     pub async fn get_or_create(&self, key: &String) -> Result<Vec<Class>, ClassifierStateError> {
+        // TODO: add key to error message
         let mut state = self.state.write()?;
         match state.get(key) {
             Some(app) => Ok(app.clone()),

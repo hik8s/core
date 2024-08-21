@@ -1,26 +1,28 @@
 use serde_json::Value;
 
-pub fn compare_loglines(output1: Vec<String>, output2: Vec<String>) -> Vec<bool> {
+use crate::types::record::{log::LogRecord, preprocessed::PreprocessedLogRecord};
+
+pub fn compare_loglines(log: &PreprocessedLogRecord, output2: Vec<String>) -> Vec<bool> {
     let mut result = Vec::new();
-    let max_length = output1.len().max(output2.len());
+    let max_length = log.length.max(output2.len());
 
     for i in 0..max_length {
-        result.push(output1.get(i) == output2.get(i));
+        result.push(log.preprocessed_message.get(i) == output2.get(i));
     }
 
     result
 }
 
-pub fn preprocess_log(input: &str) -> Vec<String> {
+pub fn preprocess_log(log: LogRecord) -> PreprocessedLogRecord {
     let mut result = Vec::new();
 
     // Check if the input string contains a JSON object
-    if let (Some(start_index), Some(end_index)) = (input.find('{'), input.rfind('}')) {
+    if let (Some(start_index), Some(end_index)) = (log.message.find('{'), log.message.rfind('}')) {
         // Process the part of the input string before the JSON object
-        result.extend(split_string(&input[0..start_index]));
+        result.extend(split_string(&log.message[0..start_index]));
 
         // Extract the JSON object from the string
-        let json_str = &input[start_index..=end_index];
+        let json_str = &log.message[start_index..=end_index];
 
         // Parse the JSON object
         match serde_json::from_str::<Value>(json_str) {
@@ -34,13 +36,13 @@ pub fn preprocess_log(input: &str) -> Vec<String> {
         };
 
         // Process the part of the input string after the JSON object
-        result.extend(split_string(&input[end_index + 1..]));
+        result.extend(split_string(&log.message[end_index + 1..]));
     } else {
         // If the input string does not contain a JSON object, process it as a non-JSON string
-        result.extend(split_string(input));
+        result.extend(split_string(&log.message));
     }
 
-    result
+    PreprocessedLogRecord::from((log, result))
 }
 
 fn split_string(input: &str) -> Vec<String> {
@@ -109,7 +111,11 @@ mod tests {
     #[case("stderr F I0315 10:44:54.473228       1 main.go:227] handling current node", vec!["stderr", "F", "I0315", "10:44:54.473228", "1", "main.go:227]", "handling", "current", "node"])]
     fn test_process_logline(#[case] input: &str, #[case] expected: Vec<&str>) {
         setup_tracing();
-        assert_eq!(preprocess_log(input), expected);
+        assert_eq!(
+            preprocess_log(LogRecord::new(0, &input.to_owned(), "id".to_owned()))
+                .preprocessed_message,
+            expected
+        );
     }
 
     #[rstest]
@@ -171,9 +177,10 @@ mod tests {
     fn test_compare_loglines(#[case] inputs: (&str, &str), #[case] expected: Vec<bool>) {
         setup_tracing();
         let (input1, input2) = inputs;
-        let processed1 = preprocess_log(input1);
-        let processed2 = preprocess_log(input2);
-        let comparison = compare_loglines(processed1, processed2);
+        let processed1 = preprocess_log(LogRecord::new(0, &input1.to_owned(), "id1".to_owned()));
+        let processed2 = preprocess_log(LogRecord::new(0, &input2.to_owned(), "id2".to_owned()))
+            .preprocessed_message;
+        let comparison = compare_loglines(&processed1, processed2);
         assert_eq!(comparison, expected, "All items should match");
     }
 }

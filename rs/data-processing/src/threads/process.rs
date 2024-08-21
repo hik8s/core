@@ -1,3 +1,4 @@
+use shared::preprocessing::log::preprocess_log;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::error;
@@ -26,22 +27,19 @@ pub async fn process_logs(
     let state = ClassifierState::new();
     let classifier = Classifier::new(None);
     while let Some(task) = receiver.recv().await {
-        let key = task.key.to_owned();
-        let id = task.log_record.record_id.to_owned();
-        let classes = state.get_or_create(&key).await?;
+        let ClassificationTask { key, log } = task;
+        let record_id = log.record_id.to_owned();
+        let class_state = state.get_or_create(&key).await?;
 
-        match classifier.classify(&task.log_record, classes) {
-            Ok(class_id) => {
-                let result = ClassificationResult::new(&task, class_id);
-                // if this is not in batches, writing single logs with their class is not efficient
-                sender
-                    .send(result)
-                    .await
-                    // maybe tolerate this error
-                    .map_err(ProcessThreadError::SendError)?;
-            }
-            Err(e) => error!("{e}: key: {key}, log id: {id}"),
-        }
+        let preprocessed_log = preprocess_log(log);
+        let class = classifier.classify(&preprocessed_log, class_state);
+        let result = ClassificationResult::new(&key, &record_id, class.id);
+        // if this is not in batches, writing single logs with their class is not efficient
+        sender
+            .send(result)
+            .await
+            // maybe tolerate this error
+            .map_err(ProcessThreadError::SendError)?;
     }
     Ok(())
 }

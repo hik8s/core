@@ -1,6 +1,5 @@
 use shared::{
-    preprocessing::log::{compare_loglines, preprocess_log},
-    types::record::log::LogRecord,
+    preprocessing::log::compare_loglines, types::record::preprocessed::PreprocessedLogRecord,
 };
 use std::env::var;
 use thiserror::Error;
@@ -42,22 +41,15 @@ impl Classifier {
         }
     }
 
-    pub fn classify(
-        &self,
-        log: &LogRecord,
-        mut classes: Vec<Class>,
-    ) -> Result<String, ClassificationError> {
-        // this can fail and we should probably allow it to fail
-        let items = preprocess_log(&log.message);
-
+    pub fn classify(&self, log: &PreprocessedLogRecord, mut classes: Vec<Class>) -> Class {
         let mut best_match: Option<Class> = None;
         let mut highest_similarity = 0.0;
 
         for class in classes.iter_mut() {
-            if class.length != items.len() {
+            if class.length != log.length {
                 continue;
             }
-            let aggrement = compare_loglines(items.clone(), class.mask_items());
+            let aggrement = compare_loglines(log, class.mask_items());
 
             let similarity =
                 aggrement.iter().filter(|&b| *b).count() as f32 / aggrement.len() as f32;
@@ -70,13 +62,13 @@ impl Classifier {
         if let Some(mut class) = best_match {
             if highest_similarity >= self.threshold {
                 class.count += 1;
-                class.update_items(&items);
-                return Ok(class.id);
+                class.update_items(log);
+                return class;
             }
         }
         // add new class
-        let class = Class::new(items);
+        let class = Class::from(log);
         classes.push(class.to_owned());
-        return Ok(class.id);
+        class
     }
 }

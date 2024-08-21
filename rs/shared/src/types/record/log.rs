@@ -33,6 +33,9 @@ impl LogRecord {
             record_id,
         }
     }
+    pub fn into_parts(self) -> (i64, String, String) {
+        (self.timestamp, self.message, self.record_id)
+    }
 }
 impl From<&String> for LogRecord {
     // This is used to parse the string from raw data
