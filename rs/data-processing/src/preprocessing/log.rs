@@ -1,17 +1,5 @@
 use serde_json::Value;
-
-use crate::types::record::{log::LogRecord, preprocessed::PreprocessedLogRecord};
-
-pub fn compare_loglines(log: &PreprocessedLogRecord, output2: Vec<String>) -> Vec<bool> {
-    let mut result = Vec::new();
-    let max_length = log.length.max(output2.len());
-
-    for i in 0..max_length {
-        result.push(log.preprocessed_message.get(i) == output2.get(i));
-    }
-
-    result
-}
+use shared::types::record::{log::LogRecord, preprocessed::PreprocessedLogRecord};
 
 pub fn preprocess_log(log: LogRecord) -> PreprocessedLogRecord {
     let mut result = Vec::new();
@@ -87,11 +75,13 @@ fn flatten_json_recursive(json: &Value, result: &mut Vec<String>, prefix: String
 #[cfg(test)]
 mod tests {
 
-    use crate::tracing::setup::setup_tracing;
-
     use super::*;
     use rstest::rstest;
     use serde_json::json;
+    use shared::{
+        preprocessing::compare::compare, tracing::setup::setup_tracing,
+        types::record::log::LogRecord,
+    };
 
     #[rstest]
     #[case("stderr F {\"level\":\"info\",\"ts\":\"2024-03-16T05:28:18.752849Z\",\"caller\":\"mvcc/hash.go:137\",\"msg\":\"storing new hash\",\"hash\":3811437805,\"revision\":108791,\"compact-revision\":108342}",
@@ -109,7 +99,7 @@ mod tests {
     )]
     #[case("stderr F I0315 09:37:55.934101       1 main.go:250] Node kind-worker2 has CIDR [10.244.2.0/24]", vec!["stderr", "F", "I0315", "09:37:55.934101", "1", "main.go:250]", "Node", "kind-worker2", "has", "CIDR", "[10.244.2.0/24]"])]
     #[case("stderr F I0315 10:44:54.473228       1 main.go:227] handling current node", vec!["stderr", "F", "I0315", "10:44:54.473228", "1", "main.go:227]", "handling", "current", "node"])]
-    fn test_process_logline(#[case] input: &str, #[case] expected: Vec<&str>) {
+    fn test_preprocess_log(#[case] input: &str, #[case] expected: Vec<&str>) {
         setup_tracing();
         assert_eq!(
             preprocess_log(LogRecord::new(0, &input.to_owned(), "id".to_owned()))
@@ -174,13 +164,12 @@ mod tests {
         vec![true, true, true, true, true, true, true, true, true, true, true]
     )]
 
-    fn test_compare_loglines(#[case] inputs: (&str, &str), #[case] expected: Vec<bool>) {
+    fn test_preprocess_compare_logs(#[case] inputs: (&str, &str), #[case] expected: Vec<bool>) {
         setup_tracing();
         let (input1, input2) = inputs;
-        let processed1 = preprocess_log(LogRecord::new(0, &input1.to_owned(), "id1".to_owned()));
-        let processed2 = preprocess_log(LogRecord::new(0, &input2.to_owned(), "id2".to_owned()))
-            .preprocessed_message;
-        let comparison = compare_loglines(&processed1, processed2);
+        let log1 = preprocess_log(LogRecord::new(0, &input1.to_owned(), "id1".to_owned()));
+        let log2 = preprocess_log(LogRecord::new(0, &input2.to_owned(), "id2".to_owned()));
+        let comparison = compare(&log1.preprocessed_message, &log2.preprocessed_message);
         assert_eq!(comparison, expected, "All items should match");
     }
 }

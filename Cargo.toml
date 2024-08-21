@@ -6,6 +6,9 @@ members = ["rs/algorithm", "rs/data-intake", "rs/data-processing", "rs/shared"]
 [workspace.package]
 edition = "2021"
 
+# OpenSSL dependency prevention
+# by setting `default-features = false`
+
 [workspace.dependencies]
 algorithm = {path = "rs/algorithm"}
 anyhow = "1.0.80"

@@ -862,6 +862,7 @@ dependencies = [
  "fluvio",
  "futures-util",
  "rstest",
+ "serde_json",
  "shared",
  "thiserror",
  "tokio",

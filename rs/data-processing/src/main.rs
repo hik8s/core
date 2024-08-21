@@ -7,6 +7,7 @@ use threads::types::communication::{ClassificationResult, ClassificationTask};
 use tokio::sync::mpsc;
 use tracing::error;
 
+pub mod preprocessing;
 pub mod threads;
 
 #[derive(Error, Debug)]

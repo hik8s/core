@@ -1,6 +1,4 @@
-use shared::{
-    preprocessing::log::compare_loglines, types::record::preprocessed::PreprocessedLogRecord,
-};
+use shared::{preprocessing::compare::compare, types::record::preprocessed::PreprocessedLogRecord};
 use std::env::var;
 use thiserror::Error;
 
@@ -49,7 +47,7 @@ impl Classifier {
             if class.length != log.length {
                 continue;
             }
-            let aggrement = compare_loglines(log, class.mask_items());
+            let aggrement = compare(&log.preprocessed_message, &class.mask_items());
 
             let similarity =
                 aggrement.iter().filter(|&b| *b).count() as f32 / aggrement.len() as f32;

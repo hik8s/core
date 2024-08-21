@@ -1,7 +1,8 @@
-use shared::preprocessing::log::preprocess_log;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::error;
+
+use crate::preprocessing::log::preprocess_log;
 
 use super::types::communication::{ClassificationResult, ClassificationTask};
 
