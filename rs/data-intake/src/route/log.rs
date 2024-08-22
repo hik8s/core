@@ -1,4 +1,4 @@
-use crate::middleware::greptime::insert::to_insert_request;
+use crate::middleware::greptime::insert::logs_to_insert_request;
 use crate::process::log::process_chunk;
 use crate::process::metadata::process_metadata;
 use multipart::server::Multipart;
@@ -11,6 +11,7 @@ use shared::connections::fluvio::connect::FluvioConnection;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::types::metadata::Metadata;
 use std::io::Read;
+use std::str::from_utf8;
 use std::{io::Cursor, ops::Deref};
 use tracing::{error, info, warn};
 
@@ -78,7 +79,7 @@ pub async fn log_intake<'a>(
                     if n == buffer.len() {
                         warn!("Buffer is full");
                     }
-                    let chunk = std::str::from_utf8(&buffer[..n]).map_err(|e| {
+                    let chunk = from_utf8(&buffer[..n]).map_err(|e| {
                         error!("Failed to convert buffer to UTF-8: {}", e);
                         Status::InternalServerError
                     })?;
@@ -91,7 +92,7 @@ pub async fn log_intake<'a>(
                             Status::InternalServerError
                         })?;
 
-                        let insert_request = to_insert_request(&logs, metadata);
+                        let insert_request = logs_to_insert_request(&logs, metadata);
 
                         if let Err(e) = stream_inserter.insert(vec![insert_request]).await {
                             error!("Error during insert: {}", e);

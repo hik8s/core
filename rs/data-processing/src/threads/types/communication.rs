@@ -15,10 +15,10 @@ pub struct ClassificationResult {
 }
 
 impl ClassificationResult {
-    pub fn new(key: &String, record_id: &String, class_id: String) -> Self {
+    pub fn new(key: &String, record_id: &String, class_id: &String) -> Self {
         ClassificationResult {
             key: key.to_owned(),
-            class_id,
+            class_id: class_id.to_owned(),
             log_id: record_id.to_owned(),
         }
     }

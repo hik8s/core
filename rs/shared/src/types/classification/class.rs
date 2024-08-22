@@ -1,5 +1,8 @@
-use shared::types::record::preprocessed::PreprocessedLogRecord;
+use std::fmt::{Display, Formatter, Result};
+
 use uuid::Uuid;
+
+use crate::types::record::preprocessed::PreprocessedLogRecord;
 
 use super::item::Item;
 
@@ -8,16 +11,18 @@ pub struct Class {
     pub items: Vec<Item>,
     pub count: i32,
     pub length: usize,
-    pub id: String,
+    pub class_id: String,
+    pub similarity: f64,
 }
 impl Class {
-    pub fn new(texts: Vec<String>) -> Self {
-        let items: Vec<Item> = texts.into_iter().map(Item::Fix).collect();
+    pub fn new(data: Vec<String>) -> Self {
+        let items: Vec<Item> = data.into_iter().map(Item::Fix).collect();
         Self {
-            length: items.len().clone(),
+            length: items.len(),
             items,
             count: 1,
-            id: Uuid::new_v4().to_string(),
+            class_id: Uuid::new_v4().to_string(),
+            similarity: 0.0,
         }
     }
 
@@ -44,17 +49,17 @@ impl Class {
 
 impl From<&PreprocessedLogRecord> for Class {
     fn from(log: &PreprocessedLogRecord) -> Self {
-        let items: Vec<Item> = log
-            .preprocessed_message
-            .clone()
-            .into_iter()
-            .map(Item::Fix)
-            .collect();
-        Self {
-            length: items.len(),
-            items,
-            count: 1,
-            id: Uuid::new_v4().to_string(),
-        }
+        Self::new(log.preprocessed_message.clone())
+    }
+}
+impl Display for Class {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        let items = self
+            .items
+            .iter()
+            .map(|item| item.to_string())
+            .collect::<Vec<String>>()
+            .join(" ");
+        write!(f, "{items}")
     }
 }

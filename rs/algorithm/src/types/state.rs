@@ -2,9 +2,8 @@ use std::collections::HashMap;
 use std::sync::PoisonError;
 use std::sync::RwLock;
 
+use shared::types::classification::class::Class;
 use thiserror::Error;
-
-use super::class::Class;
 
 #[derive(Error, Debug)]
 pub enum ClassifierStateError {

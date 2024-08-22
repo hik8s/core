@@ -4,9 +4,9 @@ use super::log::LogRecord;
 pub struct PreprocessedLogRecord {
     pub timestamp: i64,
     pub message: String,
-    pub preprocessed_message: Vec<String>,
     pub record_id: String,
-    pub length: usize,
+    pub preprocessed_message: Vec<String>,
+    pub length: u64,
 }
 
 impl PreprocessedLogRecord {
@@ -19,10 +19,20 @@ impl PreprocessedLogRecord {
         PreprocessedLogRecord {
             timestamp,
             message,
-            length: preprocessed_message.len(),
+            length: preprocessed_message.len() as u64,
             preprocessed_message,
             record_id,
         }
+    }
+
+    pub fn into_parts(self) -> (i64, String, String, Vec<String>, u64) {
+        (
+            self.timestamp,
+            self.message,
+            self.record_id,
+            self.preprocessed_message,
+            self.length,
+        )
     }
 }
 

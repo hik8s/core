@@ -1,3 +1,4 @@
+use shared::types::record::classified::ClassifiedLogRecord;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::error;
@@ -29,12 +30,14 @@ pub async fn process_logs(
     let classifier = Classifier::new(None);
     while let Some(task) = receiver.recv().await {
         let ClassificationTask { key, log } = task;
-        let record_id = log.record_id.to_owned();
         let class_state = state.get_or_create(&key).await?;
 
         let preprocessed_log = preprocess_log(log);
         let class = classifier.classify(&preprocessed_log, class_state);
-        let result = ClassificationResult::new(&key, &record_id, class.id);
+        let classified_log = ClassifiedLogRecord::from((preprocessed_log, class));
+
+        let result =
+            ClassificationResult::new(&key, &classified_log.record_id, &classified_log.class_id);
         // if this is not in batches, writing single logs with their class is not efficient
         sender
             .send(result)
