@@ -1,4 +1,3 @@
-pub mod middleware;
 pub mod process;
 pub mod route;
 pub mod utils;

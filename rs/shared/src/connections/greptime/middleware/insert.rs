@@ -1,7 +1,11 @@
 use greptimedb_ingester::api::v1::{column, Column, ColumnDataType, InsertRequest, SemanticType};
-use shared::types::{metadata::Metadata, record::log::LogRecord};
 
-pub fn to_insert_request(logs: &Vec<LogRecord>, metadata: &Metadata) -> InsertRequest {
+use crate::types::{
+    metadata::Metadata,
+    record::{classified::ClassifiedLogRecord, log::LogRecord},
+};
+
+pub fn logs_to_insert_request(logs: &Vec<LogRecord>, metadata: &Metadata) -> InsertRequest {
     let (timestamps, message, record_id) = fold_log_records(logs);
 
     let columns = vec![
@@ -12,6 +16,39 @@ pub fn to_insert_request(logs: &Vec<LogRecord>, metadata: &Metadata) -> InsertRe
 
     InsertRequest {
         table_name: metadata.pod_name.to_owned(),
+        columns,
+        row_count: logs.len() as u32,
+    }
+}
+
+pub fn classified_logs_to_insert_request(
+    logs: &Vec<ClassifiedLogRecord>,
+    key: &str,
+) -> InsertRequest {
+    let (
+        timestamp,
+        message,
+        record_id,
+        preprocessed_message,
+        length,
+        class_representation,
+        class_id,
+        similarity,
+    ) = fold_classified_records(logs);
+
+    let columns = vec![
+        timestamp_column(timestamp),
+        string_column("message", message),
+        string_column("record_id", record_id),
+        string_column("preprocessed_message", preprocessed_message),
+        u64_column("length", length),
+        string_column("class_representation", class_representation),
+        string_column("class_id", class_id),
+        f64_column("similarity", similarity),
+    ];
+
+    InsertRequest {
+        table_name: key.to_owned(),
         columns,
         row_count: logs.len() as u32,
     }
@@ -39,6 +76,32 @@ fn string_column(column_name: &str, data: Vec<String>) -> Column {
         }),
         semantic_type: SemanticType::Field as i32,
         datatype: ColumnDataType::String as i32,
+        ..Default::default()
+    }
+}
+
+fn u64_column(column_name: &str, data: Vec<u64>) -> Column {
+    Column {
+        column_name: column_name.to_owned(),
+        values: Some(column::Values {
+            u64_values: data,
+            ..Default::default()
+        }),
+        semantic_type: SemanticType::Field as i32,
+        datatype: ColumnDataType::Uint64 as i32,
+        ..Default::default()
+    }
+}
+
+fn f64_column(column_name: &str, data: Vec<f64>) -> Column {
+    Column {
+        column_name: column_name.to_owned(),
+        values: Some(column::Values {
+            f64_values: data,
+            ..Default::default()
+        }),
+        semantic_type: SemanticType::Field as i32,
+        datatype: ColumnDataType::Float64 as i32,
         ..Default::default()
     }
 }
@@ -78,4 +141,29 @@ macro_rules! fold_records {
 fn fold_log_records(logs: &Vec<LogRecord>) -> (Vec<i64>, Vec<String>, Vec<String>) {
     // Use the macro to extract the specified fields from the logs
     fold_records!(logs, timestamp, message, record_id)
+}
+fn fold_classified_records(
+    logs: &Vec<ClassifiedLogRecord>,
+) -> (
+    Vec<i64>,
+    Vec<String>,
+    Vec<String>,
+    Vec<String>,
+    Vec<u64>,
+    Vec<String>,
+    Vec<String>,
+    Vec<f64>,
+) {
+    // Use the macro to extract the specified fields from the logs
+    fold_records!(
+        logs,
+        timestamp,
+        message,
+        record_id,
+        preprocessed_message,
+        length,
+        class_representation,
+        class_id,
+        similarity
+    )
 }

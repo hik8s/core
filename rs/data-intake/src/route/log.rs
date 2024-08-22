@@ -1,4 +1,3 @@
-use crate::middleware::greptime::insert::logs_to_insert_request;
 use crate::process::log::process_chunk;
 use crate::process::metadata::process_metadata;
 use multipart::server::Multipart;
@@ -9,6 +8,7 @@ use rocket::post;
 use rocket::Data;
 use shared::connections::fluvio::connect::FluvioConnection;
 use shared::connections::greptime::connect::GreptimeConnection;
+use shared::connections::greptime::middleware::insert::logs_to_insert_request;
 use shared::types::metadata::Metadata;
 use std::io::Read;
 use std::str::from_utf8;
