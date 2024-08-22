@@ -34,7 +34,7 @@ pub async fn consume_logs(
 
         if let Some(classification_result) = receiver.recv().await {
             info!(
-                "Successfully processed log with key: {}, id: {}",
+                "Successfully inserted classified log with key: {}, id: {}",
                 classification_result.key, classification_result.log_id
             );
             commit_and_flush_offsets(
