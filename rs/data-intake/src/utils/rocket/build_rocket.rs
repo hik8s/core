@@ -3,7 +3,7 @@ use shared::connections::{
     fluvio::connect::FluvioConnection, greptime::connect::GreptimeConnection,
 };
 
-use crate::routes::logs::log_intake;
+use crate::route::log::log_intake;
 
 pub fn build_rocket(
     greptime_connection: GreptimeConnection,

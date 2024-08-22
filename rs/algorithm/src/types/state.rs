@@ -2,9 +2,8 @@ use std::collections::HashMap;
 use std::sync::PoisonError;
 use std::sync::RwLock;
 
+use shared::types::classification::class::Class;
 use thiserror::Error;
-
-use super::class::Class;
 
 #[derive(Error, Debug)]
 pub enum ClassifierStateError {
@@ -30,6 +29,7 @@ impl ClassifierState {
     }
 
     pub async fn get_or_create(&self, key: &String) -> Result<Vec<Class>, ClassifierStateError> {
+        // TODO: add key to error message
         let mut state = self.state.write()?;
         match state.get(key) {
             Some(app) => Ok(app.clone()),

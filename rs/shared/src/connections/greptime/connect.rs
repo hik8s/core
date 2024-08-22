@@ -1,8 +1,11 @@
-use super::config::GreptimeConfig;
+use super::config::{GreptimeConfig, GreptimeConfigError};
 use greptimedb_ingester::{ClientBuilder, Database};
 use rocket::{request::FromRequest, State};
+use sqlx::Error as SqlxError;
 use sqlx::{postgres::PgPoolOptions, Error, Pool, Postgres};
-use std::{borrow::Cow, process};
+use std::borrow::Cow;
+use thiserror::Error;
+
 #[derive(Clone)]
 pub struct GreptimeConnection {
     pub greptime: Database,
@@ -10,15 +13,21 @@ pub struct GreptimeConnection {
     pub config: GreptimeConfig,
 }
 
+#[derive(Error, Debug)]
+pub enum GreptimeConnectionError {
+    #[error("Failed to create DbConfig: {0}")]
+    ConfigError(#[from] GreptimeConfigError),
+    #[error("Failed to build gRPC client: {0}")]
+    GrpcClientError(String),
+    #[error("Failed to connect to PostgreSQL: {0}")]
+    PostgresConnectionError(#[from] SqlxError),
+    #[error("PostgreSQL failed to create database: '{0}', error: {1}")]
+    DbCreationError(String, #[source] SqlxError),
+}
+
 impl GreptimeConnection {
-    pub async fn new() -> Result<Self, String> {
-        let config = match GreptimeConfig::new() {
-            Ok(config) => config,
-            Err(e) => {
-                tracing::error!("Error: {}. Failed to create DbConfig.", e);
-                process::exit(1);
-            }
-        };
+    pub async fn new() -> Result<Self, GreptimeConnectionError> {
+        let config = GreptimeConfig::new()?;
         // GreptimeDB
         let grpc_client = ClientBuilder::default()
             .peers(vec![config.get_uri()])
@@ -28,12 +37,8 @@ impl GreptimeConnection {
         // GreptimeDB PostgreSQL
         let admin_psql = PgPoolOptions::new()
             .max_connections(5)
-            .connect(&format!(
-                "{psql_uri}/public",
-                psql_uri = config.get_psql_uri()
-            ))
-            .await
-            .unwrap();
+            .connect(&config.get_psql_uri("public"))
+            .await?;
 
         sqlx::query(&format!("CREATE DATABASE {}", config.db_name))
             .execute(&admin_psql)
@@ -41,24 +46,20 @@ impl GreptimeConnection {
             .map_err(|e| match e {
                 Error::Database(ref db_err) if db_err.code() == Some(Cow::Borrowed("22023")) => {
                     tracing::info!("Database {} already exists.", config.db_name);
+                    Ok(())
                 }
-                _ => {
-                    tracing::warn!("Failed to create database {}: {:?}", config.db_name, e);
-                    process::exit(1);
-                }
+                _ => Err(GreptimeConnectionError::DbCreationError(
+                    config.db_name.to_owned(),
+                    e,
+                )),
             })
             .ok();
 
         // Now connect to the newly created database
         let psql = PgPoolOptions::new()
             .max_connections(5)
-            .connect(&format!(
-                "{psql_uri}/{db_name}",
-                psql_uri = config.get_psql_uri(),
-                db_name = config.db_name
-            ))
-            .await
-            .unwrap();
+            .connect(&config.get_psql_uri(&config.db_name))
+            .await?;
 
         Ok(Self {
             greptime,

@@ -1,5 +1,4 @@
-use crate::middleware::greptime::insert::to_insert_request;
-use crate::process::logs::process_chunk;
+use crate::process::log::process_chunk;
 use crate::process::metadata::process_metadata;
 use multipart::server::Multipart;
 use rocket::data::ToByteUnit;
@@ -9,8 +8,10 @@ use rocket::post;
 use rocket::Data;
 use shared::connections::fluvio::connect::FluvioConnection;
 use shared::connections::greptime::connect::GreptimeConnection;
+use shared::connections::greptime::middleware::insert::logs_to_insert_request;
 use shared::types::metadata::Metadata;
 use std::io::Read;
+use std::str::from_utf8;
 use std::{io::Cursor, ops::Deref};
 use tracing::{error, info, warn};
 
@@ -69,7 +70,7 @@ pub async fn log_intake<'a>(
             "stream" => {
                 let mut buffer = [0; 262144];
                 let mut remainder = String::new();
-                let mut lines = Vec::new();
+                let mut logs = Vec::new();
 
                 while let Ok(n) = field.data.read(&mut buffer) {
                     if n == 0 {
@@ -78,11 +79,11 @@ pub async fn log_intake<'a>(
                     if n == buffer.len() {
                         warn!("Buffer is full");
                     }
-                    let chunk = std::str::from_utf8(&buffer[..n]).map_err(|e| {
+                    let chunk = from_utf8(&buffer[..n]).map_err(|e| {
                         error!("Failed to convert buffer to UTF-8: {}", e);
                         Status::InternalServerError
                     })?;
-                    lines.extend(process_chunk(chunk, &mut remainder));
+                    logs.extend(process_chunk(chunk, &mut remainder));
                 }
                 match metadata {
                     Some(ref metadata) => {
@@ -91,7 +92,7 @@ pub async fn log_intake<'a>(
                             Status::InternalServerError
                         })?;
 
-                        let insert_request = to_insert_request(&lines, metadata);
+                        let insert_request = logs_to_insert_request(&logs, metadata);
 
                         if let Err(e) = stream_inserter.insert(vec![insert_request]).await {
                             error!("Error during insert: {}", e);
@@ -108,7 +109,7 @@ pub async fn log_intake<'a>(
                             }
                         }
                         fluvio_connection
-                            .send_batch(lines, metadata)
+                            .send_batch(logs, metadata)
                             .await
                             .map_err(|e| {
                                 error!("Failed to send batch to Fluvio topic: {}", e);

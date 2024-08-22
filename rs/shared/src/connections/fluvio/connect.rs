@@ -16,7 +16,7 @@ use thiserror::Error;
 use tracing::{error, info};
 
 use crate::types::metadata::Metadata;
-use crate::types::parsedline::ParsedLine;
+use crate::types::record::log::LogRecord;
 
 pub const DEFAULT_TOPIC: &str = "logs";
 pub const PARTITIONS: u32 = 2;
@@ -86,13 +86,13 @@ impl FluvioConnection {
 
     pub async fn send_batch(
         &self,
-        lines: Vec<ParsedLine>,
+        logs: Vec<LogRecord>,
         metadata: &Metadata,
     ) -> Result<(), ConnectionError> {
         let mut batch = Vec::with_capacity(BATCH_SIZE);
 
-        for line in &lines {
-            let serialized_record = to_string(&line).expect("Failed to serialize record");
+        for log in &logs {
+            let serialized_record = to_string(&log).expect("Failed to serialize record");
             batch.push((
                 create_record_key(metadata.pod_name.to_owned()),
                 serialized_record,
@@ -106,7 +106,7 @@ impl FluvioConnection {
             }
         }
 
-        // Send any remaining lines in the batch
+        // Send any remaining logs in the batch
         if !batch.is_empty() {
             self.producer
                 .send_all(batch.drain(..))
@@ -143,6 +143,29 @@ pub async fn create_topic(
         .await
         .map_err(ConnectionError::from)?;
     info!("Topic '{}' created", topic_name);
+    Ok(())
+}
+
+#[derive(Error, Debug)]
+pub enum OffsetError {
+    #[error("Failed to commit offset for key {1}: {0}. ID: {2}")]
+    Commit(ErrorCode, String, String),
+    #[error("Failed to flush offset for key {1}: {0}. ID: {2}")]
+    Flush(ErrorCode, String, String),
+}
+
+pub async fn commit_and_flush_offsets(
+    consumer: &mut (impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin),
+    key: String,
+    id: String,
+) -> Result<(), OffsetError> {
+    consumer
+        .offset_commit()
+        .map_err(|e| OffsetError::Commit(e, key.clone(), id.clone()))?;
+    consumer
+        .offset_flush()
+        .await
+        .map_err(|e| OffsetError::Flush(e, key, id))?;
     Ok(())
 }
 

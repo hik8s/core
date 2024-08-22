@@ -8,3 +8,4 @@ rstest = {workspace = true}
 shared = {workspace = true}
 thiserror = {workspace = true}
 tracing = {workspace = true}
+uuid = {workspace = true}

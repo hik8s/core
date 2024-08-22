@@ -13,7 +13,8 @@ dotenv = {workspace = true}
 fluvio = {workspace = true}
 futures-util = {workspace = true}
 rstest = {workspace = true}
-shared = {path = "../shared"}
+serde_json = {workspace = true}
+shared = {workspace = true}
 thiserror = {workspace = true}
 tokio = {workspace = true}
 tracing = {workspace = true}

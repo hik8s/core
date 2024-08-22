@@ -1,6 +1,15 @@
+use shared::{
+    connections::greptime::{
+        connect::{GreptimeConnection, GreptimeConnectionError},
+        middleware::insert::classified_logs_to_insert_request,
+    },
+    types::record::classified::ClassifiedLogRecord,
+};
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::error;
+
+use crate::preprocessing::log::preprocess_log;
 
 use super::types::communication::{ClassificationResult, ClassificationTask};
 
@@ -17,6 +26,11 @@ pub enum ProcessThreadError {
     OtherError(String),
     #[error("Failed to send result to main thread: {0}")]
     SendError(#[from] mpsc::error::SendError<ClassificationResult>),
+    #[error("Greptime connection error: {0}")]
+    GreptimeConnectionError(#[from] GreptimeConnectionError),
+    // TODO: greptimedb-ingester pr to make error publics
+    // #[error("Stream inserter error: {0}")]
+    // StreamInserterError(#[from] greptimedb_ingester::error::Error),
 }
 
 pub async fn process_logs(
@@ -25,22 +39,27 @@ pub async fn process_logs(
 ) -> Result<(), ProcessThreadError> {
     let state = ClassifierState::new();
     let classifier = Classifier::new(None);
+    let connection = GreptimeConnection::new().await?;
+    let stream_inserter = connection.greptime.streaming_inserter().unwrap();
     while let Some(task) = receiver.recv().await {
-        let key = task.key.to_owned();
-        let id = task.parsed_line.id.to_owned();
-        let classes = state.get_or_create(&key).await?;
+        let ClassificationTask { key, log } = task;
+        let class_state = state.get_or_create(&key).await?;
 
-        match classifier.classify(&task.parsed_line, classes) {
-            Ok(()) => {
-                let result = ClassificationResult::with_success(&task);
-                sender
-                    .send(result)
-                    .await
-                    // maybe tolerate this error
-                    .map_err(ProcessThreadError::SendError)?;
-            }
-            Err(e) => error!("{e}: key: {key}, log id: {id}"),
-        }
+        let preprocessed_log = preprocess_log(log);
+        let class = classifier.classify(&preprocessed_log, class_state);
+        let classified_log = ClassifiedLogRecord::from((preprocessed_log, class));
+
+        let result =
+            ClassificationResult::new(&key, &classified_log.record_id, &classified_log.class_id);
+
+        let insert_request = classified_logs_to_insert_request(&vec![classified_log], &key);
+        stream_inserter.insert(vec![insert_request]).await.unwrap();
+        // if this is not in batches, writing single logs with their class is not efficient
+        sender
+            .send(result)
+            .await
+            // maybe tolerate this error
+            .map_err(ProcessThreadError::SendError)?;
     }
     Ok(())
 }
