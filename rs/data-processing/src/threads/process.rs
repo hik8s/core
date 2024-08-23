@@ -1,10 +1,16 @@
 use shared::{
-    connections::greptime::{
-        connect::{GreptimeConnection, GreptimeConnectionError},
-        middleware::insert::classified_logs_to_insert_request,
+    connections::{
+        greptime::{
+            connect::{GreptimeConnection, GreptimeConnectionError},
+            middleware::insert::classified_logs_to_insert_request,
+        },
+        redis::connect::{RedisConnection, RedisConnectionError},
     },
     preprocessing::log::preprocess_log,
-    types::record::classified::ClassifiedLogRecord,
+    types::{
+        classification::state::{ClassifierState, ClassifierStateError},
+        record::classified::ClassifiedLogRecord,
+    },
 };
 use thiserror::Error;
 use tokio::sync::mpsc;
@@ -12,10 +18,7 @@ use tracing::error;
 
 use super::types::communication::{ClassificationResult, ClassificationTask};
 
-use algorithm::{
-    classification::deterministic::classifier::Classifier,
-    types::state::{ClassifierState, ClassifierStateError},
-};
+use algorithm::classification::deterministic::classifier::Classifier;
 
 #[derive(Error, Debug)]
 pub enum ProcessThreadError {
@@ -27,6 +30,8 @@ pub enum ProcessThreadError {
     SendError(#[from] mpsc::error::SendError<ClassificationResult>),
     #[error("Greptime connection error: {0}")]
     GreptimeConnectionError(#[from] GreptimeConnectionError),
+    #[error("Redis connection error: {0}")]
+    RedisConnectionError(#[from] RedisConnectionError),
     // TODO: greptimedb-ingester pr to make error publics
     // #[error("Stream inserter error: {0}")]
     // StreamInserterError(#[from] greptimedb_ingester::error::Error),
@@ -37,6 +42,7 @@ pub async fn process_logs(
     sender: mpsc::Sender<ClassificationResult>,
 ) -> Result<(), ProcessThreadError> {
     let state = ClassifierState::new();
+    let redis_connection = RedisConnection::new()?;
     let classifier = Classifier::new(None);
     let connection = GreptimeConnection::new().await?;
     let stream_inserter = connection.greptime.streaming_inserter().unwrap();

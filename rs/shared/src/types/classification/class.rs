@@ -6,7 +6,7 @@ use crate::types::record::preprocessed::PreprocessedLogRecord;
 
 use super::item::Item;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Class {
     pub items: Vec<Item>,
     pub count: i32,

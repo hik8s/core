@@ -20,6 +20,7 @@ greptimedb-ingester = {git = "https://github.com/GreptimeTeam/greptimedb-ingeste
 jsonwebtoken = {version = "9.3", default-features = false}
 multipart = "0.18.0"
 rand = "0.8.5"
+redis = "0.26.1"
 reqwest = {version = "0.12", default-features = false, features = [
     "json",
     "rustls-tls",

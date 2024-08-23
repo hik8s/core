@@ -11,6 +11,7 @@ futures-util = {workspace = true}
 greptimedb-ingester = {workspace = true}
 jsonwebtoken = {workspace = true}
 rand = {workspace = true}
+redis = {workspace = true}
 reqwest = {workspace = true}
 rocket = {workspace = true}
 rstest = {workspace = true}
