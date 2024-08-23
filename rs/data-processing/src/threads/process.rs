@@ -7,7 +7,7 @@ use shared::{
         redis::connect::{RedisConnection, RedisConnectionError},
     },
     preprocessing::log::preprocess_log,
-    types::{classification::state::ClassifierStateError, record::classified::ClassifiedLogRecord},
+    types::record::classified::ClassifiedLogRecord,
 };
 use thiserror::Error;
 use tokio::sync::mpsc::{self, error::SendError};
@@ -15,12 +15,12 @@ use tracing::error;
 
 use super::types::communication::{ClassificationResult, ClassificationTask};
 
-use algorithm::classification::deterministic::classifier::Classifier;
+use algorithm::classification::deterministic::classifier::{ClassificationError, Classifier};
 
 #[derive(Error, Debug)]
 pub enum ProcessThreadError {
-    #[error("Classifier state error: {0}")]
-    ClassifierStateError(#[from] ClassifierStateError),
+    #[error("Classification error: {0}")]
+    ClassificationError(#[from] ClassificationError),
     #[error("Other process error: {0}")]
     OtherError(String),
     #[error("Failed to send result to main thread: {0}")]
@@ -38,7 +38,7 @@ pub async fn process_logs(
     sender: mpsc::Sender<ClassificationResult>,
 ) -> Result<(), ProcessThreadError> {
     let mut redis = RedisConnection::new()?;
-    let classifier = Classifier::new(None);
+    let mut classifier = Classifier::new(None, &mut redis);
     let connection = GreptimeConnection::new().await?;
     let stream_inserter = connection.greptime.streaming_inserter()?;
     while let Some(task) = receiver.recv().await {
@@ -48,9 +48,7 @@ pub async fn process_logs(
         let preprocessed_log = preprocess_log(log);
 
         // classify
-        let mut class_state = redis.get(&key)?;
-        let class = classifier.classify(&preprocessed_log, &mut class_state.0);
-        redis.set(&key, class_state)?;
+        let class = classifier.classify(&preprocessed_log, &key)?;
 
         let classified_log = ClassifiedLogRecord::from((preprocessed_log, class));
         let classification_result = ClassificationResult::new(&key, &classified_log);

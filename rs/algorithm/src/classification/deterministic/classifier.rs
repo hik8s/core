@@ -1,27 +1,31 @@
 use shared::{
+    connections::redis::connect::{RedisConnection, RedisConnectionError},
     preprocessing::compare::compare,
     types::{classification::class::Class, record::preprocessed::PreprocessedLogRecord},
 };
 use std::env::var;
 use thiserror::Error;
 
-#[derive(Debug, Clone)]
-pub struct Classifier {
+// #[derive(Clone)]
+pub struct Classifier<'a> {
     threshold: f64,
+    redis: &'a mut RedisConnection,
 }
 
 #[derive(Error, Debug)]
 pub enum ClassificationError {
     #[error("Comparison error")]
     ComparisonError,
+    #[error("Redis connection error: {0}")]
+    RedisConnectionError(#[from] RedisConnectionError),
 }
 
-impl Classifier {
+impl<'a> Classifier<'a> {
     // The `new` function creates a new instance of `Classifier` with an empty vector of `ClassContext` instances,
     // a provided threshold, and `None` as the metadata.
-    pub fn new(threshold: Option<f64>) -> Classifier {
+    pub fn new(threshold: Option<f64>, redis: &'a mut RedisConnection) -> Classifier<'a> {
         match threshold {
-            Some(threshold) => Classifier { threshold },
+            Some(threshold) => Classifier { threshold, redis },
             None => {
                 let threshold_str = match var("CLASSIFIER_THRESHOLD") {
                     Ok(val) => val,
@@ -35,16 +39,21 @@ impl Classifier {
                     0.7
                 });
 
-                Classifier { threshold }
+                Classifier { threshold, redis }
             }
         }
     }
 
-    pub fn classify(&self, log: &PreprocessedLogRecord, classes: &mut Vec<Class>) -> Class {
+    pub fn classify(
+        &mut self,
+        log: &PreprocessedLogRecord,
+        key: &str,
+    ) -> Result<Class, ClassificationError> {
         let mut best_match: Option<&mut Class> = None;
         let mut highest_similarity = 0 as f64;
+        let state = &mut self.redis.get(&key)?;
 
-        for class in classes.iter_mut() {
+        for class in state.classes.iter_mut() {
             if class.length != log.length as usize {
                 continue;
             }
@@ -57,19 +66,27 @@ impl Classifier {
                 best_match = Some(class);
             }
         }
-
-        if let Some(class) = best_match {
-            if highest_similarity >= self.threshold {
-                class.count += 1;
-                class.update_items(log);
-                class.similarity = highest_similarity;
-                return class.to_owned();
+        let result = match best_match {
+            Some(class) => {
+                if highest_similarity >= self.threshold {
+                    class.count += 1;
+                    class.update_items(log);
+                    class.similarity = highest_similarity;
+                    class.to_owned()
+                } else {
+                    let class = Class::from(log);
+                    state.classes.push(class.to_owned());
+                    class
+                }
             }
-        }
-        // add new class
-        let class = Class::from(log);
-        classes.push(class.to_owned());
-        class
+            None => {
+                let class = Class::from(log);
+                state.classes.push(class.to_owned());
+                class
+            }
+        };
+        self.redis.set(&key, state.to_owned())?;
+        Ok(result.to_owned())
     }
 }
 
@@ -80,10 +97,9 @@ mod tests {
 
     use rstest::rstest;
     use shared::{
+        connections::redis::connect::RedisConnection,
         tracing::setup::setup_tracing,
-        types::{
-            classification::state::ClassifierState, record::preprocessed::PreprocessedLogRecord,
-        },
+        types::record::preprocessed::PreprocessedLogRecord,
         utils::mock::mock_data::{get_test_data, TestCase, TestData},
     };
 
@@ -93,14 +109,12 @@ mod tests {
     async fn test_classify_json_nested(#[case] test_data: TestData) {
         setup_tracing();
 
-        let classifier = Classifier::new(Some(0.6));
-        let mut state = ClassifierState::new();
+        let mut redis = RedisConnection::new().unwrap();
+        let mut classifier = Classifier::new(Some(0.6), &mut redis);
 
         for (index, (key, raw_message, expected_class)) in test_data.into_iter().enumerate() {
-            let mut class_state = state.get_or_create(&key).await.unwrap();
             let preprocessed_log = PreprocessedLogRecord::from(raw_message);
-            let class = classifier.classify(&preprocessed_log, &mut class_state);
-            state.insert(&key, class_state).await.unwrap();
+            let class = classifier.classify(&preprocessed_log, &key).unwrap();
             if index > 0 {
                 assert_eq!(class.to_string(), expected_class.to_string());
                 assert_eq!(class.similarity, expected_class.similarity);

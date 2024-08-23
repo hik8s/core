@@ -1,4 +1,4 @@
-use crate::{connections::error::ConfigError, types::classification::class::Classes};
+use crate::{connections::error::ConfigError, types::classification::state::ClassifierState};
 
 use super::config::RedisConfig;
 use redis::{Client, Commands, Connection, RedisError};
@@ -29,13 +29,13 @@ impl RedisConnection {
         Ok(redis_connection)
     }
 
-    pub fn get(&mut self, key: &str) -> Result<Classes, RedisConnectionError> {
+    pub fn get(&mut self, key: &str) -> Result<ClassifierState, RedisConnectionError> {
         let exists: bool = self
             .connection
             .exists(format!("{DEFAULT_STATE_KEY}:{key}"))?;
         match exists {
             true => {
-                let state: Classes = self
+                let state: ClassifierState = self
                     .connection
                     .get(format!("{DEFAULT_STATE_KEY}:{key}"))
                     .map_err(RedisConnectionError::GetError)?;
@@ -43,12 +43,12 @@ impl RedisConnection {
             }
             false => {
                 tracing::info!("Creating new state for key: {}", key);
-                Ok(Classes(vec![]))
+                Ok(ClassifierState { classes: vec![] })
             }
         }
     }
 
-    pub fn set(&mut self, key: &str, value: Classes) -> Result<(), RedisConnectionError> {
+    pub fn set(&mut self, key: &str, value: ClassifierState) -> Result<(), RedisConnectionError> {
         let serialized_value: String = serde_json::to_string(&value).unwrap();
         self.connection
             .set(format!("{DEFAULT_STATE_KEY}:{key}"), serialized_value)

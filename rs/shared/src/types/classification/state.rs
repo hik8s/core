@@ -1,53 +1,26 @@
-use std::collections::HashMap;
-use std::sync::PoisonError;
+use redis::{from_redis_value, FromRedisValue, RedisResult, RedisWrite, ToRedisArgs, Value};
+use serde::{Deserialize, Serialize};
 
-use crate::types::classification::class::Class;
-use thiserror::Error;
+use super::class::Class;
 
-#[derive(Error, Debug)]
-pub enum ClassifierStateError {
-    #[error("Poison error: {0}")]
-    PoisonError(String),
-}
-
-impl<T> From<PoisonError<T>> for ClassifierStateError {
-    fn from(e: PoisonError<T>) -> Self {
-        ClassifierStateError::PoisonError(e.to_string())
-    }
-}
-
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ClassifierState {
-    pub state: HashMap<String, Vec<Class>>,
+    pub classes: Vec<Class>,
 }
 
-impl ClassifierState {
-    pub fn new() -> Self {
-        Self {
-            state: HashMap::new(),
-        }
+impl ToRedisArgs for ClassifierState {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + RedisWrite,
+    {
+        let serialized = serde_json::to_string(self).unwrap();
+        out.write_arg(serialized.as_bytes());
     }
+}
 
-    pub async fn get_or_create(
-        &mut self,
-        key: &String,
-    ) -> Result<Vec<Class>, ClassifierStateError> {
-        // TODO: add key to error message
-        match self.state.get(key) {
-            Some(app) => Ok(app.clone()),
-            None => {
-                let classes = Vec::<Class>::new();
-                self.state.insert(key.to_owned(), classes.clone());
-                Ok(classes)
-            }
-        }
-    }
-
-    pub async fn insert(
-        &mut self,
-        key: &str,
-        classes: Vec<Class>,
-    ) -> Result<(), ClassifierStateError> {
-        self.state.insert(key.to_string(), classes);
-        Ok(())
+impl FromRedisValue for ClassifierState {
+    fn from_redis_value(v: &Value) -> RedisResult<Self> {
+        let json_str: String = from_redis_value(v)?;
+        Ok(serde_json::from_str::<ClassifierState>(&json_str)?)
     }
 }
