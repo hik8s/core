@@ -75,7 +75,7 @@ impl Classifier {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::state::ClassifierState;
+    use shared::types::classification::state::ClassifierState;
 
     use super::Classifier;
 

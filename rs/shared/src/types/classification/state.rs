@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::sync::PoisonError;
 use std::sync::RwLock;
 
-use shared::types::classification::class::Class;
+use crate::types::classification::class::Class;
+use redis::ToRedisArgs;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -18,7 +19,7 @@ impl<T> From<PoisonError<T>> for ClassifierStateError {
 }
 
 pub struct ClassifierState {
-    state: RwLock<HashMap<String, Vec<Class>>>,
+    pub state: RwLock<HashMap<String, Vec<Class>>>,
 }
 
 impl ClassifierState {
@@ -45,5 +46,17 @@ impl ClassifierState {
         let mut state = self.state.write()?;
         state.insert(key.to_string(), classes);
         Ok(())
+    }
+}
+
+impl ToRedisArgs for ClassifierState {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite,
+    {
+        let state = self.state.read().unwrap();
+        for (key, value) in state.iter() {
+            out.write_arg_fmt(format!("{}: {:?}", key, value));
+        }
     }
 }
