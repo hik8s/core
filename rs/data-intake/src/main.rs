@@ -2,16 +2,13 @@ pub mod process;
 pub mod route;
 pub mod utils;
 
-#[cfg(test)]
-pub mod test_utils;
-
 use rocket::main;
 
 use shared::{
     connections::{fluvio::connect::FluvioConnection, greptime::connect::GreptimeConnection},
     tracing::setup::setup_tracing,
 };
-use utils::rocket::build_rocket::build_rocket;
+use utils::rocket::build::build_rocket;
 
 #[main]
 async fn main() -> () {

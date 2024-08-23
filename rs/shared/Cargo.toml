@@ -10,6 +10,7 @@ fluvio = {workspace = true}
 futures-util = {workspace = true}
 greptimedb-ingester = {workspace = true}
 jsonwebtoken = {workspace = true}
+rand = {workspace = true}
 reqwest = {workspace = true}
 rocket = {workspace = true}
 rstest = {workspace = true}

@@ -138,12 +138,13 @@ pub async fn log_intake<'a>(
 mod tests {
     use shared::{tracing::setup::setup_tracing, types::metadata::Metadata};
 
-    use crate::test_utils::{
+    use shared::utils::mock::{
         mock_client::post_test_stream,
         mock_data::{generate_random_filename, get_test_path},
-        mock_server::rocket_test_client,
         mock_stream::get_multipart_stream,
     };
+
+    use crate::utils::mock::mock_server::rocket_test_client;
 
     #[rocket::async_test]
     async fn test_log_intake_route() {

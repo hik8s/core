@@ -3,7 +3,7 @@ use shared::connections::{
     fluvio::connect::FluvioConnection, greptime::connect::GreptimeConnection,
 };
 
-use crate::utils::rocket::build_rocket::build_rocket;
+use crate::utils::rocket::build::build_rocket;
 
 pub async fn rocket_test_client() -> Client {
     dotenv::dotenv().ok();

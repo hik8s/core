@@ -37,8 +37,6 @@ pub fn generate_podname(case: TestCase) -> String {
 }
 
 pub fn get_test_path() -> String {
-    format!(
-        "/var/log/pods/test-ns_{}_123-4123-53754/some-container",
-        generate_podname(TestCase::Simple)
-    )
+    let podname = generate_podname(TestCase::Simple);
+    format!("/var/log/pods/test-ns_{podname}_123-4123-53754/some-container")
 }
