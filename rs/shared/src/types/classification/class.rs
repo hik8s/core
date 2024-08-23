@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter, Result};
 
-use uuid::Uuid;
+use uuid7::uuid7;
 
 use crate::types::record::preprocessed::PreprocessedLogRecord;
 
@@ -21,7 +21,7 @@ impl Class {
             length: items.len(),
             items,
             count: 1,
-            class_id: Uuid::new_v4().to_string(),
+            class_id: uuid7().to_string(),
             similarity: 0.0,
         }
     }

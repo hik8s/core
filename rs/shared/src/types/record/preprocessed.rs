@@ -13,15 +13,15 @@ impl PreprocessedLogRecord {
     pub fn new(
         timestamp: i64,
         message: String,
-        preprocessed_message: Vec<String>,
         record_id: String,
+        preprocessed_message: Vec<String>,
     ) -> Self {
         PreprocessedLogRecord {
             timestamp,
             message,
+            record_id,
             length: preprocessed_message.len() as u64,
             preprocessed_message,
-            record_id,
         }
     }
 
@@ -38,7 +38,7 @@ impl PreprocessedLogRecord {
 
 impl From<(LogRecord, Vec<String>)> for PreprocessedLogRecord {
     fn from((log, preprocessed_message): (LogRecord, Vec<String>)) -> Self {
-        let (timestamp, record_id, message) = log.into_parts();
-        PreprocessedLogRecord::new(timestamp, message, preprocessed_message, record_id)
+        let (timestamp, message, record_id) = log.into_parts();
+        PreprocessedLogRecord::new(timestamp, message, record_id, preprocessed_message)
     }
 }

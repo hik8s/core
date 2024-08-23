@@ -8,10 +8,10 @@ use crate::types::{
 pub fn logs_to_insert_request(logs: &Vec<LogRecord>, metadata: &Metadata) -> InsertRequest {
     let (timestamps, message, record_id) = fold_log_records(logs);
 
-    let columns = vec![
+    let columns: Vec<Column> = vec![
         timestamp_column(timestamps),
         string_column("message", message),
-        string_column("record_id", record_id),
+        tag_column("record_id", record_id),
     ];
 
     InsertRequest {
@@ -36,10 +36,10 @@ pub fn classified_logs_to_insert_request(
         similarity,
     ) = fold_classified_records(logs);
 
-    let columns = vec![
+    let columns: Vec<Column> = vec![
         timestamp_column(timestamp),
         string_column("message", message),
-        string_column("record_id", record_id),
+        tag_column("record_id", record_id),
         string_column("preprocessed_message", preprocessed_message),
         u64_column("length", length),
         string_column("class_representation", class_representation),
@@ -75,6 +75,19 @@ fn string_column(column_name: &str, data: Vec<String>) -> Column {
             ..Default::default()
         }),
         semantic_type: SemanticType::Field as i32,
+        datatype: ColumnDataType::String as i32,
+        ..Default::default()
+    }
+}
+
+fn tag_column(column_name: &str, data: Vec<String>) -> Column {
+    Column {
+        column_name: column_name.to_owned(),
+        values: Some(column::Values {
+            string_values: data,
+            ..Default::default()
+        }),
+        semantic_type: SemanticType::Tag as i32,
         datatype: ColumnDataType::String as i32,
         ..Default::default()
     }

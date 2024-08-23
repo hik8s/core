@@ -4,7 +4,7 @@ use serde_json::from_str;
 use std::convert::TryFrom;
 use thiserror::Error;
 use tracing::warn;
-use uuid::Uuid;
+use uuid7::uuid7;
 
 const DEFAULT_TS: &str = "1970-01-01T00:00:00Z";
 
@@ -40,7 +40,7 @@ impl LogRecord {
 impl From<&String> for LogRecord {
     // This is used to parse the string from raw data
     fn from(raw_message: &String) -> LogRecord {
-        let record_id = Uuid::new_v4().to_string();
+        let record_id = uuid7().to_string();
         let mut split = raw_message.splitn(2, 'Z');
         let datetime_str = split.next().unwrap_or_else(|| {
             warn!("{}", LogParseError::MissingTimestamp(record_id.clone()));
