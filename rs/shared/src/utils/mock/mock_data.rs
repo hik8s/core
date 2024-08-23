@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter, Result};
+use std::vec::IntoIter;
 
 use uuid7::uuid7;
 
@@ -24,6 +25,42 @@ pub struct TestData {
     pub key: String,
     pub raw_messages: Vec<String>,
     pub expected_classes: Vec<Class>,
+}
+
+pub struct TestDataIterator {
+    key: String,
+    raw_iter: IntoIter<String>,
+    class_iter: IntoIter<Class>,
+}
+
+impl IntoIterator for TestData {
+    type Item = (String, String, Class); // (key, raw_message, expected_class)
+    type IntoIter = TestDataIterator;
+
+    fn into_iter(self) -> Self::IntoIter {
+        if self.raw_messages.len() != self.expected_classes.len() {
+            panic!("Failed into_iter for TestData: self.raw_messages and self.expected_classes must have the same length");
+        }
+
+        TestDataIterator {
+            key: self.key,
+            raw_iter: self.raw_messages.into_iter(),
+            class_iter: self.expected_classes.into_iter(),
+        }
+    }
+}
+
+impl Iterator for TestDataIterator {
+    type Item = (String, String, Class); // (key, raw_message, expected_class)
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match (self.raw_iter.next(), self.class_iter.next()) {
+            (Some(raw_message), Some(expected_class)) => {
+                Some((self.key.clone(), raw_message, expected_class))
+            }
+            _ => None,
+        }
+    }
 }
 
 fn class_from_items(items: Vec<Item>, similarity: f64) -> Class {

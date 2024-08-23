@@ -45,6 +45,7 @@ dependencies = [
  "rstest",
  "shared",
  "thiserror",
+ "tokio",
  "tracing",
  "uuid7",
 ]

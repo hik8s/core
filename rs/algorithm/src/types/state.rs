@@ -41,13 +41,9 @@ impl ClassifierState {
         }
     }
 
-    pub async fn insert(
-        &self,
-        pod_name: &str,
-        app: Vec<Class>,
-    ) -> Result<(), ClassifierStateError> {
+    pub async fn insert(&self, key: &str, classes: Vec<Class>) -> Result<(), ClassifierStateError> {
         let mut state = self.state.write()?;
-        state.insert(pod_name.to_string(), app);
+        state.insert(key.to_string(), classes);
         Ok(())
     }
 }
