@@ -1,3 +1,5 @@
+use crate::preprocessing::log::preprocess_log;
+
 use super::log::LogRecord;
 
 #[derive(Debug)]
@@ -36,9 +38,9 @@ impl PreprocessedLogRecord {
     }
 }
 
-impl From<(LogRecord, Vec<String>)> for PreprocessedLogRecord {
-    fn from((log, preprocessed_message): (LogRecord, Vec<String>)) -> Self {
-        let (timestamp, message, record_id) = log.into_parts();
-        PreprocessedLogRecord::new(timestamp, message, record_id, preprocessed_message)
+impl From<String> for PreprocessedLogRecord {
+    fn from(raw_message: String) -> Self {
+        let log = LogRecord::from(&raw_message);
+        preprocess_log(log)
     }
 }

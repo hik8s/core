@@ -42,20 +42,24 @@ pub async fn process_logs(
     let stream_inserter = connection.greptime.streaming_inserter().unwrap();
     while let Some(task) = receiver.recv().await {
         let ClassificationTask { key, log } = task;
-        let class_state = state.get_or_create(&key).await?;
 
+        // preprocess
         let preprocessed_log = preprocess_log(log);
-        let class = classifier.classify(&preprocessed_log, class_state);
+
+        // classify
+        let mut class_state = state.get_or_create(&key).await?;
+        let class = classifier.classify(&preprocessed_log, &mut class_state);
+        state.insert(&key, class_state).await?;
         let classified_log = ClassifiedLogRecord::from((preprocessed_log, class));
 
-        let result =
-            ClassificationResult::new(&key, &classified_log.record_id, &classified_log.class_id);
+        let classification_result = ClassificationResult::new(&key, &classified_log);
 
         let insert_request = classified_logs_to_insert_request(&vec![classified_log], &key);
         stream_inserter.insert(vec![insert_request]).await.unwrap();
+
         // if this is not in batches, writing single logs with their class is not efficient
         sender
-            .send(result)
+            .send(classification_result)
             .await
             // maybe tolerate this error
             .map_err(ProcessThreadError::SendError)?;

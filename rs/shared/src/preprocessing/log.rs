@@ -29,8 +29,7 @@ pub fn preprocess_log(log: LogRecord) -> PreprocessedLogRecord {
         // If the input string does not contain a JSON object, process it as a non-JSON string
         result.extend(split_string(&log.message));
     }
-
-    PreprocessedLogRecord::from((log, result))
+    PreprocessedLogRecord::new(log.timestamp, log.message, log.record_id, result)
 }
 
 fn split_string(input: &str) -> Vec<String> {

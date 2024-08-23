@@ -1,5 +1,8 @@
 use fluvio::dataplane::record::ConsumerRecord;
-use shared::types::record::log::{LogParseError, LogRecord};
+use shared::types::record::{
+    classified::ClassifiedLogRecord,
+    log::{LogParseError, LogRecord},
+};
 use std::convert::TryInto;
 use thiserror::Error;
 
@@ -15,11 +18,11 @@ pub struct ClassificationResult {
 }
 
 impl ClassificationResult {
-    pub fn new(key: &String, record_id: &String, class_id: &String) -> Self {
+    pub fn new(key: &String, log: &ClassifiedLogRecord) -> Self {
         ClassificationResult {
             key: key.to_owned(),
-            class_id: class_id.to_owned(),
-            log_id: record_id.to_owned(),
+            class_id: log.class_id.to_owned(),
+            log_id: log.record_id.to_owned(),
         }
     }
 }
