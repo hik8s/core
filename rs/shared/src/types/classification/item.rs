@@ -1,8 +1,10 @@
 use std::fmt;
 
-#[derive(Clone, Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Item {
-    Fix(String), // maps to log.class.items
+    Fix(String),
     Var,
 }
 impl fmt::Display for Item {

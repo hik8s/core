@@ -1,4 +1,4 @@
-use crate::{connections::error::ConfigError, types::classification::state::ClassifierState};
+use crate::{connections::error::ConfigError, types::classification::class::Classes};
 
 use super::config::RedisConfig;
 use redis::{Client, Commands, Connection, RedisError};
@@ -14,6 +14,10 @@ pub enum RedisConnectionError {
     ConfigError(#[from] ConfigError),
     #[error("Redis error: {0}")]
     RedisError(#[from] RedisError),
+    #[error("Failed to get value from Redis: {0}")]
+    GetError(#[source] RedisError),
+    #[error("Failed to set value in Redis: {0}")]
+    SetError(#[source] RedisError),
 }
 
 impl RedisConnection {
@@ -21,16 +25,34 @@ impl RedisConnection {
         let config = RedisConfig::new()?;
         let client = Client::open(config.get_uri())?;
         let connection = client.get_connection()?;
-        let mut redis_connection = RedisConnection { connection };
-        redis_connection.initialize_classifier_state()?;
+        let redis_connection = RedisConnection { connection };
         Ok(redis_connection)
     }
-    pub fn initialize_classifier_state(&mut self) -> Result<(), RedisConnectionError> {
-        let exists: bool = self.connection.exists(DEFAULT_STATE_KEY)?;
-        if !exists {
-            let initial_state = ClassifierState::new();
-            self.connection.set(DEFAULT_STATE_KEY, initial_state)?;
+
+    pub fn get(&mut self, key: &str) -> Result<Classes, RedisConnectionError> {
+        let exists: bool = self
+            .connection
+            .exists(format!("{DEFAULT_STATE_KEY}:{key}"))?;
+        match exists {
+            true => {
+                let state: Classes = self
+                    .connection
+                    .get(format!("{DEFAULT_STATE_KEY}:{key}"))
+                    .map_err(RedisConnectionError::GetError)?;
+                Ok(state)
+            }
+            false => {
+                tracing::info!("Creating new state for key: {}", key);
+                Ok(Classes(vec![]))
+            }
         }
+    }
+
+    pub fn set(&mut self, key: &str, value: Classes) -> Result<(), RedisConnectionError> {
+        let serialized_value: String = serde_json::to_string(&value).unwrap();
+        self.connection
+            .set(format!("{DEFAULT_STATE_KEY}:{key}"), serialized_value)
+            .map_err(RedisConnectionError::SetError)?;
         Ok(())
     }
 }

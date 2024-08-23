@@ -75,14 +75,15 @@ impl Classifier {
 
 #[cfg(test)]
 mod tests {
-    use shared::types::classification::state::ClassifierState;
 
     use super::Classifier;
 
     use rstest::rstest;
     use shared::{
         tracing::setup::setup_tracing,
-        types::record::preprocessed::PreprocessedLogRecord,
+        types::{
+            classification::state::ClassifierState, record::preprocessed::PreprocessedLogRecord,
+        },
         utils::mock::mock_data::{get_test_data, TestCase, TestData},
     };
 
@@ -93,7 +94,7 @@ mod tests {
         setup_tracing();
 
         let classifier = Classifier::new(Some(0.6));
-        let state = ClassifierState::new();
+        let mut state = ClassifierState::new();
 
         for (index, (key, raw_message, expected_class)) in test_data.into_iter().enumerate() {
             let mut class_state = state.get_or_create(&key).await.unwrap();
