@@ -1,5 +1,5 @@
+use crate::types::record::{log::LogRecord, preprocessed::PreprocessedLogRecord};
 use serde_json::Value;
-use shared::types::record::{log::LogRecord, preprocessed::PreprocessedLogRecord};
 
 pub fn preprocess_log(log: LogRecord) -> PreprocessedLogRecord {
     let mut result = Vec::new();
@@ -76,12 +76,12 @@ fn flatten_json_recursive(json: &Value, result: &mut Vec<String>, prefix: String
 mod tests {
 
     use super::*;
-    use rstest::rstest;
-    use serde_json::json;
-    use shared::{
+    use crate::{
         preprocessing::compare::compare, tracing::setup::setup_tracing,
         types::record::log::LogRecord,
     };
+    use rstest::rstest;
+    use serde_json::json;
 
     #[rstest]
     #[case("stderr F {\"level\":\"info\",\"ts\":\"2024-03-16T05:28:18.752849Z\",\"caller\":\"mvcc/hash.go:137\",\"msg\":\"storing new hash\",\"hash\":3811437805,\"revision\":108791,\"compact-revision\":108342}",
