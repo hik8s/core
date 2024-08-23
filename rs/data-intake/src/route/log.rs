@@ -136,13 +136,10 @@ pub async fn log_intake<'a>(
 
 #[cfg(test)]
 mod tests {
-    use shared::{tracing::setup::setup_tracing, types::metadata::Metadata};
+    use shared::tracing::setup::setup_tracing;
+    use shared::utils::mock::mock_data::{get_test_data, TestCase};
 
-    use shared::utils::mock::{
-        mock_client::post_test_stream,
-        mock_data::{generate_random_filename, get_test_path},
-        mock_stream::get_multipart_stream,
-    };
+    use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
 
     use crate::utils::mock::mock_server::rocket_test_client;
 
@@ -151,16 +148,9 @@ mod tests {
         setup_tracing();
         let client = rocket_test_client().await;
 
-        let test_data = [
-            "2023-06-10T10:30:01Z INFO This is a test log line 1\r".to_string(),
-            "2023-06-10T10:30:02Z INFO This is a test log line 2\r".to_string(),
-            "2023-06-10T10:30:03Z INFO This is a test log line 3\r".to_string(),
-            "2023-06-10T10:30:04Z INFO This is a test log line 4\r".to_string(),
-        ];
-        let test_metadata =
-            &Metadata::from_path(&generate_random_filename(), &get_test_path()).unwrap();
-        let test_stream =
-            get_multipart_stream(&test_metadata.filename, &test_metadata.path, &test_data);
+        let test_data = get_test_data(TestCase::Simple);
+        let test_stream = get_multipart_stream(test_data);
+
         let status = post_test_stream(&client, "/logs", test_stream).await;
         assert_eq!(status.code, 200);
     }

@@ -1,10 +1,14 @@
 use serde_json::json;
 
-pub fn get_multipart_stream(filename: &str, path: &str, lines: &[String]) -> String {
+use crate::utils::mock::mock_client::{generate_random_filename, get_test_path};
+
+use super::mock_data::TestData;
+
+pub fn get_multipart_stream(test_data: TestData) -> String {
     let boundary = "boundary";
     let metadata_obj = json!({
-        "file": filename,
-        "path": path
+        "file": generate_random_filename(),
+        "path": get_test_path(&test_data.key)
     });
 
     let metadata = format!(
@@ -13,7 +17,7 @@ pub fn get_multipart_stream(filename: &str, path: &str, lines: &[String]) -> Str
         metadata_obj
     );
 
-    let stream = lines.join("\n");
+    let stream = test_data.raw_messages.join("\n");
 
     let stream = format!(
         "Content-Disposition: form-data; name=\"stream\"\r\n\
