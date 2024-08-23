@@ -146,7 +146,7 @@ mod tests {
     #[rocket::async_test]
     async fn test_log_intake_route() {
         setup_tracing();
-        let client = rocket_test_client().await;
+        let client = rocket_test_client().await.unwrap();
 
         let test_data = get_test_data(TestCase::Simple);
         let test_stream = get_multipart_stream(test_data);
