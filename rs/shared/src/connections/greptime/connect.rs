@@ -1,4 +1,6 @@
-use super::config::{GreptimeConfig, GreptimeConfigError};
+use crate::connections::error::ConfigError;
+
+use super::config::GreptimeConfig;
 use greptimedb_ingester::{ClientBuilder, Database};
 use rocket::{request::FromRequest, State};
 use sqlx::Error as SqlxError;
@@ -16,7 +18,7 @@ pub struct GreptimeConnection {
 #[derive(Error, Debug)]
 pub enum GreptimeConnectionError {
     #[error("Failed to create DbConfig: {0}")]
-    ConfigError(#[from] GreptimeConfigError),
+    ConfigError(#[from] ConfigError),
     #[error("Failed to build gRPC client: {0}")]
     GrpcClientError(String),
     #[error("Failed to connect to PostgreSQL: {0}")]

@@ -1,14 +1,9 @@
 const DEFAULT_GREPTIME_RPC_PORT: &str = "4001";
 const DEFAULT_GREPTIME_PSQL_PORT: &str = "4003";
 
-use std::env::{var, VarError};
-use thiserror::Error;
+use std::env::var;
 
-#[derive(Error, Debug)]
-pub enum GreptimeConfigError {
-    #[error("Environment variable {0}, error: {1}")]
-    EnvVarError(String, #[source] VarError),
-}
+use crate::connections::error::ConfigError;
 
 #[derive(Clone)]
 pub struct GreptimeConfig {
@@ -18,14 +13,14 @@ pub struct GreptimeConfig {
     pub db_name: String,
 }
 impl GreptimeConfig {
-    pub fn new() -> Result<Self, GreptimeConfigError> {
+    pub fn new() -> Result<Self, ConfigError> {
         Ok(Self {
             host: var("GREPTIMEDB_HOST")
-                .map_err(|e| GreptimeConfigError::EnvVarError("GREPTIMEDB_HOST".to_owned(), e))?,
+                .map_err(|e| ConfigError::EnvVarError(e, "GREPTIMEDB_HOST".to_owned()))?,
             port: DEFAULT_GREPTIME_RPC_PORT.to_owned(),
             psql_port: DEFAULT_GREPTIME_PSQL_PORT.to_owned(),
             db_name: var("DB_NAME")
-                .map_err(|e| GreptimeConfigError::EnvVarError("DB_NAME".to_owned(), e))?,
+                .map_err(|e| ConfigError::EnvVarError(e, "DB_NAME".to_owned()))?,
         })
     }
     pub fn get_uri(&self) -> String {
