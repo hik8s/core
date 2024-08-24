@@ -1,6 +1,6 @@
 use rocket::local::asynchronous::Client;
 use shared::connections::{
-    fluvio::connect::{ConnectionError, FluvioConnection, TOPIC_NAME_LOG},
+    fluvio::connect::{FluvioConnection, FluvioConnectionError, TOPIC_NAME_LOG},
     greptime::connect::{GreptimeConnection, GreptimeConnectionError},
     redis::connect::RedisConnectionError,
 };
@@ -15,7 +15,7 @@ pub enum TestClientError {
     #[error("Redis connection error: {0}")]
     RedisConnectionError(#[from] RedisConnectionError),
     #[error("Fluvio connection error: {0}")]
-    FluvioConnectionError(#[from] ConnectionError),
+    FluvioConnectionError(#[from] FluvioConnectionError),
 }
 
 pub async fn rocket_test_client() -> Result<Client, TestClientError> {

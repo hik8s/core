@@ -1,5 +1,5 @@
 use shared::connections::fluvio::connect::{
-    ConnectionError, BATCH_SIZE, PARTITIONS, TOPIC_NAME_LOG,
+    FluvioConnectionError, BATCH_SIZE, PARTITIONS, TOPIC_NAME_LOG,
 };
 use shared::{connections::fluvio::connect::FluvioConnection, tracing::setup::setup_tracing};
 use thiserror::Error;
@@ -14,7 +14,7 @@ pub mod threads;
 #[derive(Error, Debug)]
 pub enum DataProcessingError {
     #[error("Fluvio connection error: {0}")]
-    FluvioConnectionError(#[from] ConnectionError),
+    FluvioConnectionError(#[from] FluvioConnectionError),
     #[error("Task join error: {0}")]
     JoinError(#[from] tokio::task::JoinError),
     #[error("Process thread error: {0}")]
