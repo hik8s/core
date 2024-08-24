@@ -10,9 +10,7 @@ use shared::{
         redis::connect::{RedisConnection, RedisConnectionError},
     },
     preprocessing::log::preprocess_log,
-    types::{
-        error::classificationerror::ClassificationError, record::classified::ClassifiedLogRecord,
-    },
+    types::error::classificationerror::ClassificationError,
 };
 use thiserror::Error;
 use tokio::sync::mpsc::{self, error::SendError};
@@ -62,9 +60,7 @@ pub async fn process_logs(
         let preprocessed_log = preprocess_log(log);
 
         // classify
-        let class = classifier.classify(&preprocessed_log, &key)?;
-        let classified_log = ClassifiedLogRecord::new(preprocessed_log, class.clone());
-
+        let (updated_class, classified_log) = classifier.classify(&preprocessed_log, &key)?;
         let classification_result = ClassificationResult::new(&key, &classified_log);
 
         // insert into greptimedb
@@ -72,10 +68,13 @@ pub async fn process_logs(
         stream_inserter.insert(vec![insert_request]).await?;
 
         // produce to fluvio
-        fluvio
-            .producer
-            .send(key, TryInto::<String>::try_into(class)?)
-            .await?;
+        if updated_class.is_some() {
+            let class = updated_class.unwrap();
+            fluvio
+                .producer
+                .send(key, TryInto::<String>::try_into(class)?)
+                .await?;
+        }
 
         // send result for offset commit
         sender

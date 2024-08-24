@@ -2,8 +2,9 @@ use shared::{
     connections::{error::ConfigError, redis::connect::RedisConnection},
     preprocessing::compare::compare,
     types::{
-        classification::class::Class, error::classificationerror::ClassificationError,
-        record::preprocessed::PreprocessedLogRecord,
+        classification::{class::Class, state::ClassifierState},
+        error::classificationerror::ClassificationError,
+        record::{classified::ClassifiedLogRecord, preprocessed::PreprocessedLogRecord},
     },
 };
 use std::env::var;
@@ -33,7 +34,7 @@ impl Classifier {
         &mut self,
         log: &PreprocessedLogRecord,
         key: &str,
-    ) -> Result<Class, ClassificationError> {
+    ) -> Result<(Option<Class>, ClassifiedLogRecord), ClassificationError> {
         let mut best_match: Option<&mut Class> = None;
         let mut highest_similarity = 0 as f64;
         let state = &mut self.redis.get(&key)?;
@@ -54,24 +55,39 @@ impl Classifier {
         let result = match best_match {
             Some(class) => {
                 if highest_similarity >= self.threshold {
+                    let previous_class = class.clone();
                     class.count += 1;
                     class.update_items(log);
                     class.similarity = highest_similarity;
-                    class.to_owned()
+                    // TODO: return class if representation changed
+                    let identical = previous_class.to_string() == class.to_string();
+                    let classified_log = ClassifiedLogRecord::new(log, &class);
+                    (self.get_class(class, identical), classified_log)
                 } else {
-                    let class = Class::from(log);
-                    state.classes.push(class.to_owned());
-                    class
+                    self.new_class(log, state)
                 }
             }
-            None => {
-                let class = Class::from(log);
-                state.classes.push(class.to_owned());
-                class
-            }
+            None => self.new_class(log, state),
         };
         self.redis.set(&key, state.to_owned())?;
-        Ok(result.to_owned())
+        Ok(result)
+    }
+
+    fn new_class(
+        &self,
+        log: &PreprocessedLogRecord,
+        state: &mut ClassifierState,
+    ) -> (Option<Class>, ClassifiedLogRecord) {
+        let class = Class::from(log);
+        state.classes.push(class.to_owned());
+        // always return new class
+        (Some(class.clone()), ClassifiedLogRecord::new(log, &class))
+    }
+    fn get_class(&self, class: &mut Class, return_none: bool) -> Option<Class> {
+        match return_none {
+            true => None,
+            false => Some(class.clone()),
+        }
     }
 }
 
@@ -98,10 +114,14 @@ mod tests {
 
         for (index, (key, raw_message, expected_class)) in test_data.into_iter().enumerate() {
             let preprocessed_log = PreprocessedLogRecord::from(raw_message);
-            let class = classifier.classify(&preprocessed_log, &key)?;
-            if index > 0 {
+            let class = classifier.classify(&preprocessed_log, &key)?.0;
+            if index == 1 {
+                assert_eq!(class.is_none(), false);
+                let class = class.unwrap();
                 assert_eq!(class.to_string(), expected_class.to_string());
                 assert_eq!(class.similarity, expected_class.similarity);
+            } else if index > 1 {
+                assert_eq!(class.is_none(), true);
             }
         }
         Ok(())
