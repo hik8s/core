@@ -38,9 +38,9 @@ pub async fn process_logs(
     sender: mpsc::Sender<ClassificationResult>,
 ) -> Result<(), ProcessThreadError> {
     let mut redis = RedisConnection::new()?;
-    let mut classifier = Classifier::new(None, &mut redis);
-    let connection = GreptimeConnection::new().await?;
-    let stream_inserter = connection.greptime.streaming_inserter()?;
+    let mut classifier = Classifier::new(None, redis);
+    let greptime = GreptimeConnection::new().await?;
+    let stream_inserter = greptime.streaming_inserter()?;
     while let Some(task) = receiver.recv().await {
         let ClassificationTask { key, log } = task;
 

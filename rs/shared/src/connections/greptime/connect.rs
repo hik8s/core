@@ -1,7 +1,7 @@
 use crate::connections::error::ConfigError;
 
 use super::config::GreptimeConfig;
-use greptimedb_ingester::{ClientBuilder, Database};
+use greptimedb_ingester::{ClientBuilder, Database, Result as GreptimeResult, StreamInserter};
 use rocket::{request::FromRequest, State};
 use sqlx::Error as SqlxError;
 use sqlx::{postgres::PgPoolOptions, Error, Pool, Postgres};
@@ -68,6 +68,9 @@ impl GreptimeConnection {
             psql,
             config,
         })
+    }
+    pub fn streaming_inserter(&self) -> GreptimeResult<StreamInserter> {
+        self.greptime.streaming_inserter()
     }
 }
 
