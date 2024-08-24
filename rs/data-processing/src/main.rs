@@ -1,4 +1,6 @@
-use shared::connections::fluvio::connect::{ConnectionError, BATCH_SIZE, PARTITIONS};
+use shared::connections::fluvio::connect::{
+    ConnectionError, BATCH_SIZE, PARTITIONS, TOPIC_NAME_LOG,
+};
 use shared::{connections::fluvio::connect::FluvioConnection, tracing::setup::setup_tracing};
 use thiserror::Error;
 use threads::consume::{consume_logs, ConsumerThreadError};
@@ -26,7 +28,7 @@ pub enum DataProcessingError {
 #[tokio::main]
 async fn main() -> Result<(), DataProcessingError> {
     setup_tracing();
-    let fluvio_connection = FluvioConnection::new().await?;
+    let fluvio_connection = FluvioConnection::new(&TOPIC_NAME_LOG.to_owned()).await?;
 
     // Vector to hold all spawned threads
     let mut threads = Vec::new();

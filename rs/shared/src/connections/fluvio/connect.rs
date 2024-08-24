@@ -18,7 +18,9 @@ use tracing::{error, info};
 use crate::types::metadata::Metadata;
 use crate::types::record::log::LogRecord;
 
-pub const DEFAULT_TOPIC: &str = "logs";
+pub const TOPIC_NAME_LOG: &str = "logs";
+pub const TOPIC_NAME_CLASS: &str = "classes";
+
 pub const PARTITIONS: u32 = 2;
 pub const BATCH_SIZE: usize = 100;
 
@@ -26,6 +28,7 @@ pub const BATCH_SIZE: usize = 100;
 pub struct FluvioConnection {
     pub fluvio: Arc<Fluvio>,
     pub producer: Arc<TopicProducer<SpuSocketPool>>,
+    pub topic_name: String,
 }
 
 #[derive(Error, Debug)]
@@ -43,21 +46,25 @@ pub enum ConnectionError {
 }
 
 impl FluvioConnection {
-    pub async fn new() -> Result<Self, ConnectionError> {
+    pub async fn new(topic_name: &String) -> Result<Self, ConnectionError> {
         let fluvio = Fluvio::connect().await.map_err(ConnectionError::from)?;
 
         let admin = fluvio.admin().await;
-        create_topic(admin, DEFAULT_TOPIC, PARTITIONS).await?;
+        create_topic(admin, topic_name, PARTITIONS).await?;
 
         let producer = fluvio
-            .topic_producer(DEFAULT_TOPIC.to_string())
+            .topic_producer(topic_name)
             .await
             .map_err(ConnectionError::from)?;
 
         let fluvio = Arc::new(fluvio);
         let producer = Arc::new(producer);
 
-        Ok(Self { fluvio, producer })
+        Ok(Self {
+            fluvio,
+            producer,
+            topic_name: topic_name.to_owned(),
+        })
     }
 
     pub async fn create_consumer(
@@ -71,7 +78,7 @@ impl FluvioConnection {
             .fluvio
             .consumer_with_config(
                 ConsumerConfigExtBuilder::default()
-                    .topic(DEFAULT_TOPIC.to_string())
+                    .topic(self.topic_name.to_owned())
                     .partition(partition_id)
                     .offset_consumer(format!("consumer_{}", partition_id))
                     .offset_start(Offset::beginning())
