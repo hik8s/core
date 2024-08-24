@@ -3,10 +3,6 @@ edition = "2021"
 name = "data-processing"
 version = "0.1.0"
 
-[[bin]]
-name = "data-processing"
-path = "src/main.rs"
-
 [dependencies]
 algorithm = {workspace = true}
 anyhow = {workspace = true}

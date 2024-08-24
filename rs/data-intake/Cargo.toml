@@ -3,10 +3,6 @@ edition = "2021"
 name = "data-intake"
 version = "0.1.0"
 
-[[bin]]
-name = "data-intake"
-path = "src/main.rs"
-
 [dependencies]
 dotenv = {workspace = true}
 greptimedb-ingester = {workspace = true}
