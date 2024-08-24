@@ -1,6 +1,8 @@
-use std::fmt::{Display, Formatter, Result};
+use std::convert::TryInto;
+use std::fmt::{self, Display, Formatter};
 
 use serde::{Deserialize, Serialize};
+use serde_json::to_string;
 use uuid7::uuid7;
 
 use crate::types::record::preprocessed::PreprocessedLogRecord;
@@ -53,8 +55,15 @@ impl From<&PreprocessedLogRecord> for Class {
         Self::new(log.preprocessed_message.clone())
     }
 }
+impl TryInto<String> for Class {
+    type Error = serde_json::Error;
+
+    fn try_into(self) -> Result<String, Self::Error> {
+        to_string(&self)
+    }
+}
 impl Display for Class {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let items = self
             .items
             .iter()

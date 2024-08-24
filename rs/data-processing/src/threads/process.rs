@@ -2,6 +2,7 @@ use greptimedb_ingester::Error as GreptimeIngestError;
 use shared::{
     connections::{
         error::ConfigError,
+        fluvio::connect::{FluvioConnection, FluvioConnectionError, TOPIC_NAME_CLASS},
         greptime::{
             connect::{GreptimeConnection, GreptimeConnectionError},
             middleware::insert::classified_logs_to_insert_request,
@@ -33,10 +34,16 @@ pub enum ProcessThreadError {
     GreptimeConnectionError(#[from] GreptimeConnectionError),
     #[error("Redis connection error: {0}")]
     RedisConnectionError(#[from] RedisConnectionError),
+    #[error("Fluvio connection error: {0}")]
+    FluvioConnectionError(#[from] FluvioConnectionError),
     #[error("Stream inserter error: {0}")]
     StreamInserterError(#[from] GreptimeIngestError),
     #[error("Failed to initialize Classifier: {0}")]
     ConfigError(#[from] ConfigError),
+    #[error("Failed to serialize: {0}")]
+    SerializationError(#[from] serde_json::Error),
+    #[error("Anyhow error: {0}")]
+    AnyhowError(#[from] anyhow::Error),
 }
 
 pub async fn process_logs(
@@ -44,6 +51,7 @@ pub async fn process_logs(
     sender: mpsc::Sender<ClassificationResult>,
 ) -> Result<(), ProcessThreadError> {
     let redis = RedisConnection::new()?;
+    let fluvio = FluvioConnection::new(&TOPIC_NAME_CLASS.to_owned()).await?;
     let mut classifier = Classifier::new(None, redis)?;
     let greptime = GreptimeConnection::new().await?;
     let stream_inserter = greptime.streaming_inserter()?;
@@ -55,14 +63,23 @@ pub async fn process_logs(
 
         // classify
         let class = classifier.classify(&preprocessed_log, &key)?;
-        let classified_log = ClassifiedLogRecord::new(preprocessed_log, class);
+        let classified_log = ClassifiedLogRecord::new(preprocessed_log, class.clone());
 
         let classification_result = ClassificationResult::new(&key, &classified_log);
+
+        // insert into greptimedb
         let insert_request = classified_logs_to_insert_request(&vec![classified_log], &key);
         stream_inserter.insert(vec![insert_request]).await?;
 
-        // if this is not in batches, writing single logs with their class is not efficient
+        // produce to fluvio
+        fluvio
+            .producer
+            .send(key, TryInto::<String>::try_into(class)?)
+            .await?;
+
+        // send result for offset commit
         sender
+            // if this is not in batches, writing single logs with their class is not efficient
             .send(classification_result)
             .await
             // maybe tolerate this error

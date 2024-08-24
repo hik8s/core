@@ -875,6 +875,7 @@ name = "data-processing"
 version = "0.1.0"
 dependencies = [
  "algorithm",
+ "anyhow",
  "dotenv",
  "fluvio",
  "futures-util",

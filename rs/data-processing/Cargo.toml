@@ -9,6 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 algorithm = {workspace = true}
+anyhow = {workspace = true}
 dotenv = {workspace = true}
 fluvio = {workspace = true}
 futures-util = {workspace = true}
