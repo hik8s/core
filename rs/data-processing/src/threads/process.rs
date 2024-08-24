@@ -1,5 +1,6 @@
 use shared::{
     connections::{
+        error::ConfigError,
         greptime::{
             connect::{GreptimeConnection, GreptimeConnectionError},
             middleware::insert::classified_logs_to_insert_request,
@@ -31,6 +32,8 @@ pub enum ProcessThreadError {
     RedisConnectionError(#[from] RedisConnectionError),
     #[error("Stream inserter error: {0}")]
     StreamInserterError(#[from] greptimedb_ingester::Error),
+    #[error("Failed to initialize Classifier: {0}")]
+    ConfigError(#[from] ConfigError),
 }
 
 pub async fn process_logs(
@@ -38,7 +41,7 @@ pub async fn process_logs(
     sender: mpsc::Sender<ClassificationResult>,
 ) -> Result<(), ProcessThreadError> {
     let mut redis = RedisConnection::new()?;
-    let mut classifier = Classifier::new(None, redis);
+    let mut classifier = Classifier::new(None, &mut redis)?;
     let greptime = GreptimeConnection::new().await?;
     let stream_inserter = greptime.streaming_inserter()?;
     while let Some(task) = receiver.recv().await {

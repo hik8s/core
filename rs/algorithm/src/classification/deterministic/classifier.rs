@@ -1,10 +1,15 @@
 use shared::{
-    connections::redis::connect::{RedisConnection, RedisConnectionError},
+    connections::{
+        error::ConfigError,
+        redis::connect::{RedisConnection, RedisConnectionError},
+    },
     preprocessing::compare::compare,
     types::{classification::class::Class, record::preprocessed::PreprocessedLogRecord},
 };
 use std::env::var;
 use thiserror::Error;
+
+const DEFAULT_THRESHOLD: f64 = 0.6;
 
 // #[derive(Clone)]
 pub struct Classifier<'a> {
@@ -23,25 +28,17 @@ pub enum ClassificationError {
 impl<'a> Classifier<'a> {
     // The `new` function creates a new instance of `Classifier` with an empty vector of `ClassContext` instances,
     // a provided threshold, and `None` as the metadata.
-    pub fn new(threshold: Option<f64>, redis: &'a mut RedisConnection) -> Classifier<'a> {
-        match threshold {
-            Some(threshold) => Classifier { threshold, redis },
-            None => {
-                let threshold_str = match var("CLASSIFIER_THRESHOLD") {
-                    Ok(val) => val,
-                    Err(_) => {
-                        tracing::warn!("CLASSIFIER_THRESHOLD environment variable not found, using default value of 0.7");
-                        "0.7".to_string()
-                    }
-                };
-                let threshold = threshold_str.parse::<f64>().unwrap_or_else(|_| {
-                    tracing::warn!("Failed to parse CLASSIFIER_THRESHOLD as a float, using default value of 0.7");
-                    0.7
-                });
-
-                Classifier { threshold, redis }
-            }
-        }
+    pub fn new(
+        threshold: Option<f64>,
+        redis: &'a mut RedisConnection,
+    ) -> Result<Classifier<'a>, ConfigError> {
+        let threshold = threshold.unwrap_or(
+            var("CLASSIFIER_THRESHOLD")
+                .unwrap_or(DEFAULT_THRESHOLD.to_string())
+                .parse::<f64>()
+                .map_err(ConfigError::ParseFloatError)?,
+        );
+        Ok(Classifier { threshold, redis })
     }
 
     pub fn classify(
@@ -110,7 +107,7 @@ mod tests {
         setup_tracing();
 
         let mut redis = RedisConnection::new().unwrap();
-        let mut classifier = Classifier::new(Some(0.6), &mut redis);
+        let mut classifier = Classifier::new(Some(0.6), &mut redis).unwrap();
 
         for (index, (key, raw_message, expected_class)) in test_data.into_iter().enumerate() {
             let preprocessed_log = PreprocessedLogRecord::from(raw_message);
