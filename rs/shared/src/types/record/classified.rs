@@ -12,8 +12,8 @@ pub struct ClassifiedLogRecord {
     pub class_id: String,
     pub similarity: f64,
 }
-impl From<(PreprocessedLogRecord, Class)> for ClassifiedLogRecord {
-    fn from((log, class): (PreprocessedLogRecord, Class)) -> Self {
+impl ClassifiedLogRecord {
+    pub fn new(log: PreprocessedLogRecord, class: Class) -> Self {
         let (timestamp, message, record_id, preprocessed_message, length) = log.into_parts();
         ClassifiedLogRecord {
             timestamp,

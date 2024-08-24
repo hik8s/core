@@ -55,8 +55,8 @@ pub async fn process_logs(
 
         // classify
         let class = classifier.classify(&preprocessed_log, &key)?;
+        let classified_log = ClassifiedLogRecord::new(preprocessed_log, class);
 
-        let classified_log = ClassifiedLogRecord::from((preprocessed_log, class));
         let classification_result = ClassificationResult::new(&key, &classified_log);
         let insert_request = classified_logs_to_insert_request(&vec![classified_log], &key);
         stream_inserter.insert(vec![insert_request]).await?;
