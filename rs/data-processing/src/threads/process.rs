@@ -1,3 +1,4 @@
+use greptimedb_ingester::Error as GreptimeIngestError;
 use shared::{
     connections::{
         error::ConfigError,
@@ -8,7 +9,9 @@ use shared::{
         redis::connect::{RedisConnection, RedisConnectionError},
     },
     preprocessing::log::preprocess_log,
-    types::record::classified::ClassifiedLogRecord,
+    types::{
+        error::classificationerror::ClassificationError, record::classified::ClassifiedLogRecord,
+    },
 };
 use thiserror::Error;
 use tokio::sync::mpsc::{self, error::SendError};
@@ -16,7 +19,7 @@ use tracing::error;
 
 use super::types::communication::{ClassificationResult, ClassificationTask};
 
-use algorithm::classification::deterministic::classifier::{ClassificationError, Classifier};
+use algorithm::classification::deterministic::classifier::Classifier;
 
 #[derive(Error, Debug)]
 pub enum ProcessThreadError {
@@ -31,7 +34,7 @@ pub enum ProcessThreadError {
     #[error("Redis connection error: {0}")]
     RedisConnectionError(#[from] RedisConnectionError),
     #[error("Stream inserter error: {0}")]
-    StreamInserterError(#[from] greptimedb_ingester::Error),
+    StreamInserterError(#[from] GreptimeIngestError),
     #[error("Failed to initialize Classifier: {0}")]
     ConfigError(#[from] ConfigError),
 }

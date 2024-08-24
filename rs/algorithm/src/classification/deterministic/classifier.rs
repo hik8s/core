@@ -1,13 +1,12 @@
 use shared::{
-    connections::{
-        error::ConfigError,
-        redis::connect::{RedisConnection, RedisConnectionError},
-    },
+    connections::{error::ConfigError, redis::connect::RedisConnection},
     preprocessing::compare::compare,
-    types::{classification::class::Class, record::preprocessed::PreprocessedLogRecord},
+    types::{
+        classification::class::Class, error::classificationerror::ClassificationError,
+        record::preprocessed::PreprocessedLogRecord,
+    },
 };
 use std::env::var;
-use thiserror::Error;
 
 const DEFAULT_THRESHOLD: f64 = 0.6;
 
@@ -15,14 +14,6 @@ const DEFAULT_THRESHOLD: f64 = 0.6;
 pub struct Classifier {
     threshold: f64,
     redis: RedisConnection,
-}
-
-#[derive(Error, Debug)]
-pub enum ClassificationError {
-    #[error("Comparison error")]
-    ComparisonError,
-    #[error("Redis connection error: {0}")]
-    RedisConnectionError(#[from] RedisConnectionError),
 }
 
 impl Classifier {
@@ -88,31 +79,31 @@ impl Classifier {
 mod tests {
 
     use super::Classifier;
-
     use rstest::rstest;
     use shared::{
         connections::redis::connect::RedisConnection,
         tracing::setup::setup_tracing,
-        types::record::preprocessed::PreprocessedLogRecord,
+        types::{error::testerror::TestError, record::preprocessed::PreprocessedLogRecord},
         utils::mock::mock_data::{get_test_data, TestCase, TestData},
     };
 
     #[rstest]
     #[tokio::test]
     #[case(get_test_data(TestCase::Simple))]
-    async fn test_classify_json_nested(#[case] test_data: TestData) {
+    async fn test_classify_json_nested(#[case] test_data: TestData) -> Result<(), TestError> {
         setup_tracing();
 
-        let redis = RedisConnection::new().unwrap();
-        let mut classifier = Classifier::new(Some(0.6), redis).unwrap();
+        let redis = RedisConnection::new()?;
+        let mut classifier = Classifier::new(Some(0.6), redis)?;
 
         for (index, (key, raw_message, expected_class)) in test_data.into_iter().enumerate() {
             let preprocessed_log = PreprocessedLogRecord::from(raw_message);
-            let class = classifier.classify(&preprocessed_log, &key).unwrap();
+            let class = classifier.classify(&preprocessed_log, &key)?;
             if index > 0 {
                 assert_eq!(class.to_string(), expected_class.to_string());
                 assert_eq!(class.similarity, expected_class.similarity);
             }
         }
+        Ok(())
     }
 }
