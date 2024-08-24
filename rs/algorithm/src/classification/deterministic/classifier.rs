@@ -12,9 +12,9 @@ use thiserror::Error;
 const DEFAULT_THRESHOLD: f64 = 0.6;
 
 // #[derive(Clone)]
-pub struct Classifier<'a> {
+pub struct Classifier {
     threshold: f64,
-    redis: &'a mut RedisConnection,
+    redis: RedisConnection,
 }
 
 #[derive(Error, Debug)]
@@ -25,13 +25,10 @@ pub enum ClassificationError {
     RedisConnectionError(#[from] RedisConnectionError),
 }
 
-impl<'a> Classifier<'a> {
+impl Classifier {
     // The `new` function creates a new instance of `Classifier` with an empty vector of `ClassContext` instances,
     // a provided threshold, and `None` as the metadata.
-    pub fn new(
-        threshold: Option<f64>,
-        redis: &'a mut RedisConnection,
-    ) -> Result<Classifier<'a>, ConfigError> {
+    pub fn new(threshold: Option<f64>, redis: RedisConnection) -> Result<Classifier, ConfigError> {
         let threshold = threshold.unwrap_or(
             var("CLASSIFIER_THRESHOLD")
                 .unwrap_or(DEFAULT_THRESHOLD.to_string())
@@ -106,8 +103,8 @@ mod tests {
     async fn test_classify_json_nested(#[case] test_data: TestData) {
         setup_tracing();
 
-        let mut redis = RedisConnection::new().unwrap();
-        let mut classifier = Classifier::new(Some(0.6), &mut redis).unwrap();
+        let redis = RedisConnection::new().unwrap();
+        let mut classifier = Classifier::new(Some(0.6), redis).unwrap();
 
         for (index, (key, raw_message, expected_class)) in test_data.into_iter().enumerate() {
             let preprocessed_log = PreprocessedLogRecord::from(raw_message);
