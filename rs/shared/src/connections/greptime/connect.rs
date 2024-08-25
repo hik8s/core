@@ -1,4 +1,4 @@
-use crate::connections::error::ConfigError;
+use crate::connections::shared::error::ConfigError;
 
 use super::config::GreptimeConfig;
 use greptimedb_ingester::{ClientBuilder, Database, Result as GreptimeResult, StreamInserter};

@@ -71,6 +71,7 @@ fn class_from_items(items: Vec<Item>, similarity: f64, key: &String) -> Class {
         class_id: uuid7().to_string(),
         similarity,
         key: key.to_owned(),
+        token_count: 0,
     }
 }
 

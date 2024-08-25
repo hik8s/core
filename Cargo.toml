@@ -1,13 +1,13 @@
 [workspace]
 resolver = "2"
 
-members = ["rs/algorithm", "rs/data-intake", "rs/data-processing", "rs/data-vectorizer", "rs/shared"]
+members = ["rs/algorithm", "rs/data-intake", "rs/data-processing", "rs/shared"]
 
 [workspace.package]
 edition = "2021"
 
 # OpenSSL dependency prevention
-# by setting `default-features = false`
+# set `default-features = false`
 
 [workspace.dependencies]
 algorithm = {path = "rs/algorithm"}
@@ -37,6 +37,7 @@ sqlx = {version = "0.8.0", features = [
     "tls-rustls",
 ]}
 thiserror = "1.0"
+tiktoken-rs = "0.5.9"
 tokio = "1.36.0"
 tracing = "0.1.40"
 tracing-subscriber = {version = "0.3.18", features = ["env-filter"]}

@@ -1,10 +1,12 @@
 use shared::{
-    connections::{error::ConfigError, redis::connect::RedisConnection},
+    connections::redis::connect::RedisConnection,
     preprocessing::compare::compare,
     types::{
         classification::{class::Class, state::ClassifierState},
+        classifier::error::ClassifierError,
         error::classificationerror::ClassificationError,
         record::{classified::ClassifiedLogRecord, preprocessed::PreprocessedLogRecord},
+        tokenizer::tokenizer::Tokenizer,
     },
 };
 use std::env::var;
@@ -15,19 +17,27 @@ const DEFAULT_THRESHOLD: f64 = 0.6;
 pub struct Classifier {
     threshold: f64,
     redis: RedisConnection,
+    tokenizer: Tokenizer,
 }
 
 impl Classifier {
     // The `new` function creates a new instance of `Classifier` with an empty vector of `ClassContext` instances,
     // a provided threshold, and `None` as the metadata.
-    pub fn new(threshold: Option<f64>, redis: RedisConnection) -> Result<Classifier, ConfigError> {
+    pub fn new(
+        threshold: Option<f64>,
+        redis: RedisConnection,
+    ) -> Result<Classifier, ClassifierError> {
         let threshold = threshold.unwrap_or(
             var("CLASSIFIER_THRESHOLD")
                 .unwrap_or(DEFAULT_THRESHOLD.to_string())
-                .parse::<f64>()
-                .map_err(ConfigError::ParseFloatError)?,
+                .parse::<f64>()?,
         );
-        Ok(Classifier { threshold, redis })
+        let tokenizer = Tokenizer::new()?;
+        Ok(Classifier {
+            threshold,
+            redis,
+            tokenizer,
+        })
     }
 
     pub fn classify(
@@ -79,7 +89,8 @@ impl Classifier {
         state: &mut ClassifierState,
         key: &String,
     ) -> (Option<Class>, ClassifiedLogRecord) {
-        let class = Class::from_log_and_key(log, key);
+        let mut class = Class::from_log_and_key(log, key, 0);
+        class.token_count = self.token_count(&class);
         state.classes.push(class.to_owned());
         // always return new class
         (Some(class.clone()), ClassifiedLogRecord::new(log, &class))
@@ -87,8 +98,16 @@ impl Classifier {
     fn get_class(&self, class: &mut Class, return_none: bool) -> Option<Class> {
         match return_none {
             true => None,
-            false => Some(class.clone()),
+            false => {
+                class.token_count = self.token_count(class);
+                Some(class.clone())
+            }
         }
+    }
+
+    fn token_count(&self, class: &Class) -> u32 {
+        self.tokenizer
+            .calculate_token_length(class.to_string().as_str()) as u32
     }
 }
 

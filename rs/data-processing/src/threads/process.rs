@@ -10,7 +10,7 @@ use shared::{
         redis::connect::{RedisConnection, RedisConnectionError},
     },
     preprocessing::log::preprocess_log,
-    types::error::classificationerror::ClassificationError,
+    types::{classifier::error::ClassifierError, error::classificationerror::ClassificationError},
 };
 use thiserror::Error;
 use tokio::sync::mpsc::{self, error::SendError};
@@ -24,8 +24,8 @@ use algorithm::classification::deterministic::classifier::Classifier;
 pub enum ProcessThreadError {
     #[error("Classification error: {0}")]
     ClassificationError(#[from] ClassificationError),
-    #[error("Other process error: {0}")]
-    OtherError(String),
+    #[error("Classifier error: {0}")]
+    ClassifierError(#[from] ClassifierError),
     #[error("Failed to send result to main thread: {0}")]
     SendError(#[from] SendError<ClassificationResult>),
     #[error("Greptime connection error: {0}")]
@@ -36,8 +36,6 @@ pub enum ProcessThreadError {
     FluvioConnectionError(#[from] FluvioConnectionError),
     #[error("Stream inserter error: {0}")]
     StreamInserterError(#[from] GreptimeIngestError),
-    #[error("Failed to initialize Classifier: {0}")]
-    ConfigError(#[from] ConfigError),
     #[error("Failed to serialize: {0}")]
     SerializationError(#[from] serde_json::Error),
     #[error("Anyhow error: {0}")]

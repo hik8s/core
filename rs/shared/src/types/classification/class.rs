@@ -14,14 +14,15 @@ use super::item::Item;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Class {
     pub items: Vec<Item>,
-    pub count: i32,
+    pub count: u32,
     pub length: usize,
     pub class_id: String,
     pub similarity: f64,
     pub key: String,
+    pub token_count: u32,
 }
 impl Class {
-    pub fn new(data: Vec<String>, key: &String) -> Self {
+    pub fn new(data: Vec<String>, key: &String, token_count: u32) -> Self {
         let items: Vec<Item> = data.into_iter().map(Item::Fix).collect();
         Self {
             length: items.len(),
@@ -30,6 +31,7 @@ impl Class {
             class_id: uuid7().to_string(),
             similarity: 0.0,
             key: key.to_owned(),
+            token_count,
         }
     }
 
@@ -53,8 +55,8 @@ impl Class {
         }
     }
 
-    pub fn from_log_and_key(log: &PreprocessedLogRecord, key: &String) -> Self {
-        Self::new(log.preprocessed_message.clone(), key)
+    pub fn from_log_and_key(log: &PreprocessedLogRecord, key: &String, token_count: u32) -> Self {
+        Self::new(log.preprocessed_message.clone(), key, token_count)
     }
 }
 impl TryInto<String> for Class {
@@ -71,7 +73,6 @@ impl TryFrom<Vec<u8>> for Class {
     // This is used for converting a fluvio ConsumerRecord into a Class
     fn try_from(payload: Vec<u8>) -> Result<Self, Self::Error> {
         let data_str = String::from_utf8_lossy(&payload);
-        tracing::info!("Deserializing class from: {}", data_str);
         from_str::<Class>(&data_str)
     }
 }
