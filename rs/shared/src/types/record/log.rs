@@ -10,8 +10,6 @@ const DEFAULT_TS: &str = "1970-01-01T00:00:00Z";
 
 #[derive(Debug, Error)]
 pub enum LogParseError {
-    #[error("Failed to deserialize LogRecord: {0}")]
-    DeserializeError(#[from] serde_json::Error),
     #[error("Timestamp not found in record: {0}")]
     MissingTimestamp(String),
     #[error("Failed to parse timestamp for record {0}: {1}")]
@@ -57,12 +55,12 @@ impl From<&String> for LogRecord {
     }
 }
 impl TryFrom<Vec<u8>> for LogRecord {
-    type Error = LogParseError;
+    type Error = serde_json::Error;
 
     // This is used for converting a fluvio ConsumerRecord into a LogRecord
     fn try_from(payload: Vec<u8>) -> Result<Self, Self::Error> {
         let data_str = String::from_utf8_lossy(&payload);
-        from_str::<LogRecord>(&data_str).map_err(LogParseError::from)
+        from_str::<LogRecord>(&data_str)
     }
 }
 

@@ -33,7 +33,7 @@ impl Classifier {
     pub fn classify(
         &mut self,
         log: &PreprocessedLogRecord,
-        key: &str,
+        key: &String,
     ) -> Result<(Option<Class>, ClassifiedLogRecord), ClassificationError> {
         let mut best_match: Option<&mut Class> = None;
         let mut highest_similarity = 0 as f64;
@@ -64,10 +64,10 @@ impl Classifier {
                     let classified_log = ClassifiedLogRecord::new(log, &class);
                     (self.get_class(class, identical), classified_log)
                 } else {
-                    self.new_class(log, state)
+                    self.new_class(log, state, key)
                 }
             }
-            None => self.new_class(log, state),
+            None => self.new_class(log, state, key),
         };
         self.redis.set(&key, state.to_owned())?;
         Ok(result)
@@ -77,8 +77,9 @@ impl Classifier {
         &self,
         log: &PreprocessedLogRecord,
         state: &mut ClassifierState,
+        key: &String,
     ) -> (Option<Class>, ClassifiedLogRecord) {
-        let class = Class::from(log);
+        let class = Class::from_log_and_key(log, key);
         state.classes.push(class.to_owned());
         // always return new class
         (Some(class.clone()), ClassifiedLogRecord::new(log, &class))

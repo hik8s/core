@@ -63,17 +63,19 @@ impl Iterator for TestDataIterator {
     }
 }
 
-fn class_from_items(items: Vec<Item>, similarity: f64) -> Class {
+fn class_from_items(items: Vec<Item>, similarity: f64, key: &String) -> Class {
     Class {
         length: items.len(),
         items,
         count: 1,
         class_id: uuid7().to_string(),
         similarity,
+        key: key.to_owned(),
     }
 }
 
 pub fn get_test_data(case: TestCase) -> TestData {
+    let key = generate_podname(case);
     match case {
         TestCase::Simple => {
             let class = class_from_items(
@@ -88,9 +90,10 @@ pub fn get_test_data(case: TestCase) -> TestData {
                     Item::Var,
                 ],
                 0.875,
+                &key,
             );
             TestData {
-                key: generate_podname(case),
+                key: key,
                 raw_messages: vec![
                     "2023-06-10T10:30:01Z INFO This is a test log line 1\r".to_string(),
                     "2023-06-10T10:30:02Z INFO This is a test log line 2\r".to_string(),
