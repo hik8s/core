@@ -1,0 +1,11 @@
+[package]
+edition.workspace = true
+name = "data-vectorizer"
+version = "0.1.0"
+
+[dependencies]
+futures-util = {workspace = true}
+shared = {workspace = true}
+thiserror = {workspace = true}
+tokio = {workspace = true}
+tracing = {workspace = true}

@@ -21,8 +21,6 @@ pub enum DataProcessingError {
     ProcessThreadError(#[from] ProcessThreadError),
     #[error("Consumer thread error: {0}")]
     ConsumerThreadError(#[from] ConsumerThreadError),
-    #[error("Other error: {0}")]
-    Other(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 #[tokio::main]

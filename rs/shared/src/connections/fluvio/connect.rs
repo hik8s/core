@@ -82,7 +82,7 @@ impl FluvioConnection {
                 ConsumerConfigExtBuilder::default()
                     .topic(self.topic_name.to_owned())
                     .partition(partition_id)
-                    .offset_consumer(format!("consumer_{}", partition_id))
+                    .offset_consumer(format!("consumer_{}_{}", self.topic_name, partition_id))
                     .offset_start(Offset::beginning())
                     .offset_strategy(OffsetManagementStrategy::Manual)
                     .build()

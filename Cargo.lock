@@ -889,6 +889,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "data-vectorizer"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "shared",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "der"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
