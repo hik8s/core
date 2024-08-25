@@ -1,8 +1,7 @@
 use greptimedb_ingester::Error as GreptimeIngestError;
 use shared::{
     connections::{
-        error::ConfigError,
-        fluvio::connect::{FluvioConnection, FluvioConnectionError, TOPIC_NAME_CLASS},
+        fluvio::connect::{FluvioConnection, FluvioConnectionError},
         greptime::{
             connect::{GreptimeConnection, GreptimeConnectionError},
             middleware::insert::classified_logs_to_insert_request,
@@ -38,16 +37,16 @@ pub enum ProcessThreadError {
     StreamInserterError(#[from] GreptimeIngestError),
     #[error("Failed to serialize: {0}")]
     SerializationError(#[from] serde_json::Error),
-    #[error("Anyhow error: {0}")]
-    AnyhowError(#[from] anyhow::Error),
+    #[error("Fluvio producer error: {0}")]
+    FluvioProducerError(#[from] anyhow::Error),
 }
 
 pub async fn process_logs(
     mut receiver: mpsc::Receiver<ClassificationTask>,
     sender: mpsc::Sender<ClassificationResult>,
+    fluvio: FluvioConnection,
 ) -> Result<(), ProcessThreadError> {
     let redis = RedisConnection::new()?;
-    let fluvio = FluvioConnection::new(&TOPIC_NAME_CLASS.to_owned()).await?;
     let mut classifier = Classifier::new(None, redis)?;
     let greptime = GreptimeConnection::new().await?;
     let stream_inserter = greptime.streaming_inserter()?;

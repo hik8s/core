@@ -1,6 +1,6 @@
 use rocket::local::asynchronous::Client;
 use shared::connections::{
-    fluvio::connect::{FluvioConnection, FluvioConnectionError, TOPIC_NAME_LOG},
+    fluvio::connect::{FluvioConnection, FluvioConnectionError, TopicName},
     greptime::connect::{GreptimeConnection, GreptimeConnectionError},
     redis::connect::RedisConnectionError,
 };
@@ -21,7 +21,7 @@ pub enum TestClientError {
 pub async fn rocket_test_client() -> Result<Client, TestClientError> {
     dotenv::dotenv().ok();
     let greptime_connection = GreptimeConnection::new().await?;
-    let fluvio_connection = FluvioConnection::new(&TOPIC_NAME_LOG.to_owned()).await?;
+    let fluvio_connection = FluvioConnection::new(TopicName::Log).await?;
     let rocket = build_rocket(greptime_connection, fluvio_connection);
     let client = Client::untracked(rocket)
         .await

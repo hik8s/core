@@ -6,7 +6,7 @@ use rocket::main;
 
 use shared::{
     connections::{
-        fluvio::connect::{FluvioConnection, TOPIC_NAME_LOG},
+        fluvio::connect::{FluvioConnection, TopicName},
         greptime::connect::GreptimeConnection,
     },
     tracing::setup::setup_tracing,
@@ -19,9 +19,7 @@ async fn main() -> () {
     setup_tracing();
 
     let greptime_connection = GreptimeConnection::new().await.unwrap();
-    let fluvio_connection = FluvioConnection::new(&TOPIC_NAME_LOG.to_owned())
-        .await
-        .unwrap();
+    let fluvio_connection = FluvioConnection::new(TopicName::Log).await.unwrap();
 
     let rocket = build_rocket(greptime_connection, fluvio_connection);
 
