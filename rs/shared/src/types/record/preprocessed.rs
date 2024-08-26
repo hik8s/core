@@ -9,6 +9,7 @@ pub struct PreprocessedLogRecord {
     pub record_id: String,
     pub preprocessed_message: Vec<String>,
     pub length: u64,
+    pub key: String,
 }
 
 impl PreprocessedLogRecord {
@@ -17,6 +18,7 @@ impl PreprocessedLogRecord {
         message: String,
         record_id: String,
         preprocessed_message: Vec<String>,
+        key: String,
     ) -> Self {
         PreprocessedLogRecord {
             timestamp,
@@ -24,23 +26,39 @@ impl PreprocessedLogRecord {
             record_id,
             length: preprocessed_message.len() as u64,
             preprocessed_message,
+            key,
         }
     }
 
-    pub fn into_parts(&self) -> (i64, String, String, Vec<String>, u64) {
+    pub fn into_parts(&self) -> (i64, String, String, Vec<String>, u64, String) {
         (
             self.timestamp,
             self.message.to_owned(),
             self.record_id.to_owned(),
             self.preprocessed_message.to_owned(),
             self.length,
+            self.key.to_owned(),
         )
     }
 }
 
-impl From<String> for PreprocessedLogRecord {
-    fn from(raw_message: String) -> Self {
-        let log = LogRecord::from(&raw_message);
-        preprocess_log(log)
+impl From<(&String, &String)> for PreprocessedLogRecord {
+    fn from((raw_message, key): (&String, &String)) -> Self {
+        let log = LogRecord::from((raw_message, key));
+        PreprocessedLogRecord::from(log)
+    }
+}
+
+impl From<LogRecord> for PreprocessedLogRecord {
+    fn from(log: LogRecord) -> Self {
+        let preprocessed_message = preprocess_log(&log);
+        PreprocessedLogRecord {
+            timestamp: log.timestamp,
+            message: log.message,
+            record_id: log.record_id,
+            key: log.key,
+            length: preprocessed_message.len() as u64,
+            preprocessed_message,
+        }
     }
 }

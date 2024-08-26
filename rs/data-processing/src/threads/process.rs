@@ -4,18 +4,19 @@ use shared::{
         fluvio::connect::{FluvioConnection, FluvioConnectionError},
         greptime::{
             connect::{GreptimeConnection, GreptimeConnectionError},
-            middleware::insert::classified_logs_to_insert_request,
+            middleware::insert::classified_log_to_insert_request,
         },
         redis::connect::{RedisConnection, RedisConnectionError},
     },
-    preprocessing::log::preprocess_log,
-    types::{classifier::error::ClassifierError, error::classificationerror::ClassificationError},
+    types::{
+        classifier::error::ClassifierError,
+        error::classificationerror::ClassificationError,
+        record::{log::LogRecord, preprocessed::PreprocessedLogRecord},
+    },
 };
 use thiserror::Error;
 use tokio::sync::mpsc::{self, error::SendError};
 use tracing::error;
-
-use super::types::communication::{ClassificationResult, ClassificationTask};
 
 use algorithm::classification::deterministic::classifier::Classifier;
 
@@ -26,7 +27,7 @@ pub enum ProcessThreadError {
     #[error("Classifier error: {0}")]
     ClassifierError(#[from] ClassifierError),
     #[error("Failed to send result to main thread: {0}")]
-    SendError(#[from] SendError<ClassificationResult>),
+    SendError(#[from] SendError<(String, String)>),
     #[error("Greptime connection error: {0}")]
     GreptimeConnectionError(#[from] GreptimeConnectionError),
     #[error("Redis connection error: {0}")]
@@ -42,26 +43,24 @@ pub enum ProcessThreadError {
 }
 
 pub async fn process_logs(
-    mut receiver: mpsc::Receiver<ClassificationTask>,
-    sender: mpsc::Sender<ClassificationResult>,
+    mut receiver: mpsc::Receiver<LogRecord>,
+    sender: mpsc::Sender<(String, String)>,
     fluvio: FluvioConnection,
 ) -> Result<(), ProcessThreadError> {
     let redis = RedisConnection::new()?;
     let mut classifier = Classifier::new(None, redis)?;
     let greptime = GreptimeConnection::new().await?;
     let stream_inserter = greptime.streaming_inserter()?;
-    while let Some(task) = receiver.recv().await {
-        let ClassificationTask { key, log } = task;
-
+    while let Some(log) = receiver.recv().await {
         // preprocess
-        let preprocessed_log = preprocess_log(log);
+        let (key, record_id) = (log.key.to_owned(), log.record_id.to_owned());
+        let preprocessed_log = PreprocessedLogRecord::from(log);
 
         // classify
-        let (updated_class, classified_log) = classifier.classify(&preprocessed_log, &key)?;
-        let classification_result = ClassificationResult::new(&key, &classified_log);
+        let (updated_class, classified_log) = classifier.classify(&preprocessed_log)?;
 
         // insert into greptimedb
-        let insert_request = classified_logs_to_insert_request(&vec![classified_log], &key);
+        let insert_request = classified_log_to_insert_request(classified_log);
         stream_inserter.insert(vec![insert_request]).await?;
 
         // produce to fluvio
@@ -69,16 +68,14 @@ pub async fn process_logs(
             let class = updated_class.unwrap();
             fluvio
                 .producer
-                .send(key, TryInto::<String>::try_into(class)?)
+                .send(key.to_owned(), TryInto::<String>::try_into(class)?)
                 .await?;
         }
 
         // send result for offset commit
         sender
-            // if this is not in batches, writing single logs with their class is not efficient
-            .send(classification_result)
+            .send((key, record_id))
             .await
-            // maybe tolerate this error
             .map_err(ProcessThreadError::SendError)?;
     }
     Ok(())

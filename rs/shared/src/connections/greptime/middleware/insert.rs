@@ -1,11 +1,8 @@
 use greptimedb_ingester::api::v1::{column, Column, ColumnDataType, InsertRequest, SemanticType};
 
-use crate::types::{
-    metadata::Metadata,
-    record::{classified::ClassifiedLogRecord, log::LogRecord},
-};
+use crate::types::record::{classified::ClassifiedLogRecord, log::LogRecord};
 
-pub fn logs_to_insert_request(logs: &Vec<LogRecord>, metadata: &Metadata) -> InsertRequest {
+pub fn logs_to_insert_request(logs: &Vec<LogRecord>, key: &String) -> InsertRequest {
     let (timestamps, message, record_id) = fold_log_records(logs);
 
     let columns: Vec<Column> = vec![
@@ -15,16 +12,14 @@ pub fn logs_to_insert_request(logs: &Vec<LogRecord>, metadata: &Metadata) -> Ins
     ];
 
     InsertRequest {
-        table_name: metadata.pod_name.to_owned(),
+        table_name: key.to_owned(),
         columns,
         row_count: logs.len() as u32,
     }
 }
 
-pub fn classified_logs_to_insert_request(
-    logs: &Vec<ClassifiedLogRecord>,
-    key: &str,
-) -> InsertRequest {
+pub fn classified_log_to_insert_request(log: ClassifiedLogRecord) -> InsertRequest {
+    let key = log.key.to_owned();
     let (
         timestamp,
         message,
@@ -34,7 +29,7 @@ pub fn classified_logs_to_insert_request(
         class_representation,
         class_id,
         similarity,
-    ) = fold_classified_records(logs);
+    ) = fold_classified_records(&vec![log]);
 
     let columns: Vec<Column> = vec![
         timestamp_column(timestamp),
@@ -48,9 +43,9 @@ pub fn classified_logs_to_insert_request(
     ];
 
     InsertRequest {
-        table_name: key.to_owned(),
+        table_name: key,
         columns,
-        row_count: logs.len() as u32,
+        row_count: 1,
     }
 }
 

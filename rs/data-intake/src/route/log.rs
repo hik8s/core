@@ -68,6 +68,12 @@ pub async fn log_intake<'a>(
                 })?;
             }
             "stream" => {
+                if metadata.is_none() {
+                    error!("Metadata is not set");
+                    return Err(Status::BadRequest);
+                }
+                let metadata = metadata.as_ref().unwrap();
+
                 let mut buffer = [0; 262144];
                 let mut remainder = String::new();
                 let mut logs = Vec::new();
@@ -83,46 +89,38 @@ pub async fn log_intake<'a>(
                         error!("Failed to convert buffer to UTF-8: {}", e);
                         Status::InternalServerError
                     })?;
-                    logs.extend(process_chunk(chunk, &mut remainder));
+                    logs.extend(process_chunk(chunk, &mut remainder, &metadata.pod_name));
                 }
-                match metadata {
-                    Some(ref metadata) => {
-                        let stream_inserter = db.greptime.streaming_inserter().map_err(|e| {
-                            error!("Failed to get streaming inserter: {}", e);
-                            Status::InternalServerError
-                        })?;
+                let stream_inserter = db.greptime.streaming_inserter().map_err(|e| {
+                    error!("Failed to get streaming inserter: {}", e);
+                    Status::InternalServerError
+                })?;
 
-                        let insert_request = logs_to_insert_request(&logs, metadata);
+                let insert_request = logs_to_insert_request(&logs, &metadata.pod_name);
 
-                        if let Err(e) = stream_inserter.insert(vec![insert_request]).await {
-                            error!("Error during insert: {}", e);
-                            return Err(Status::InternalServerError);
-                        }
+                if let Err(e) = stream_inserter.insert(vec![insert_request]).await {
+                    error!("Error during insert: {}", e);
+                    return Err(Status::InternalServerError);
+                }
 
-                        match stream_inserter.finish().await {
-                            Ok(rows) => {
-                                info!("Rows written: {}", rows);
-                            }
-                            Err(e) => {
-                                error!("Error during finish: {}", e);
-                                return Err(Status::InternalServerError);
-                            }
-                        }
-                        fluvio_connection
-                            .send_batch(logs, metadata)
-                            .await
-                            .map_err(|e| {
-                                error!("Failed to send batch to Fluvio topic: {}", e);
-                                Status::InternalServerError
-                            })?;
-
-                        return Ok("Success".to_string());
+                match stream_inserter.finish().await {
+                    Ok(rows) => {
+                        info!("Rows written: {}", rows);
                     }
-                    None => {
-                        error!("Metadata is not set");
-                        return Err(Status::BadRequest);
+                    Err(e) => {
+                        error!("Error during finish: {}", e);
+                        return Err(Status::InternalServerError);
                     }
                 }
+                fluvio_connection
+                    .send_batch(logs, metadata)
+                    .await
+                    .map_err(|e| {
+                        error!("Failed to send batch to Fluvio topic: {}", e);
+                        Status::InternalServerError
+                    })?;
+
+                return Ok("Success".to_string());
             }
             _ => {
                 error!("Unexpected field name: {}", field.headers.name);

@@ -43,11 +43,10 @@ impl Classifier {
     pub fn classify(
         &mut self,
         log: &PreprocessedLogRecord,
-        key: &String,
     ) -> Result<(Option<Class>, ClassifiedLogRecord), ClassificationError> {
         let mut best_match: Option<&mut Class> = None;
         let mut highest_similarity = 0 as f64;
-        let state = &mut self.redis.get(&key)?;
+        let state = &mut self.redis.get(&log.key)?;
 
         for class in state.classes.iter_mut() {
             if class.length != log.length as usize {
@@ -74,12 +73,12 @@ impl Classifier {
                     let classified_log = ClassifiedLogRecord::new(log, &class);
                     (self.get_class(class, identical), classified_log)
                 } else {
-                    self.new_class(log, state, key)
+                    self.new_class(log, state)
                 }
             }
-            None => self.new_class(log, state, key),
+            None => self.new_class(log, state),
         };
-        self.redis.set(&key, state.to_owned())?;
+        self.redis.set(&log.key, state.to_owned())?;
         Ok(result)
     }
 
@@ -87,9 +86,8 @@ impl Classifier {
         &self,
         log: &PreprocessedLogRecord,
         state: &mut ClassifierState,
-        key: &String,
     ) -> (Option<Class>, ClassifiedLogRecord) {
-        let mut class = Class::from_log_and_key(log, key, 0);
+        let mut class = Class::from_log_and_token_count(log, 0);
         class.token_count = self.token_count(&class);
         state.classes.push(class.to_owned());
         // always return new class
@@ -133,8 +131,8 @@ mod tests {
         let mut classifier = Classifier::new(Some(0.6), redis)?;
 
         for (index, (key, raw_message, expected_class)) in test_data.into_iter().enumerate() {
-            let preprocessed_log = PreprocessedLogRecord::from(raw_message);
-            let class = classifier.classify(&preprocessed_log, &key)?.0;
+            let preprocessed_log = PreprocessedLogRecord::from((&raw_message, &key));
+            let class = classifier.classify(&preprocessed_log)?.0;
             if index == 1 {
                 assert_eq!(class.is_none(), false);
                 let class = class.unwrap();

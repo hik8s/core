@@ -11,10 +11,11 @@ pub struct ClassifiedLogRecord {
     pub class_representation: String,
     pub class_id: String,
     pub similarity: f64,
+    pub key: String,
 }
 impl ClassifiedLogRecord {
     pub fn new(log: &PreprocessedLogRecord, class: &Class) -> Self {
-        let (timestamp, message, record_id, preprocessed_message, length) = log.into_parts();
+        let (timestamp, message, record_id, preprocessed_message, length, key) = log.into_parts();
         ClassifiedLogRecord {
             timestamp,
             message,
@@ -22,8 +23,9 @@ impl ClassifiedLogRecord {
             preprocessed_message: preprocessed_message.join(" "),
             length,
             class_representation: class.to_string(),
-            class_id: class.class_id.clone(),
+            class_id: class.class_id.to_owned(),
             similarity: class.similarity,
+            key,
         }
     }
 }

@@ -55,8 +55,8 @@ impl Class {
         }
     }
 
-    pub fn from_log_and_key(log: &PreprocessedLogRecord, key: &String, token_count: u32) -> Self {
-        Self::new(log.preprocessed_message.clone(), key, token_count)
+    pub fn from_log_and_token_count(log: &PreprocessedLogRecord, token_count: u32) -> Self {
+        Self::new(log.preprocessed_message.clone(), &log.key, token_count)
     }
 }
 impl TryInto<String> for Class {

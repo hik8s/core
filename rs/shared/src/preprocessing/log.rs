@@ -1,7 +1,7 @@
-use crate::types::record::{log::LogRecord, preprocessed::PreprocessedLogRecord};
+use crate::types::record::log::LogRecord;
 use serde_json::Value;
 
-pub fn preprocess_log(log: LogRecord) -> PreprocessedLogRecord {
+pub fn preprocess_log(log: &LogRecord) -> Vec<String> {
     let mut result = Vec::new();
 
     // Check if the input string contains a JSON object
@@ -29,7 +29,7 @@ pub fn preprocess_log(log: LogRecord) -> PreprocessedLogRecord {
         // If the input string does not contain a JSON object, process it as a non-JSON string
         result.extend(split_string(&log.message));
     }
-    PreprocessedLogRecord::new(log.timestamp, log.message, log.record_id, result)
+    result
 }
 
 fn split_string(input: &str) -> Vec<String> {
@@ -76,8 +76,9 @@ mod tests {
 
     use super::*;
     use crate::{
-        preprocessing::compare::compare, tracing::setup::setup_tracing,
-        types::record::log::LogRecord,
+        preprocessing::compare::compare,
+        tracing::setup::setup_tracing,
+        types::record::{log::LogRecord, preprocessed::PreprocessedLogRecord},
     };
     use rstest::rstest;
     use serde_json::json;
@@ -101,8 +102,13 @@ mod tests {
     fn test_preprocess_log(#[case] input: &str, #[case] expected: Vec<&str>) {
         setup_tracing();
         assert_eq!(
-            preprocess_log(LogRecord::new(0, &input.to_owned(), "id".to_owned()))
-                .preprocessed_message,
+            PreprocessedLogRecord::from(LogRecord::new(
+                0,
+                &input.to_owned(),
+                "id".to_owned(),
+                "key".to_owned()
+            ))
+            .preprocessed_message,
             expected
         );
     }
@@ -166,8 +172,18 @@ mod tests {
     fn test_preprocess_compare_logs(#[case] inputs: (&str, &str), #[case] expected: Vec<bool>) {
         setup_tracing();
         let (input1, input2) = inputs;
-        let log1 = preprocess_log(LogRecord::new(0, &input1.to_owned(), "id1".to_owned()));
-        let log2 = preprocess_log(LogRecord::new(0, &input2.to_owned(), "id2".to_owned()));
+        let log1 = PreprocessedLogRecord::from(LogRecord::new(
+            0,
+            &input1.to_owned(),
+            "id1".to_owned(),
+            "key1".to_owned(),
+        ));
+        let log2 = PreprocessedLogRecord::from(LogRecord::new(
+            0,
+            &input2.to_owned(),
+            "id2".to_owned(),
+            "key2".to_owned(),
+        ));
         let comparison = compare(&log1.preprocessed_message, &log2.preprocessed_message);
         assert_eq!(comparison, expected, "All items should match");
     }
