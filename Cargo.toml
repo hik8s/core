@@ -19,6 +19,7 @@ futures-util = "0.3.30"
 greptimedb-ingester = {git = "https://github.com/GreptimeTeam/greptimedb-ingester-rust.git", rev = "2e6b0c5eb6a5e7549c3100e4d356b07d15cce66d"}
 jsonwebtoken = {version = "9.3", default-features = false}
 multipart = "0.18.0"
+qdrant-client = "1.11.0"
 rand = "0.8.5"
 redis = {version = "0.26.1", features = ["json"]}
 reqwest = {version = "0.12", default-features = false, features = [

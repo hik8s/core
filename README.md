@@ -22,10 +22,29 @@ docker run -d --name redis -p 6379:6379 redis
 
 ## Fluvio
 
+Install fluvio:
+
+```bash
+curl -fsS https://hub.infinyon.cloud/install/install.sh | bash
+```
+
+Start cluster:
+
 ```bash
 fluvio cluster start
 ```
 
+Resume cluster:
+
 ```bash
 fluvio cluster resume
+```
+
+## Qdrant
+
+```bash
+docker pull qdrant/qdrant:v1.9.7
+docker run -d -p 6333:6333 -p 6334:6334 \
+    -v $(pwd)/qdrant_storage:/qdrant/storage:z \
+    qdrant/qdrant:v1.9.7
 ```
