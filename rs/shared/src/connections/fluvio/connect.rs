@@ -21,18 +21,20 @@ use crate::types::record::log::LogRecord;
 pub const TOPIC_NAME_LOG: &str = "logs";
 pub const TOPIC_NAME_CLASS: &str = "classes";
 
-pub const PARTITIONS: u32 = 2;
+pub const CONSUMER_PARTITIONS_LOG: u32 = 2;
+pub const CONSUMER_PARTITIONS_CLASS: u32 = 1;
+
 pub const BATCH_SIZE: usize = 100;
 
 #[derive(Clone)]
 pub struct FluvioConnection {
     pub fluvio: Arc<Fluvio>,
     pub producer: Arc<TopicProducer<SpuSocketPool>>,
-    pub topic_name: String,
+    pub topic: FluvioTopic,
 }
 
 #[derive(Error, Debug)]
-pub enum ConnectionError {
+pub enum FluvioConnectionError {
     #[error("Fluvio error: {0}")]
     Fluvio(#[from] FluvioError),
     #[error("Rocket error: {0}")]
@@ -45,17 +47,53 @@ pub enum ConnectionError {
     ConsumerError(String),
 }
 
+pub enum TopicName {
+    Log,
+    Class,
+}
+
+#[derive(Clone)]
+pub struct FluvioTopic {
+    name: String,
+    pub partitions: u32,
+    pub replicas: u32,
+}
+
+impl FluvioTopic {
+    pub fn new(topic: TopicName) -> Self {
+        match topic {
+            TopicName::Log => FluvioTopic {
+                name: "logs".to_owned(),
+                partitions: 2,
+                replicas: 1,
+            },
+            TopicName::Class => FluvioTopic {
+                name: "classes".to_owned(),
+                partitions: 1,
+                replicas: 1,
+            },
+        }
+    }
+    pub fn consumer_id(&self, partition_id: u32) -> String {
+        format!("consumer_{}_{}", self.name, partition_id)
+    }
+}
+
 impl FluvioConnection {
-    pub async fn new(topic_name: &String) -> Result<Self, ConnectionError> {
-        let fluvio = Fluvio::connect().await.map_err(ConnectionError::from)?;
+    pub async fn new(topic_name: TopicName) -> Result<Self, FluvioConnectionError> {
+        let topic = FluvioTopic::new(topic_name);
+
+        let fluvio = Fluvio::connect()
+            .await
+            .map_err(FluvioConnectionError::from)?;
 
         let admin = fluvio.admin().await;
-        create_topic(admin, topic_name, PARTITIONS).await?;
+        create_topic(admin, &topic).await?;
 
         let producer = fluvio
-            .topic_producer(topic_name)
+            .topic_producer(topic.name.to_owned())
             .await
-            .map_err(ConnectionError::from)?;
+            .map_err(FluvioConnectionError::from)?;
 
         let fluvio = Arc::new(fluvio);
         let producer = Arc::new(producer);
@@ -63,7 +101,7 @@ impl FluvioConnection {
         Ok(Self {
             fluvio,
             producer,
-            topic_name: topic_name.to_owned(),
+            topic,
         })
     }
 
@@ -72,22 +110,26 @@ impl FluvioConnection {
         partition_id: u32,
     ) -> Result<
         impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
-        ConnectionError,
+        FluvioConnectionError,
     > {
         let consumer = self
             .fluvio
             .consumer_with_config(
                 ConsumerConfigExtBuilder::default()
-                    .topic(self.topic_name.to_owned())
+                    .topic(self.topic.name.to_owned())
                     .partition(partition_id)
-                    .offset_consumer(format!("consumer_{}", partition_id))
+                    .offset_consumer(self.topic.consumer_id(partition_id))
                     .offset_start(Offset::beginning())
                     .offset_strategy(OffsetManagementStrategy::Manual)
                     .build()
-                    .map_err(|e| ConnectionError::ConsumerConfigError(e.to_string()))?,
+                    .map_err(|e| FluvioConnectionError::ConsumerConfigError(e.to_string()))?,
             )
             .await
-            .map_err(|e| ConnectionError::ConsumerError(e.to_string()))?;
+            .map_err(|e| FluvioConnectionError::ConsumerError(e.to_string()))?;
+        info!(
+            "Consumer '{}' created",
+            self.topic.consumer_id(partition_id)
+        );
         Ok(consumer)
     }
 
@@ -95,7 +137,7 @@ impl FluvioConnection {
         &self,
         logs: Vec<LogRecord>,
         metadata: &Metadata,
-    ) -> Result<(), ConnectionError> {
+    ) -> Result<(), FluvioConnectionError> {
         let mut batch = Vec::with_capacity(BATCH_SIZE);
 
         for log in &logs {
@@ -109,7 +151,7 @@ impl FluvioConnection {
                 self.producer
                     .send_all(batch.drain(..))
                     .await
-                    .map_err(ConnectionError::Anyhow)?;
+                    .map_err(FluvioConnectionError::Anyhow)?;
             }
         }
 
@@ -118,14 +160,14 @@ impl FluvioConnection {
             self.producer
                 .send_all(batch.drain(..))
                 .await
-                .map_err(ConnectionError::Anyhow)?;
+                .map_err(FluvioConnectionError::Anyhow)?;
         }
 
         // Ensure the producer flushes the messages
         self.producer
             .flush()
             .await
-            .map_err(ConnectionError::Anyhow)?;
+            .map_err(FluvioConnectionError::Anyhow)?;
 
         Ok(())
     }
@@ -133,23 +175,22 @@ impl FluvioConnection {
 
 pub async fn create_topic(
     admin: FluvioAdmin,
-    topic_name: &str,
-    partitions: u32,
-) -> Result<(), ConnectionError> {
+    topic: &FluvioTopic,
+) -> Result<(), FluvioConnectionError> {
     // Check if the topic already exists
     let topics = admin.list::<TopicSpec, String>(vec![]).await?;
-    if topics.iter().any(|topic| topic.name == topic_name) {
-        info!("Topic '{}' already exists", topic_name);
+    if topics.iter().any(|t| t.name == topic.name) {
+        info!("Topic '{}' already exists", topic.name);
         return Ok(());
     }
 
     // Create the topic if it does not exist
-    let topic_spec = TopicSpec::new_computed(partitions, 1, None);
+    let topic_spec = TopicSpec::new_computed(topic.partitions, topic.replicas, None);
     admin
-        .create(topic_name.to_owned(), false, topic_spec)
+        .create(topic.name.to_owned(), false, topic_spec)
         .await
-        .map_err(ConnectionError::from)?;
-    info!("Topic '{}' created", topic_name);
+        .map_err(FluvioConnectionError::from)?;
+    info!("Topic '{}' created", topic.name);
     Ok(())
 }
 

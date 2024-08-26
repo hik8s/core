@@ -1,15 +1,12 @@
 [package]
-edition = "2021"
-name = "data-processing"
+edition.workspace = true
+name = "data-vectorizer"
 version = "0.1.0"
 
 [dependencies]
-algorithm = {workspace = true}
-anyhow = {workspace = true}
-dotenv = {workspace = true}
-fluvio = {workspace = true}
+async-openai = {workspace = true}
 futures-util = {workspace = true}
-greptimedb-ingester = {workspace = true}
+qdrant-client = {workspace = true}
 rstest = {workspace = true}
 serde_json = {workspace = true}
 shared = {workspace = true}

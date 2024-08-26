@@ -2,7 +2,7 @@ use crate::preprocessing::log::preprocess_log;
 
 use super::log::LogRecord;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PreprocessedLogRecord {
     pub timestamp: i64,
     pub message: String,
@@ -27,12 +27,12 @@ impl PreprocessedLogRecord {
         }
     }
 
-    pub fn into_parts(self) -> (i64, String, String, Vec<String>, u64) {
+    pub fn into_parts(&self) -> (i64, String, String, Vec<String>, u64) {
         (
             self.timestamp,
-            self.message,
-            self.record_id,
-            self.preprocessed_message,
+            self.message.to_owned(),
+            self.record_id.to_owned(),
+            self.preprocessed_message.to_owned(),
             self.length,
         )
     }

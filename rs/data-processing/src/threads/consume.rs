@@ -3,12 +3,13 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use futures_util::StreamExt;
 use shared::connections::fluvio::connect::{commit_and_flush_offsets, OffsetError};
+use shared::types::record::consumer_record::ConsumerRecordError;
 use shared::types::record::log::LogParseError;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::{error, info};
 
-use super::types::communication::{ClassificationResult, ConsumerRecordError};
+use super::types::communication::ClassificationResult;
 
 #[derive(Error, Debug)]
 pub enum ConsumerThreadError {

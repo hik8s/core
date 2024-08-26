@@ -1,6 +1,6 @@
 use std::env::var;
 
-use crate::connections::error::ConfigError;
+use crate::connections::shared::error::ConfigError;
 
 pub struct RedisConfig {
     pub host: String,

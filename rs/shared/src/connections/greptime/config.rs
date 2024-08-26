@@ -3,7 +3,7 @@ const DEFAULT_GREPTIME_PSQL_PORT: &str = "4003";
 
 use std::env::var;
 
-use crate::connections::error::ConfigError;
+use crate::connections::shared::error::ConfigError;
 
 #[derive(Clone)]
 pub struct GreptimeConfig {

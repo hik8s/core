@@ -1,9 +1,12 @@
 use shared::{
-    connections::{error::ConfigError, redis::connect::RedisConnection},
+    connections::redis::connect::RedisConnection,
     preprocessing::compare::compare,
     types::{
-        classification::class::Class, error::classificationerror::ClassificationError,
-        record::preprocessed::PreprocessedLogRecord,
+        classification::{class::Class, state::ClassifierState},
+        classifier::error::ClassifierError,
+        error::classificationerror::ClassificationError,
+        record::{classified::ClassifiedLogRecord, preprocessed::PreprocessedLogRecord},
+        tokenizer::tokenizer::Tokenizer,
     },
 };
 use std::env::var;
@@ -14,26 +17,34 @@ const DEFAULT_THRESHOLD: f64 = 0.6;
 pub struct Classifier {
     threshold: f64,
     redis: RedisConnection,
+    tokenizer: Tokenizer,
 }
 
 impl Classifier {
     // The `new` function creates a new instance of `Classifier` with an empty vector of `ClassContext` instances,
     // a provided threshold, and `None` as the metadata.
-    pub fn new(threshold: Option<f64>, redis: RedisConnection) -> Result<Classifier, ConfigError> {
+    pub fn new(
+        threshold: Option<f64>,
+        redis: RedisConnection,
+    ) -> Result<Classifier, ClassifierError> {
         let threshold = threshold.unwrap_or(
             var("CLASSIFIER_THRESHOLD")
                 .unwrap_or(DEFAULT_THRESHOLD.to_string())
-                .parse::<f64>()
-                .map_err(ConfigError::ParseFloatError)?,
+                .parse::<f64>()?,
         );
-        Ok(Classifier { threshold, redis })
+        let tokenizer = Tokenizer::new()?;
+        Ok(Classifier {
+            threshold,
+            redis,
+            tokenizer,
+        })
     }
 
     pub fn classify(
         &mut self,
         log: &PreprocessedLogRecord,
-        key: &str,
-    ) -> Result<Class, ClassificationError> {
+        key: &String,
+    ) -> Result<(Option<Class>, ClassifiedLogRecord), ClassificationError> {
         let mut best_match: Option<&mut Class> = None;
         let mut highest_similarity = 0 as f64;
         let state = &mut self.redis.get(&key)?;
@@ -54,24 +65,49 @@ impl Classifier {
         let result = match best_match {
             Some(class) => {
                 if highest_similarity >= self.threshold {
+                    let previous_class = class.clone();
                     class.count += 1;
                     class.update_items(log);
                     class.similarity = highest_similarity;
-                    class.to_owned()
+                    // TODO: return class if representation changed
+                    let identical = previous_class.to_string() == class.to_string();
+                    let classified_log = ClassifiedLogRecord::new(log, &class);
+                    (self.get_class(class, identical), classified_log)
                 } else {
-                    let class = Class::from(log);
-                    state.classes.push(class.to_owned());
-                    class
+                    self.new_class(log, state, key)
                 }
             }
-            None => {
-                let class = Class::from(log);
-                state.classes.push(class.to_owned());
-                class
-            }
+            None => self.new_class(log, state, key),
         };
         self.redis.set(&key, state.to_owned())?;
-        Ok(result.to_owned())
+        Ok(result)
+    }
+
+    fn new_class(
+        &self,
+        log: &PreprocessedLogRecord,
+        state: &mut ClassifierState,
+        key: &String,
+    ) -> (Option<Class>, ClassifiedLogRecord) {
+        let mut class = Class::from_log_and_key(log, key, 0);
+        class.token_count = self.token_count(&class);
+        state.classes.push(class.to_owned());
+        // always return new class
+        (Some(class.clone()), ClassifiedLogRecord::new(log, &class))
+    }
+    fn get_class(&self, class: &mut Class, return_none: bool) -> Option<Class> {
+        match return_none {
+            true => None,
+            false => {
+                class.token_count = self.token_count(class);
+                Some(class.clone())
+            }
+        }
+    }
+
+    fn token_count(&self, class: &Class) -> u32 {
+        self.tokenizer
+            .calculate_token_length(class.to_string().as_str()) as u32
     }
 }
 
@@ -98,10 +134,14 @@ mod tests {
 
         for (index, (key, raw_message, expected_class)) in test_data.into_iter().enumerate() {
             let preprocessed_log = PreprocessedLogRecord::from(raw_message);
-            let class = classifier.classify(&preprocessed_log, &key)?;
-            if index > 0 {
+            let class = classifier.classify(&preprocessed_log, &key)?.0;
+            if index == 1 {
+                assert_eq!(class.is_none(), false);
+                let class = class.unwrap();
                 assert_eq!(class.to_string(), expected_class.to_string());
                 assert_eq!(class.similarity, expected_class.similarity);
+            } else if index > 1 {
+                assert_eq!(class.is_none(), true);
             }
         }
         Ok(())

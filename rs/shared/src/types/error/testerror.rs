@@ -1,4 +1,6 @@
-use crate::connections::{error::ConfigError, redis::connect::RedisConnectionError};
+use crate::{
+    connections::redis::connect::RedisConnectionError, types::classifier::error::ClassifierError,
+};
 
 use super::classificationerror::ClassificationError;
 use thiserror::Error;
@@ -9,6 +11,6 @@ pub enum TestError {
     RedisConnectionError(#[from] RedisConnectionError),
     #[error("Classification error: {0}")]
     ClassificationError(#[from] ClassificationError),
-    #[error("Failed to initialize config: {0}")]
-    ConfigError(#[from] ConfigError),
+    #[error("Classifier error: {0}")]
+    ClassifierError(#[from] ClassifierError),
 }
