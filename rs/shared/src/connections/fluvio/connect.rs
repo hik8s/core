@@ -64,12 +64,12 @@ impl FluvioTopic {
         match topic {
             TopicName::Log => FluvioTopic {
                 name: "logs".to_owned(),
-                partitions: 1,
+                partitions: 2,
                 replicas: 1,
             },
             TopicName::Class => FluvioTopic {
                 name: "classes".to_owned(),
-                partitions: 2,
+                partitions: 1,
                 replicas: 1,
             },
         }
@@ -126,6 +126,10 @@ impl FluvioConnection {
             )
             .await
             .map_err(|e| FluvioConnectionError::ConsumerError(e.to_string()))?;
+        info!(
+            "Consumer '{}' created",
+            self.topic.consumer_id(partition_id)
+        );
         Ok(consumer)
     }
 
@@ -186,6 +190,7 @@ pub async fn create_topic(
         .create(topic.name.to_owned(), false, topic_spec)
         .await
         .map_err(FluvioConnectionError::from)?;
+    info!("Topic '{}' created", topic.name);
     Ok(())
 }
 
