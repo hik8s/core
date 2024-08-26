@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use qdrant_client::{
-    qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuilder},
+    qdrant::{
+        CreateCollectionBuilder, Distance, PointStruct, PointsOperationResponse,
+        UpsertPointsBuilder, VectorParamsBuilder,
+    },
     Qdrant,
 };
 use tracing::info;
@@ -49,5 +52,21 @@ impl QdrantConnection {
             )
             .await?;
         Ok(())
+    }
+    pub async fn upsert_point(
+        &self,
+        qdrant_point: PointStruct,
+    ) -> Result<PointsOperationResponse, QdrantConnectionError> {
+        let response = self
+            .client
+            .upsert_points(
+                UpsertPointsBuilder::new(
+                    self.config.collection_name.to_owned(),
+                    vec![qdrant_point],
+                )
+                .wait(false),
+            )
+            .await?;
+        Ok(response)
     }
 }

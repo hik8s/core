@@ -1,7 +1,13 @@
 [workspace]
 resolver = "2"
 
-members = ["rs/algorithm", "rs/data-intake", "rs/data-processing", "rs/shared"]
+members = [
+    "rs/algorithm",
+    "rs/data-intake",
+    "rs/data-processing",
+    "rs/data-vectorizer",
+    "rs/shared",
+]
 
 [workspace.package]
 edition = "2021"
@@ -12,6 +18,7 @@ edition = "2021"
 [workspace.dependencies]
 algorithm = {path = "rs/algorithm"}
 anyhow = "1.0.80"
+async-openai = "0.23.4"
 chrono = {version = "0.4.35"}
 dotenv = "0.15.0"
 fluvio = {version = "0.23.1", default-features = false}
