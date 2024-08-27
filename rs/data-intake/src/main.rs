@@ -1,9 +1,9 @@
+pub mod log;
 pub mod process;
-pub mod route;
 
 use rocket::{main, routes, Error};
 
-use route::log::log_intake;
+use log::route::log_intake;
 use shared::{
     connections::{
         fluvio::connect::{FluvioConnection, TopicName},

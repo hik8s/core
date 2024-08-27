@@ -1,4 +1,4 @@
-use crate::route::error::LogIntakeError;
+use crate::log::error::LogIntakeError;
 
 use super::chunk::process_chunk;
 use multipart::server::{Multipart, MultipartData};
