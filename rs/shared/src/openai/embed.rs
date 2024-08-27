@@ -1,13 +1,11 @@
-const EMBEDDING_MODEL: &str = "text-embedding-3-large";
-
+use crate::constant::{EMBEDDING_USIZE, OPENAI_EMBEDDING_MODEL};
 use async_openai::{error::OpenAIError, types::CreateEmbeddingRequestArgs, Client};
-use shared::types::classification::vectorized::EMBEDDING_USIZE;
 
 pub async fn request_embedding(text: String) -> Result<[f32; 3072], OpenAIError> {
     let client = Client::new();
 
     let request = CreateEmbeddingRequestArgs::default()
-        .model(EMBEDDING_MODEL)
+        .model(OPENAI_EMBEDDING_MODEL)
         .input(text)
         .build()?;
 

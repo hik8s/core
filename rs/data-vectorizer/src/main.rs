@@ -1,5 +1,4 @@
 use async_openai::error::OpenAIError;
-use embedding::log::{openai::request_embedding, ratelimit::RateLimiter};
 use futures_util::StreamExt;
 use shared::{
     connections::{
@@ -10,6 +9,7 @@ use shared::{
         qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
     },
     constant::QDRANT_COLLECTION_LOG,
+    openai::embed::request_embedding,
     tracing::setup::setup_tracing,
     types::{
         classification::{class::Class, vectorized::to_qdrant_point},
@@ -17,11 +17,10 @@ use shared::{
         record::consumer_record::ConsumerRecordError,
         tokenizer::tokenizer::Tokenizer,
     },
+    utils::ratelimit::RateLimiter,
 };
 use thiserror::Error;
 use tracing::info;
-
-pub mod embedding;
 
 #[derive(Error, Debug)]
 pub enum DataVectorizationError {

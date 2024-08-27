@@ -4,10 +4,9 @@ use qdrant_client::qdrant::{PointStruct, Value};
 use serde::{Deserialize, Serialize};
 use serde_json::Error as JsonError;
 
-use super::class::Class;
+use crate::constant::EMBEDDING_USIZE;
 
-pub const EMBEDDING_SIZE: u64 = 3072;
-pub const EMBEDDING_USIZE: usize = EMBEDDING_SIZE as usize;
+use super::class::Class;
 
 #[derive(Serialize, Deserialize)]
 pub struct QdrantPoint {

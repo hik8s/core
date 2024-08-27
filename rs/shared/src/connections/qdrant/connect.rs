@@ -10,7 +10,7 @@ use qdrant_client::{
 use rocket::{request::FromRequest, State};
 use tracing::info;
 
-use crate::types::classification::vectorized::EMBEDDING_SIZE;
+use crate::constant::EMBEDDING_SIZE;
 
 use super::{config::QdrantConfig, error::QdrantConnectionError};
 
