@@ -1,20 +1,28 @@
 use rocket::{http::Status, response::Responder, Request, Response};
-use shared::connections::qdrant::error::QdrantConnectionError;
+use shared::{
+    connections::qdrant::error::QdrantConnectionError, openai::embed::RequestEmbeddingError,
+};
 use std::io::Cursor;
 use thiserror::Error;
-use tracing::info;
+use tracing::error;
 
 #[derive(Error, Debug)]
 pub enum PromptEngineError {
     #[error("Qdrant error: {0}")]
     QdrantConnectionError(#[from] QdrantConnectionError),
+    #[error("OpenAI API error: {0}")]
+    RequestEmbeddingError(#[from] RequestEmbeddingError),
 }
 
 impl From<PromptEngineError> for Status {
     fn from(error: PromptEngineError) -> Self {
         match error {
             PromptEngineError::QdrantConnectionError(e) => {
-                info!("Qdrant error: {:?}", e);
+                error!("Qdrant error: {:?}", e);
+                Status::InternalServerError
+            }
+            PromptEngineError::RequestEmbeddingError(e) => {
+                error!("OpenAI API error: {:?}", e);
                 Status::InternalServerError
             }
         }

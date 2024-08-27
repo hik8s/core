@@ -1,7 +1,14 @@
 use crate::constant::{EMBEDDING_USIZE, OPENAI_EMBEDDING_MODEL};
 use async_openai::{error::OpenAIError, types::CreateEmbeddingRequestArgs, Client};
+use thiserror::Error;
 
-pub async fn request_embedding(text: String) -> Result<[f32; 3072], OpenAIError> {
+#[derive(Error, Debug)]
+pub enum RequestEmbeddingError {
+    #[error("OpenAI API error: {0}")]
+    OpenAIError(#[from] OpenAIError),
+}
+
+pub async fn request_embedding(text: String) -> Result<[f32; 3072], RequestEmbeddingError> {
     let client = Client::new();
 
     let request = CreateEmbeddingRequestArgs::default()

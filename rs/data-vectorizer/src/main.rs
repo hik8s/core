@@ -1,4 +1,3 @@
-use async_openai::error::OpenAIError;
 use futures_util::StreamExt;
 use shared::{
     connections::{
@@ -9,7 +8,7 @@ use shared::{
         qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
     },
     constant::QDRANT_COLLECTION_LOG,
-    openai::embed::request_embedding,
+    openai::embed::{request_embedding, RequestEmbeddingError},
     tracing::setup::setup_tracing,
     types::{
         classification::{class::Class, vectorized::to_qdrant_point},
@@ -35,7 +34,7 @@ pub enum DataVectorizationError {
     #[error("Tokenizer error: {0}")]
     TokenizerError(#[from] TokenizerError),
     #[error("OpenAI API error: {0}")]
-    OpenAIError(#[from] OpenAIError),
+    OpenAIError(#[from] RequestEmbeddingError),
     #[error("Json error: {0}")]
     JsonError(#[from] serde_json::Error),
 }
