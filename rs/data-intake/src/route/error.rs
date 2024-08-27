@@ -2,21 +2,28 @@ use rocket::{http::Status, response::Responder, Request, Response};
 use shared::connections::fluvio::connect::FluvioConnectionError;
 use std::io::Cursor;
 use thiserror::Error;
+use tracing::error;
 
-use crate::process::{metadata::MetadataError, multipart::MultipartProcessError};
+use crate::process::multipart::{MultipartMetadataError, MultipartStreamError};
 
 #[derive(Error, Debug)]
 pub enum LogIntakeError {
     #[error("Failed to stream data: {0}")]
-    StreamDataError(#[source] std::io::Error),
+    PayloadTooLarge(#[source] std::io::Error),
     #[error("Missing boundary in content type")]
-    MissingBoundary,
+    ContentTypeBoundaryMissing,
     #[error("Invalid multipart data: {0}")]
-    InvalidMultipartData(#[source] std::io::Error),
-    #[error("Metadata processing error: {0}")]
-    MetadataProcessingError(#[source] MetadataError),
+    MultipartDataInvalid(#[source] std::io::Error),
+    #[error("Multipart data missing")]
+    MultipartNoFields,
+    #[error("Error processing metadata: {0}")]
+    MultipartMetadata(#[from] MultipartMetadataError),
+    #[error("Error processing stream: {0}")]
+    MultipartStream(#[from] MultipartStreamError),
+    #[error("Unexpected field name: {0}")]
+    MultipartUnexpectedFieldName(String),
     #[error("Metadata is not set")]
-    MetadataNotSet,
+    MetadataNone,
     #[error("Failed to get streaming inserter: {0}")]
     GreptimeIngestError(#[from] greptimedb_ingester::Error),
     #[error("Error during insert: {0}")]
@@ -25,29 +32,59 @@ pub enum LogIntakeError {
     FinishError(#[source] std::io::Error),
     #[error("Failed to send batch to Fluvio topic: {0}")]
     FluvioConnectionError(#[source] FluvioConnectionError),
-    #[error("Unexpected field name: {0}")]
-    UnexpectedFieldName(String),
-    #[error("Expected field name: metadata or stream. No data was received.")]
-    NoDataReceived,
-    #[error("Error processing multipart: {0}")]
-    MultipartProcessError(#[from] MultipartProcessError),
 }
 
 impl From<LogIntakeError> for Status {
     fn from(error: LogIntakeError) -> Self {
         match error {
-            LogIntakeError::StreamDataError(_) => Status::PayloadTooLarge,
-            LogIntakeError::MissingBoundary => Status::BadRequest,
-            LogIntakeError::InvalidMultipartData(_) => Status::BadRequest,
-            LogIntakeError::MetadataProcessingError(_) => Status::InternalServerError,
-            LogIntakeError::MetadataNotSet => Status::BadRequest,
-            LogIntakeError::GreptimeIngestError(_) => Status::InternalServerError,
-            LogIntakeError::InsertError(_) => Status::InternalServerError,
-            LogIntakeError::FinishError(_) => Status::InternalServerError,
-            LogIntakeError::FluvioConnectionError(_) => Status::InternalServerError,
-            LogIntakeError::UnexpectedFieldName(_) => Status::BadRequest,
-            LogIntakeError::NoDataReceived => Status::BadRequest,
-            LogIntakeError::MultipartProcessError(_) => Status::InternalServerError,
+            LogIntakeError::PayloadTooLarge(e) => {
+                error!("Payload too large: {:?}", e);
+                Status::PayloadTooLarge
+            }
+            LogIntakeError::ContentTypeBoundaryMissing => {
+                error!("Content type boundary missing");
+                Status::BadRequest
+            }
+            LogIntakeError::MultipartDataInvalid(e) => {
+                error!("Multipart data invalid: {:?}", e);
+                Status::BadRequest
+            }
+            LogIntakeError::MultipartNoFields => {
+                error!("Multipart no fields");
+                Status::BadRequest
+            }
+            LogIntakeError::MultipartMetadata(e) => {
+                error!("Multipart metadata error: {:?}", e);
+                Status::InternalServerError
+            }
+            LogIntakeError::MultipartStream(e) => {
+                error!("Multipart stream error: {:?}", e);
+                Status::InternalServerError
+            }
+            LogIntakeError::MetadataNone => {
+                error!("Metadata none");
+                Status::BadRequest
+            }
+            LogIntakeError::GreptimeIngestError(e) => {
+                error!("Greptime ingest error: {:?}", e);
+                Status::InternalServerError
+            }
+            LogIntakeError::InsertError(e) => {
+                error!("Insert error: {:?}", e);
+                Status::InternalServerError
+            }
+            LogIntakeError::FinishError(e) => {
+                error!("Finish error: {:?}", e);
+                Status::InternalServerError
+            }
+            LogIntakeError::FluvioConnectionError(e) => {
+                error!("Fluvio connection error: {:?}", e);
+                Status::InternalServerError
+            }
+            LogIntakeError::MultipartUnexpectedFieldName(e) => {
+                error!("Multipart unexpected field name: {:?}", e);
+                Status::BadRequest
+            }
         }
     }
 }

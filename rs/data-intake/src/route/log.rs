@@ -1,5 +1,4 @@
-use crate::process::metadata::process_metadata;
-use crate::process::multipart::process_multipart_field;
+use crate::process::multipart::{process_metadata, process_stream};
 use multipart::server::Multipart;
 use rocket::data::ToByteUnit;
 use rocket::http::ContentType;
@@ -13,57 +12,52 @@ use std::{io::Cursor, ops::Deref};
 
 use super::error::LogIntakeError;
 
-#[post("/logs", data = "<data>")]
+#[post("/logs", data = "<stream>")]
 pub async fn log_intake<'a>(
-    db: GreptimeConnection,
+    greptime_connection: GreptimeConnection,
     fluvio_connection: FluvioConnection,
     content_type: &ContentType,
-    data: Data<'a>,
+    stream: Data<'a>,
 ) -> Result<String, LogIntakeError> {
-    let mut d = Vec::new();
-    data.open(100_u64.mebibytes())
-        .stream_to(&mut d)
+    let mut data = Vec::new();
+    stream
+        .open(100_u64.mebibytes())
+        .stream_to(&mut data)
         .await
-        .map_err(|e| LogIntakeError::StreamDataError(e))?;
+        .map_err(|e| LogIntakeError::PayloadTooLarge(e))?;
 
-    let boundary = match content_type
+    let boundary = content_type
         .params()
         .find(|(k, _)| k == "boundary")
         .map(|(_, v)| v)
-    {
-        Some(b) => b,
-        None => return Err(LogIntakeError::MissingBoundary),
-    };
-
-    let mut multipart = Multipart::with_body(Cursor::new(d.clone()), boundary);
-
-    // Check if the multipart data is valid
-    multipart
-        .read_entry()
-        .map_err(|e| LogIntakeError::InvalidMultipartData(e))?;
+        .ok_or_else(|| LogIntakeError::ContentTypeBoundaryMissing)?;
 
     // Initialize Metadata as None
     let mut metadata: Option<Metadata> = None;
 
     // Create a new Multipart object
-    let mut multipart = Multipart::with_body(Cursor::new(d), boundary);
+    let mut multipart = Multipart::with_body(Cursor::new(&data), boundary);
 
-    while let Ok(Some(mut field)) = multipart.read_entry() {
+    // The loop will exit successfully if the stream field is processed,
+    // exit with an error during processing and if no more field is found
+    loop {
+        let field = multipart
+            .read_entry()
+            .map_err(|e| LogIntakeError::MultipartDataInvalid(e))?
+            .ok_or_else(|| LogIntakeError::MultipartNoFields)?;
         match field.headers.name.deref() {
             "metadata" => {
-                let data = field.data;
-
-                process_metadata(data, &mut metadata)
-                    .map_err(|e| LogIntakeError::MetadataProcessingError(e))?;
+                process_metadata(field.data, &mut metadata)
+                    .map_err(|e| LogIntakeError::MultipartMetadata(e))?;
             }
             "stream" => {
                 if metadata.is_none() {
-                    return Err(LogIntakeError::MetadataNotSet);
+                    return Err(LogIntakeError::MetadataNone);
                 }
                 let metadata = metadata.as_ref().unwrap();
 
-                let logs = process_multipart_field(&mut field, &metadata.pod_name)?;
-                let stream_inserter = db
+                let logs = process_stream(field.data, &metadata.pod_name)?;
+                let stream_inserter = greptime_connection
                     .greptime
                     .streaming_inserter()
                     .map_err(|e| LogIntakeError::GreptimeIngestError(e))?;
@@ -87,11 +81,12 @@ pub async fn log_intake<'a>(
                 return Ok("Success".to_string());
             }
             field_name => {
-                return Err(LogIntakeError::UnexpectedFieldName(field_name.to_string()));
+                return Err(LogIntakeError::MultipartUnexpectedFieldName(
+                    field_name.to_string(),
+                ));
             }
         }
     }
-    Err(LogIntakeError::NoDataReceived)
 }
 
 #[cfg(test)]
