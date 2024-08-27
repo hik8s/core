@@ -1,6 +1,5 @@
-use crate::process::multipart::{process_metadata, process_stream};
-use multipart::server::Multipart;
-use rocket::data::ToByteUnit;
+use crate::process::multipart::{into_multipart, process_metadata, process_stream};
+
 use rocket::http::ContentType;
 use rocket::post;
 use rocket::Data;
@@ -8,73 +7,57 @@ use shared::connections::fluvio::connect::FluvioConnection;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
 use shared::types::metadata::Metadata;
-use std::{io::Cursor, ops::Deref};
+use std::ops::Deref;
 
 use super::error::LogIntakeError;
 
-#[post("/logs", data = "<stream>")]
+#[post("/logs", data = "<data>")]
 pub async fn log_intake<'a>(
     greptime_connection: GreptimeConnection,
     fluvio_connection: FluvioConnection,
     content_type: &ContentType,
-    stream: Data<'a>,
+    data: Data<'a>,
 ) -> Result<String, LogIntakeError> {
-    let mut data = Vec::new();
-    stream
-        .open(100_u64.mebibytes())
-        .stream_to(&mut data)
-        .await
-        .map_err(|e| LogIntakeError::PayloadTooLarge(e))?;
-
-    let boundary = content_type
-        .params()
-        .find(|(k, _)| k == "boundary")
-        .map(|(_, v)| v)
-        .ok_or_else(|| LogIntakeError::ContentTypeBoundaryMissing)?;
-
-    // Initialize Metadata as None
+    let mut multipart = into_multipart(content_type, data).await?;
     let mut metadata: Option<Metadata> = None;
-
-    // Create a new Multipart object
-    let mut multipart = Multipart::with_body(Cursor::new(&data), boundary);
 
     // The loop will exit successfully if the stream field is processed,
     // exit with an error during processing and if no more field is found
     loop {
+        // read multipart entry
         let field = multipart
             .read_entry()
             .map_err(|e| LogIntakeError::MultipartDataInvalid(e))?
             .ok_or_else(|| LogIntakeError::MultipartNoFields)?;
         match field.headers.name.deref() {
             "metadata" => {
+                // process metadata
                 process_metadata(field.data, &mut metadata)
                     .map_err(|e| LogIntakeError::MultipartMetadata(e))?;
             }
             "stream" => {
-                if metadata.is_none() {
-                    return Err(LogIntakeError::MetadataNone);
-                }
-                let metadata = metadata.as_ref().unwrap();
-
+                // process stream
+                let metadata = metadata.ok_or_else(|| LogIntakeError::MetadataNone)?;
                 let logs = process_stream(field.data, &metadata.pod_name)?;
+
+                // insert to greptime
                 let stream_inserter = greptime_connection
                     .greptime
                     .streaming_inserter()
                     .map_err(|e| LogIntakeError::GreptimeIngestError(e))?;
-
                 let insert_request = logs_to_insert_request(&logs, &metadata.pod_name);
-
-                if let Err(e) = stream_inserter.insert(vec![insert_request]).await {
-                    return Err(LogIntakeError::GreptimeIngestError(e));
-                }
-
+                stream_inserter
+                    .insert(vec![insert_request])
+                    .await
+                    .map_err(|e| LogIntakeError::GreptimeIngestError(e))?;
                 stream_inserter
                     .finish()
                     .await
                     .map_err(|e| LogIntakeError::GreptimeIngestError(e))?;
 
+                // send to fluvio
                 fluvio_connection
-                    .send_batch(logs, metadata)
+                    .send_batch(logs, &metadata)
                     .await
                     .map_err(|e| LogIntakeError::FluvioConnectionError(e))?;
 

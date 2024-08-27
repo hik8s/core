@@ -1,4 +1,10 @@
+use crate::route::error::LogIntakeError;
+
+use super::chunk::process_chunk;
 use multipart::server::{Multipart, MultipartData};
+use rocket::data::ToByteUnit;
+use rocket::http::ContentType;
+use rocket::Data;
 use serde_json::Value;
 use shared::types::metadata::Metadata;
 use shared::types::record::log::LogRecord;
@@ -8,8 +14,6 @@ use std::str::from_utf8;
 use std::str::Utf8Error;
 use thiserror::Error;
 use tracing::error;
-
-use super::chunk::process_chunk;
 
 #[derive(Error, Debug)]
 pub enum MultipartStreamError {
@@ -22,7 +26,7 @@ pub enum MultipartStreamError {
 }
 
 pub fn process_stream(
-    mut data: MultipartData<&mut Multipart<Cursor<&Vec<u8>>>>,
+    mut data: MultipartData<&mut Multipart<Cursor<Vec<u8>>>>,
     key: &String,
 ) -> Result<Vec<LogRecord>, MultipartStreamError> {
     let mut buffer = [0; 262144];
@@ -61,7 +65,7 @@ pub enum MultipartMetadataError {
 }
 
 pub fn process_metadata(
-    mut data: MultipartData<&mut Multipart<Cursor<&Vec<u8>>>>,
+    mut data: MultipartData<&mut Multipart<Cursor<Vec<u8>>>>,
     metadata: &mut Option<Metadata>,
 ) -> Result<(), MultipartMetadataError> {
     let mut text = String::new();
@@ -84,4 +88,24 @@ pub fn process_metadata(
         return Err(MultipartMetadataError::MissingPath);
     }
     Ok(())
+}
+
+pub async fn into_multipart<'a>(
+    content_type: &ContentType,
+    data: Data<'a>,
+) -> Result<Multipart<Cursor<Vec<u8>>>, LogIntakeError> {
+    let mut buffer = Vec::new();
+    data.open(100_u64.mebibytes())
+        .stream_to(&mut buffer)
+        .await
+        .map_err(|e| LogIntakeError::PayloadTooLarge(e))?;
+
+    let boundary = content_type
+        .params()
+        .find(|(k, _)| k == "boundary")
+        .map(|(_, v)| v)
+        .ok_or_else(|| LogIntakeError::ContentTypeBoundaryMissing)?;
+
+    let multipart = Multipart::with_body(Cursor::new(buffer), boundary);
+    Ok(multipart)
 }
