@@ -1,19 +1,17 @@
-use crate::process::log::process_chunk;
 use crate::process::metadata::process_metadata;
+use crate::process::multipart::process_multipart_field;
 use multipart::server::Multipart;
 use rocket::data::ToByteUnit;
 use rocket::http::ContentType;
-use rocket::http::Status;
 use rocket::post;
 use rocket::Data;
 use shared::connections::fluvio::connect::FluvioConnection;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
 use shared::types::metadata::Metadata;
-use std::io::Read;
-use std::str::from_utf8;
 use std::{io::Cursor, ops::Deref};
-use tracing::{error, info, warn};
+
+use super::error::LogIntakeError;
 
 #[post("/logs", data = "<data>")]
 pub async fn log_intake<'a>(
@@ -21,15 +19,12 @@ pub async fn log_intake<'a>(
     fluvio_connection: FluvioConnection,
     content_type: &ContentType,
     data: Data<'a>,
-) -> Result<String, Status> {
+) -> Result<String, LogIntakeError> {
     let mut d = Vec::new();
     data.open(100_u64.mebibytes())
         .stream_to(&mut d)
         .await
-        .map_err(|e| {
-            error!("Failed to stream data: {}", e);
-            Status::PayloadTooLarge
-        })?;
+        .map_err(|e| LogIntakeError::StreamDataError(e))?;
 
     let boundary = match content_type
         .params()
@@ -37,19 +32,15 @@ pub async fn log_intake<'a>(
         .map(|(_, v)| v)
     {
         Some(b) => b,
-        None => {
-            error!("Missing boundary in content type");
-            return Err(Status::BadRequest);
-        }
+        None => return Err(LogIntakeError::MissingBoundary),
     };
 
     let mut multipart = Multipart::with_body(Cursor::new(d.clone()), boundary);
 
     // Check if the multipart data is valid
-    multipart.read_entry().map_err(|e| {
-        error!("Invalid multipart data: {}", e);
-        Status::BadRequest
-    })?;
+    multipart
+        .read_entry()
+        .map_err(|e| LogIntakeError::InvalidMultipartData(e))?;
 
     // Initialize Metadata as None
     let mut metadata: Option<Metadata> = None;
@@ -62,74 +53,45 @@ pub async fn log_intake<'a>(
             "metadata" => {
                 let data = field.data;
 
-                process_metadata(data, &mut metadata).map_err(|e| {
-                    error!("Metadata processing error: {}", e);
-                    Status::InternalServerError
-                })?;
+                process_metadata(data, &mut metadata)
+                    .map_err(|e| LogIntakeError::MetadataProcessingError(e))?;
             }
             "stream" => {
                 if metadata.is_none() {
-                    error!("Metadata is not set");
-                    return Err(Status::BadRequest);
+                    return Err(LogIntakeError::MetadataNotSet);
                 }
                 let metadata = metadata.as_ref().unwrap();
 
-                let mut buffer = [0; 262144];
-                let mut remainder = String::new();
-                let mut logs = Vec::new();
-
-                while let Ok(n) = field.data.read(&mut buffer) {
-                    if n == 0 {
-                        break;
-                    }
-                    if n == buffer.len() {
-                        warn!("Buffer is full");
-                    }
-                    let chunk = from_utf8(&buffer[..n]).map_err(|e| {
-                        error!("Failed to convert buffer to UTF-8: {}", e);
-                        Status::InternalServerError
-                    })?;
-                    logs.extend(process_chunk(chunk, &mut remainder, &metadata.pod_name));
-                }
-                let stream_inserter = db.greptime.streaming_inserter().map_err(|e| {
-                    error!("Failed to get streaming inserter: {}", e);
-                    Status::InternalServerError
-                })?;
+                let logs = process_multipart_field(&mut field, &metadata.pod_name)?;
+                let stream_inserter = db
+                    .greptime
+                    .streaming_inserter()
+                    .map_err(|e| LogIntakeError::GreptimeIngestError(e))?;
 
                 let insert_request = logs_to_insert_request(&logs, &metadata.pod_name);
 
                 if let Err(e) = stream_inserter.insert(vec![insert_request]).await {
-                    error!("Error during insert: {}", e);
-                    return Err(Status::InternalServerError);
+                    return Err(LogIntakeError::GreptimeIngestError(e));
                 }
 
-                match stream_inserter.finish().await {
-                    Ok(rows) => {
-                        info!("Rows written: {}", rows);
-                    }
-                    Err(e) => {
-                        error!("Error during finish: {}", e);
-                        return Err(Status::InternalServerError);
-                    }
-                }
+                stream_inserter
+                    .finish()
+                    .await
+                    .map_err(|e| LogIntakeError::GreptimeIngestError(e))?;
+
                 fluvio_connection
                     .send_batch(logs, metadata)
                     .await
-                    .map_err(|e| {
-                        error!("Failed to send batch to Fluvio topic: {}", e);
-                        Status::InternalServerError
-                    })?;
+                    .map_err(|e| LogIntakeError::FluvioConnectionError(e))?;
 
                 return Ok("Success".to_string());
             }
-            _ => {
-                error!("Unexpected field name: {}", field.headers.name);
-                return Err(Status::BadRequest);
+            field_name => {
+                return Err(LogIntakeError::UnexpectedFieldName(field_name.to_string()));
             }
         }
     }
-    error!("Expected field name: metadata or stream. No data was received.");
-    Err(Status::BadRequest)
+    Err(LogIntakeError::NoDataReceived)
 }
 
 #[cfg(test)]

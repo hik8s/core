@@ -1,15 +1,28 @@
-use std::io::Read;
-
 use multipart::server::{Multipart, MultipartData};
 use serde_json::Value;
 use shared::types::metadata::Metadata;
-use std::error::Error;
 use std::io::Cursor;
+use std::io::Read;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum MetadataError {
+    #[error("Failed to read data: {0}")]
+    ReadError(#[from] std::io::Error),
+    #[error("Failed to parse JSON: {0}")]
+    JsonParseError(#[from] serde_json::Error),
+    #[error("Path is missing in the multipart metadata")]
+    MissingPath,
+    #[error("File is missing in the multipart metadata")]
+    MissingFile,
+    #[error("Failed to create metadata from path: {0}")]
+    FailedProcessingPath(String),
+}
 
 pub fn process_metadata(
     mut data: MultipartData<&mut Multipart<Cursor<Vec<u8>>>>,
     metadata: &mut Option<Metadata>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(), MetadataError> {
     let mut text = String::new();
     data.read_to_string(&mut text)?;
     let metadata_json: Value = serde_json::from_str(&text)?;
@@ -20,17 +33,14 @@ pub fn process_metadata(
             match Metadata::from_path(filename, path) {
                 Ok(meta) => *metadata = Some(meta),
                 Err(e) => {
-                    tracing::error!("Failed to create metadata from path: {}", e);
-                    return Err(e);
+                    return Err(MetadataError::FailedProcessingPath(e.to_string()));
                 }
             }
         } else {
-            tracing::error!("File is missing in the multipart metadata");
-            return Err("File is missing in the multipart metadata".into());
+            return Err(MetadataError::MissingFile);
         }
     } else {
-        tracing::error!("Path is missing in the multipart metadata");
-        return Err("Path is missing in the multipart metadata".into());
+        return Err(MetadataError::MissingPath);
     }
     Ok(())
 }
