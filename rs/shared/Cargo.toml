@@ -6,6 +6,7 @@ version = "0.1.0"
 [dependencies]
 anyhow = {workspace = true}
 chrono = {workspace = true}
+dotenv = {workspace = true}
 fluvio = {workspace = true}
 futures-util = {workspace = true}
 greptimedb-ingester = {workspace = true}

@@ -1,6 +1,5 @@
 pub mod process;
 pub mod route;
-pub mod utils;
 
 use rocket::{main, routes, Error};
 
@@ -10,7 +9,7 @@ use shared::{
         fluvio::connect::{FluvioConnection, TopicName},
         greptime::connect::GreptimeConnection,
     },
-    router::rocket::build_rocket_data_intake,
+    router::rocket::{build_rocket, Connection},
     tracing::setup::setup_tracing,
 };
 
@@ -19,11 +18,11 @@ async fn main() -> Result<(), Error> {
     std::env::set_var("ROCKET_ADDRESS", "0.0.0.0");
     setup_tracing();
 
-    let greptime_connection = GreptimeConnection::new().await.unwrap();
-    let fluvio_connection = FluvioConnection::new(TopicName::Log).await.unwrap();
+    let greptime = GreptimeConnection::new().await.unwrap();
+    let fluvio = FluvioConnection::new(TopicName::Log).await.unwrap();
 
-    let rocket =
-        build_rocket_data_intake(greptime_connection, fluvio_connection, routes![log_intake]);
+    let connections: Vec<Connection> = vec![greptime.into(), fluvio.into()];
+    let rocket = build_rocket(&connections, routes![log_intake]);
 
     rocket.launch().await?;
     Ok(())

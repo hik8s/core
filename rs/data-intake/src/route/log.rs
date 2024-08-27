@@ -74,22 +74,34 @@ pub async fn log_intake<'a>(
 
 #[cfg(test)]
 mod tests {
+    use rocket::routes;
+    use shared::connections::fluvio::connect::{FluvioConnection, TopicName};
+    use shared::connections::greptime::connect::GreptimeConnection;
+    use shared::mock::rocket::{rocket_test_client, TestClientError};
+    use shared::router::rocket::Connection;
     use shared::tracing::setup::setup_tracing;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
-
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
 
-    use crate::utils::mock::mock_server::rocket_test_client;
-
+    use super::log_intake;
     #[rocket::async_test]
-    async fn test_log_intake_route() {
+    async fn test_log_intake_route() -> Result<(), TestClientError> {
         setup_tracing();
-        let client = rocket_test_client().await.unwrap();
+        // connections
+        let greptime = GreptimeConnection::new().await?;
+        let fluvio = FluvioConnection::new(TopicName::Log).await?;
+        let connections: Vec<Connection> = vec![greptime.into(), fluvio.into()];
 
+        // rocket client
+        let client = rocket_test_client(&connections, routes![log_intake]).await?;
+
+        // test data
         let test_data = get_test_data(TestCase::Simple);
         let test_stream = get_multipart_stream(test_data);
 
+        // test route
         let status = post_test_stream(&client, "/logs", test_stream).await;
         assert_eq!(status.code, 200);
+        Ok(())
     }
 }

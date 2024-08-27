@@ -4,7 +4,6 @@ name = "data-intake"
 version = "0.1.0"
 
 [dependencies]
-dotenv = {workspace = true}
 greptimedb-ingester = {workspace = true}
 multipart = {workspace = true}
 rocket = {workspace = true}
