@@ -6,6 +6,7 @@ members = [
     "rs/data-intake",
     "rs/data-processing",
     "rs/data-vectorizer",
+    "rs/prompt-engine",
     "rs/shared",
 ]
 

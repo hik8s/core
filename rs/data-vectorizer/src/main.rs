@@ -9,6 +9,7 @@ use shared::{
         },
         qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
     },
+    constant::QDRANT_COLLECTION_LOG,
     tracing::setup::setup_tracing,
     types::{
         classification::{class::Class, vectorized::to_qdrant_point},
@@ -21,8 +22,6 @@ use thiserror::Error;
 use tracing::info;
 
 pub mod embedding;
-
-const COLLECTION_NAME: &str = "logs";
 
 #[derive(Error, Debug)]
 pub enum DataVectorizationError {
@@ -46,7 +45,7 @@ pub enum DataVectorizationError {
 async fn main() -> Result<(), DataVectorizationError> {
     setup_tracing();
     let fluvio_connection = FluvioConnection::new(TopicName::Class).await?;
-    let qdrant_connection = QdrantConnection::new(COLLECTION_NAME.to_owned()).await?;
+    let qdrant_connection = QdrantConnection::new(QDRANT_COLLECTION_LOG.to_owned()).await?;
     let mut consumer = fluvio_connection.create_consumer(0).await?;
     let tokenizer = Tokenizer::new()?;
     let rate_limiter = RateLimiter::new();

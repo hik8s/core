@@ -979,7 +979,6 @@ dependencies = [
 name = "data-intake"
 version = "0.1.0"
 dependencies = [
- "dotenv",
  "greptimedb-ingester",
  "multipart",
  "rocket",
@@ -3318,6 +3317,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "prompt-engine"
+version = "0.1.0"
+dependencies = [
+ "rocket",
+ "rstest",
+ "shared",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "prost"
 version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4381,6 +4391,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "dotenv",
  "fluvio",
  "futures-util",
  "greptimedb-ingester",
