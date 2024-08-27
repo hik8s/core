@@ -1,18 +1,17 @@
-use rocket::{catch, catchers, routes, Build, Rocket};
-use shared::connections::{
+use crate::connections::{
     fluvio::connect::FluvioConnection, greptime::connect::GreptimeConnection,
 };
+use rocket::{catch, catchers, Build, Rocket, Route};
 
-use crate::route::log::log_intake;
-
-pub fn build_rocket(
+pub fn build_rocket_data_intake(
     greptime_connection: GreptimeConnection,
     fluvio_connection: FluvioConnection,
+    routes: Vec<Route>,
 ) -> Rocket<Build> {
     rocket::build()
         .attach(greptime_connection)
         .attach(fluvio_connection)
-        .mount("/", routes![log_intake])
+        .mount("/", routes)
         .register("/", catchers![internal_error])
 }
 
