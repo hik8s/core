@@ -27,8 +27,10 @@ pub enum MultipartStreamError {
 
 pub fn process_stream(
     mut data: MultipartData<&mut Multipart<Cursor<Vec<u8>>>>,
-    key: &String,
+    metadata: &Metadata,
 ) -> Result<Vec<LogRecord>, MultipartStreamError> {
+    let key = metadata.pod_name.to_owned();
+
     let mut buffer = [0; 262144];
     let mut remainder = String::new();
     let mut logs = Vec::new();
@@ -40,11 +42,11 @@ pub fn process_stream(
         if n == buffer.len() {
             return {
                 error!("Buffer full for key: {}", key);
-                Err(MultipartStreamError::BufferFull(key.clone()))
+                Err(MultipartStreamError::BufferFull(key.to_owned()))
             };
         }
         let chunk = from_utf8(&buffer[..n])?;
-        logs.extend(process_chunk(chunk, &mut remainder, &key));
+        logs.extend(process_chunk(chunk, &mut remainder, metadata));
     }
 
     Ok(logs)

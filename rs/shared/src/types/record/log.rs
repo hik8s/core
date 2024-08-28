@@ -7,6 +7,8 @@ use thiserror::Error;
 use tracing::warn;
 use uuid7::uuid7;
 
+use crate::types::metadata::Metadata;
+
 const DEFAULT_TS: &str = "1970-01-01T00:00:00Z";
 
 #[derive(Debug, Error)]
@@ -23,24 +25,27 @@ pub struct LogRecord {
     pub message: String,
     pub record_id: String,
     pub key: String,
+    pub namespace: String,
+    pub pod_uid: String,
+    pub container: String,
 }
 
 impl LogRecord {
-    pub fn new(timestamp: i64, message: &str, record_id: String, key: String) -> Self {
+    pub fn new(timestamp: i64, message: &str, record_id: String, metadata: &Metadata) -> Self {
         LogRecord {
             timestamp,
             message: message.to_owned(),
             record_id,
-            key,
+            key: metadata.pod_name.to_owned(),
+            namespace: metadata.namespace.to_owned(),
+            pod_uid: metadata.pod_uid.to_owned(),
+            container: metadata.container.to_owned(),
         }
     }
-    pub fn into_parts(self) -> (i64, String, String, String) {
-        (self.timestamp, self.message, self.record_id, self.key)
-    }
 }
-impl From<(&String, &String)> for LogRecord {
+impl From<(&String, &Metadata)> for LogRecord {
     // This is used to parse the string from raw data
-    fn from((raw_message, key): (&String, &String)) -> LogRecord {
+    fn from((raw_message, metadata): (&String, &Metadata)) -> LogRecord {
         let record_id = uuid7().to_string();
         let mut split = raw_message.splitn(2, 'Z');
         let datetime_str = split.next().unwrap_or_else(|| {
@@ -54,7 +59,7 @@ impl From<(&String, &String)> for LogRecord {
             .unwrap_or(0);
         let message = split.next().unwrap_or(raw_message);
 
-        LogRecord::new(ts, message, record_id, key.to_owned())
+        LogRecord::new(ts, message, record_id, metadata)
     }
 }
 impl TryFrom<ConsumerRecord> for LogRecord {

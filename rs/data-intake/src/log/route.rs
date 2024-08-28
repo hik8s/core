@@ -38,7 +38,7 @@ pub async fn log_intake<'a>(
             "stream" => {
                 // process stream
                 let metadata = metadata.ok_or_else(|| LogIntakeError::MetadataNone)?;
-                let logs = process_stream(field.data, &metadata.pod_name)?;
+                let logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
                 let stream_inserter = greptime_connection

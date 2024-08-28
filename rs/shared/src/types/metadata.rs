@@ -58,10 +58,4 @@ impl Metadata {
             container,
         })
     }
-    pub fn test_path(podname: &str) -> String {
-        format!(
-            "/var/log/pods/test-ns_{}_123-4123-53754/some-container",
-            podname
-        )
-    }
 }

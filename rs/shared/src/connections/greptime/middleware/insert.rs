@@ -19,7 +19,7 @@ pub fn logs_to_insert_request(logs: &Vec<LogRecord>, key: &String) -> InsertRequ
 }
 
 pub fn classified_log_to_insert_request(log: ClassifiedLogRecord) -> InsertRequest {
-    let key = log.key.to_owned();
+    let key_clone = log.key.to_owned();
     let (
         timestamp,
         message,
@@ -29,6 +29,10 @@ pub fn classified_log_to_insert_request(log: ClassifiedLogRecord) -> InsertReque
         class_representation,
         class_id,
         similarity,
+        key,
+        namespace,
+        pod_uid,
+        container,
     ) = fold_classified_records(&vec![log]);
 
     let columns: Vec<Column> = vec![
@@ -40,10 +44,14 @@ pub fn classified_log_to_insert_request(log: ClassifiedLogRecord) -> InsertReque
         string_column("class_representation", class_representation),
         string_column("class_id", class_id),
         f64_column("similarity", similarity),
+        string_column("key", key),
+        string_column("namespace", namespace),
+        string_column("pod_uid", pod_uid),
+        string_column("container", container),
     ];
 
     InsertRequest {
-        table_name: key,
+        table_name: key_clone,
         columns,
         row_count: 1,
     }
@@ -161,6 +169,10 @@ fn fold_classified_records(
     Vec<String>,
     Vec<String>,
     Vec<f64>,
+    Vec<String>,
+    Vec<String>,
+    Vec<String>,
+    Vec<String>,
 ) {
     // Use the macro to extract the specified fields from the logs
     fold_records!(
@@ -172,6 +184,10 @@ fn fold_classified_records(
         length,
         class_representation,
         class_id,
-        similarity
+        similarity,
+        key,
+        namespace,
+        pod_uid,
+        container
     )
 }

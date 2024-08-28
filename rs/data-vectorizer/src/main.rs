@@ -7,7 +7,7 @@ use shared::{
         },
         qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
     },
-    constant::QDRANT_COLLECTION_LOG,
+    constant::{OPENAI_EMBEDDING_TOKEN_LIMIT, QDRANT_COLLECTION_LOG},
     openai::embed::{request_embedding, RequestEmbeddingError},
     tracing::setup::setup_tracing,
     types::{
@@ -46,7 +46,7 @@ async fn main() -> Result<(), DataVectorizationError> {
     let qdrant_connection = QdrantConnection::new(QDRANT_COLLECTION_LOG.to_owned()).await?;
     let mut consumer = fluvio_connection.create_consumer(0).await?;
     let tokenizer = Tokenizer::new()?;
-    let rate_limiter = RateLimiter::new();
+    let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
     while let Some(Ok(record)) = consumer.next().await {
         let class: Class = record.try_into()?;
         let (key, class_id) = (class.key.clone(), class.class_id.clone());

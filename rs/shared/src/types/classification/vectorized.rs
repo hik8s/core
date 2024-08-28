@@ -10,24 +10,27 @@ use super::class::Class;
 
 #[derive(Serialize, Deserialize)]
 pub struct QdrantPoint {
-    pub key: String,
-    // pub namespace: String,
     pub class_id: String,
+    pub container: String,
+    pub key: String,
     pub length: usize,
+    pub namespace: String,
+    pub representation: String,
     pub token_count_original: u32,
     pub token_count_cut: u32,
-    pub representation: String,
 }
 
 impl QdrantPoint {
     pub fn new(class: Class, token_count_cut: u32, representation: String) -> Self {
         Self {
-            key: class.key,
             class_id: class.class_id,
+            container: class.container,
+            key: class.key,
             length: class.length,
+            namespace: class.namespace,
+            representation,
             token_count_original: class.token_count,
             token_count_cut: token_count_cut,
-            representation,
         }
     }
 }
