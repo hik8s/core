@@ -1,5 +1,3 @@
-use async_openai::error::OpenAIError;
-use embedding::log::{openai::request_embedding, ratelimit::RateLimiter};
 use futures_util::StreamExt;
 use shared::{
     connections::{
@@ -9,20 +7,22 @@ use shared::{
         },
         qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
     },
+    constant::{OPENAI_EMBEDDING_TOKEN_LIMIT, QDRANT_COLLECTION_LOG},
+    openai::embed::{request_embedding, RequestEmbeddingError},
     tracing::setup::setup_tracing,
     types::{
-        classification::{class::Class, vectorized::to_qdrant_point},
+        classification::{
+            class::Class,
+            vectorized::{to_qdrant_point, VectorizedClass},
+        },
         classifier::error::TokenizerError,
         record::consumer_record::ConsumerRecordError,
         tokenizer::tokenizer::Tokenizer,
     },
+    utils::ratelimit::RateLimiter,
 };
 use thiserror::Error;
 use tracing::info;
-
-pub mod embedding;
-
-const COLLECTION_NAME: &str = "logs";
 
 #[derive(Error, Debug)]
 pub enum DataVectorizationError {
@@ -37,7 +37,7 @@ pub enum DataVectorizationError {
     #[error("Tokenizer error: {0}")]
     TokenizerError(#[from] TokenizerError),
     #[error("OpenAI API error: {0}")]
-    OpenAIError(#[from] OpenAIError),
+    OpenAIError(#[from] RequestEmbeddingError),
     #[error("Json error: {0}")]
     JsonError(#[from] serde_json::Error),
 }
@@ -46,25 +46,26 @@ pub enum DataVectorizationError {
 async fn main() -> Result<(), DataVectorizationError> {
     setup_tracing();
     let fluvio_connection = FluvioConnection::new(TopicName::Class).await?;
-    let qdrant_connection = QdrantConnection::new(COLLECTION_NAME.to_owned()).await?;
+    let qdrant_connection = QdrantConnection::new(QDRANT_COLLECTION_LOG.to_owned()).await?;
     let mut consumer = fluvio_connection.create_consumer(0).await?;
     let tokenizer = Tokenizer::new()?;
-    let rate_limiter = RateLimiter::new();
+    let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
     while let Some(Ok(record)) = consumer.next().await {
         let class: Class = record.try_into()?;
         let (key, class_id) = (class.key.clone(), class.class_id.clone());
 
-        // fit token limit
+        // vectorize class
         let (representation, token_count) = tokenizer.clip_tail(class.to_string());
+        let vectorized_class = VectorizedClass::new(class, token_count, representation.clone());
 
         // obey rate limit
         rate_limiter.check_rate_limit(token_count).await;
 
         // get embedding
-        let embedding = request_embedding(representation.clone()).await?;
+        let array = request_embedding(representation.clone()).await?;
 
         // create qdrant point
-        let qdrant_point = to_qdrant_point(class, token_count as u32, representation, embedding)?;
+        let qdrant_point = to_qdrant_point(vectorized_class, array)?;
 
         // upsert to qdrant
         qdrant_connection.upsert_point(qdrant_point).await?;

@@ -6,6 +6,8 @@ use rocket::{
     local::asynchronous::Client,
 };
 
+use crate::types::metadata::Metadata;
+
 use super::mock_data::TestCase;
 
 pub async fn post_test_stream(client: &Client, route: &str, test_stream: String) -> Status {
@@ -43,6 +45,16 @@ pub fn generate_podname(case: TestCase) -> String {
     format!("{case}-{part1}-{part2}")
 }
 
-pub fn get_test_path(podname: &String) -> String {
-    format!("/var/log/pods/test-ns_{podname}_123-4123-53754/some-container")
+pub fn get_test_path(podname: &str) -> String {
+    let base_path = "/var/log/pods";
+    let pod_uid = "123-4123-53754";
+    let namespace = "test-ns";
+    let container = "some-container";
+    format!("{base_path}/{namespace}_{podname}_{pod_uid}/{container}")
+}
+
+pub fn get_test_metadata(podname: &str) -> Metadata {
+    let filename = generate_random_filename();
+    let path = get_test_path(podname);
+    Metadata::from_path(&filename, &path).unwrap()
 }

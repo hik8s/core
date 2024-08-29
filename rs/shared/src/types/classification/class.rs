@@ -18,20 +18,29 @@ pub struct Class {
     pub length: usize,
     pub class_id: String,
     pub similarity: f64,
-    pub key: String,
     pub token_count: u32,
+    pub key: String,
+    pub namespace: String,
+    pub container: String,
 }
 impl Class {
-    pub fn new(data: Vec<String>, key: &String, token_count: u32) -> Self {
-        let items: Vec<Item> = data.into_iter().map(Item::Fix).collect();
+    pub fn new(log: &PreprocessedLogRecord, token_count: u32) -> Self {
+        let items: Vec<Item> = log
+            .preprocessed_message
+            .clone()
+            .into_iter()
+            .map(Item::Fix)
+            .collect();
         Self {
             length: items.len(),
             items,
             count: 1,
             class_id: uuid7().to_string(),
             similarity: 0.0,
-            key: key.to_owned(),
             token_count,
+            key: log.key.to_owned(),
+            namespace: log.namespace.to_owned(),
+            container: log.container.to_owned(),
         }
     }
 
@@ -56,7 +65,7 @@ impl Class {
     }
 
     pub fn from_log_and_token_count(log: &PreprocessedLogRecord, token_count: u32) -> Self {
-        Self::new(log.preprocessed_message.clone(), &log.key, token_count)
+        Self::new(log, token_count)
     }
 }
 impl TryInto<String> for Class {

@@ -8,7 +8,7 @@ pub fn get_multipart_stream(test_data: TestData) -> String {
     let boundary = "boundary";
     let metadata_obj = json!({
         "file": generate_random_filename(),
-        "path": get_test_path(&test_data.key)
+        "path": get_test_path(&test_data.metadata.pod_name),
     });
 
     let metadata = format!(

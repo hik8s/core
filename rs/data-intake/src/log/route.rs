@@ -1,5 +1,6 @@
 use crate::process::multipart::{into_multipart, process_metadata, process_stream};
 
+use super::error::LogIntakeError;
 use rocket::http::ContentType;
 use rocket::post;
 use rocket::Data;
@@ -8,8 +9,6 @@ use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
 use shared::types::metadata::Metadata;
 use std::ops::Deref;
-
-use super::error::LogIntakeError;
 
 #[post("/logs", data = "<data>")]
 pub async fn log_intake<'a>(
@@ -38,7 +37,7 @@ pub async fn log_intake<'a>(
             "stream" => {
                 // process stream
                 let metadata = metadata.ok_or_else(|| LogIntakeError::MetadataNone)?;
-                let logs = process_stream(field.data, &metadata.pod_name)?;
+                let logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
                 let stream_inserter = greptime_connection

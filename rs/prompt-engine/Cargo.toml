@@ -1,13 +1,11 @@
 [package]
 edition.workspace = true
-name = "data-vectorizer"
+name = "prompt-engine"
 version = "0.1.0"
 
 [dependencies]
-futures-util = {workspace = true}
-qdrant-client = {workspace = true}
+rocket = {workspace = true}
 rstest = {workspace = true}
-serde_json = {workspace = true}
 shared = {workspace = true}
 thiserror = {workspace = true}
 tokio = {workspace = true}

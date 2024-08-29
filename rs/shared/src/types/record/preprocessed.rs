@@ -1,4 +1,4 @@
-use crate::preprocessing::log::preprocess_log;
+use crate::{preprocessing::log::preprocess_message, types::metadata::Metadata};
 
 use super::log::LogRecord;
 
@@ -10,6 +10,9 @@ pub struct PreprocessedLogRecord {
     pub preprocessed_message: Vec<String>,
     pub length: u64,
     pub key: String,
+    pub namespace: String,
+    pub pod_uid: String,
+    pub container: String,
 }
 
 impl PreprocessedLogRecord {
@@ -19,6 +22,9 @@ impl PreprocessedLogRecord {
         record_id: String,
         preprocessed_message: Vec<String>,
         key: String,
+        namespace: String,
+        pod_uid: String,
+        container: String,
     ) -> Self {
         PreprocessedLogRecord {
             timestamp,
@@ -27,38 +33,33 @@ impl PreprocessedLogRecord {
             length: preprocessed_message.len() as u64,
             preprocessed_message,
             key,
+            namespace,
+            pod_uid,
+            container,
         }
-    }
-
-    pub fn into_parts(&self) -> (i64, String, String, Vec<String>, u64, String) {
-        (
-            self.timestamp,
-            self.message.to_owned(),
-            self.record_id.to_owned(),
-            self.preprocessed_message.to_owned(),
-            self.length,
-            self.key.to_owned(),
-        )
     }
 }
 
-impl From<(&String, &String)> for PreprocessedLogRecord {
-    fn from((raw_message, key): (&String, &String)) -> Self {
-        let log = LogRecord::from((raw_message, key));
+impl From<(&String, &Metadata)> for PreprocessedLogRecord {
+    fn from((raw_message, metadata): (&String, &Metadata)) -> Self {
+        let log = LogRecord::from((raw_message, metadata));
         PreprocessedLogRecord::from(log)
     }
 }
 
 impl From<LogRecord> for PreprocessedLogRecord {
     fn from(log: LogRecord) -> Self {
-        let preprocessed_message = preprocess_log(&log);
+        let preprocessed_message = preprocess_message(&log.message);
         PreprocessedLogRecord {
             timestamp: log.timestamp,
             message: log.message,
             record_id: log.record_id,
-            key: log.key,
             length: preprocessed_message.len() as u64,
             preprocessed_message,
+            key: log.key,
+            namespace: log.namespace,
+            pod_uid: log.pod_uid,
+            container: log.container,
         }
     }
 }

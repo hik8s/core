@@ -2,14 +2,18 @@ use std::sync::Arc;
 
 use qdrant_client::{
     qdrant::{
-        CreateCollectionBuilder, Distance, PointStruct, PointsOperationResponse,
-        UpsertPointsBuilder, VectorParamsBuilder,
+        Condition, CreateCollectionBuilder, Distance, Filter, PointStruct, PointsOperationResponse,
+        SearchPointsBuilder, UpsertPointsBuilder, VectorParamsBuilder,
     },
     Qdrant,
 };
+use rocket::{request::FromRequest, State};
 use tracing::info;
 
-use crate::types::classification::vectorized::EMBEDDING_SIZE;
+use crate::{
+    constant::{EMBEDDING_SIZE, EMBEDDING_USIZE},
+    types::classification::vectorized::{to_vectorized_class, VectorizedClass},
+};
 
 use super::{config::QdrantConfig, error::QdrantConnectionError};
 
@@ -69,4 +73,61 @@ impl QdrantConnection {
             .await?;
         Ok(response)
     }
+    pub async fn search_classes(
+        &self,
+        array: [f32; EMBEDDING_USIZE],
+        filter: Filter,
+        limit: u64,
+    ) -> Result<Vec<VectorizedClass>, QdrantConnectionError> {
+        let request = SearchPointsBuilder::new(
+            self.config.collection_name.to_owned(),
+            array.to_vec(),
+            limit,
+        )
+        .filter(filter)
+        .with_payload(true);
+        let response = self.client.search_points(request).await?;
+        let vectorized_classes = to_vectorized_class(response.result)?;
+        Ok(vectorized_classes)
+    }
+}
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for QdrantConnection {
+    type Error = ();
+
+    async fn from_request(
+        request: &'r rocket::Request<'_>,
+    ) -> rocket::request::Outcome<Self, Self::Error> {
+        let connection = request.guard::<&State<QdrantConnection>>().await.unwrap();
+        rocket::request::Outcome::Success(connection.inner().clone())
+    }
+}
+
+#[rocket::async_trait]
+impl rocket::fairing::Fairing for QdrantConnection {
+    fn info(&self) -> rocket::fairing::Info {
+        rocket::fairing::Info {
+            name: "Qdrant connection",
+            kind: rocket::fairing::Kind::Ignite,
+        }
+    }
+
+    async fn on_ignite(&self, rocket: rocket::Rocket<rocket::Build>) -> rocket::fairing::Result {
+        Ok(rocket.manage(self.clone()))
+    }
+}
+
+pub fn namespace(namespace: &str) -> Filter {
+    Filter::must(vec![Condition::matches(
+        "namespace".to_string(),
+        namespace.to_string(),
+    )])
+}
+
+pub fn not_namespace(namespace: &str) -> Filter {
+    Filter::must_not(vec![Condition::matches(
+        "namespace".to_string(),
+        namespace.to_string(),
+    )])
 }
