@@ -1,11 +1,11 @@
+use prompt::route::prompt_engine;
 use rocket::{main, routes, Error};
-use route::prompt::route::prompt_engine;
 use shared::{
     connections::qdrant::connect::QdrantConnection, constant::QDRANT_COLLECTION_LOG,
     router::rocket::build_rocket, tracing::setup::setup_tracing,
 };
 
-pub mod route;
+pub mod prompt;
 
 #[main]
 async fn main() -> Result<(), Error> {

@@ -34,7 +34,7 @@ mod tests {
     };
     use tracing::info;
 
-    use crate::route::prompt::route::prompt_engine;
+    use crate::prompt::route::prompt_engine;
 
     #[tokio::test]
     async fn test_prompt() {
