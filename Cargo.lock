@@ -3323,6 +3323,7 @@ dependencies = [
  "rstest",
  "shared",
  "thiserror",
+ "tokio",
  "tracing",
 ]
 

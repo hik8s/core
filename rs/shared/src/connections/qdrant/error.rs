@@ -9,4 +9,6 @@ pub enum QdrantConnectionError {
     ClientError(#[from] QdrantError),
     #[error("Configuration error: {0}")]
     ConfigError(#[from] ConfigError),
+    #[error("Serde json error: {0}")]
+    SerdeJsonError(#[from] serde_json::Error),
 }

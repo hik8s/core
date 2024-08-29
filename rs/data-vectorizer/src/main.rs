@@ -11,7 +11,10 @@ use shared::{
     openai::embed::{request_embedding, RequestEmbeddingError},
     tracing::setup::setup_tracing,
     types::{
-        classification::{class::Class, vectorized::to_qdrant_point},
+        classification::{
+            class::Class,
+            vectorized::{to_qdrant_point, VectorizedClass},
+        },
         classifier::error::TokenizerError,
         record::consumer_record::ConsumerRecordError,
         tokenizer::tokenizer::Tokenizer,
@@ -51,17 +54,18 @@ async fn main() -> Result<(), DataVectorizationError> {
         let class: Class = record.try_into()?;
         let (key, class_id) = (class.key.clone(), class.class_id.clone());
 
-        // fit token limit
+        // vectorize class
         let (representation, token_count) = tokenizer.clip_tail(class.to_string());
+        let vectorized_class = VectorizedClass::new(class, token_count, representation.clone());
 
         // obey rate limit
         rate_limiter.check_rate_limit(token_count).await;
 
         // get embedding
-        let embedding = request_embedding(representation.clone()).await?;
+        let array = request_embedding(representation.clone()).await?;
 
         // create qdrant point
-        let qdrant_point = to_qdrant_point(class, token_count as u32, representation, embedding)?;
+        let qdrant_point = to_qdrant_point(vectorized_class, array)?;
 
         // upsert to qdrant
         qdrant_connection.upsert_point(qdrant_point).await?;
