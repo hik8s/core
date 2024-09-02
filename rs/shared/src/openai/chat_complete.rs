@@ -1,4 +1,4 @@
-use crate::client::reqwest::PromptEngineConnection;
+use crate::connections::prompt_engine::connect::PromptEngineConnection;
 use crate::constant::OPENAI_CHAT_MODEL;
 use async_openai::types::ChatCompletionRequestMessage;
 use async_openai::{types::CreateChatCompletionRequestArgs, Client};

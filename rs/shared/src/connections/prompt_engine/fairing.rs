@@ -1,6 +1,6 @@
 use rocket::{request::FromRequest, State};
 
-use super::reqwest::PromptEngineConnection;
+use super::connect::PromptEngineConnection;
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for PromptEngineConnection {

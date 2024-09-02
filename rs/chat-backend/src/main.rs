@@ -1,8 +1,10 @@
 use chat::route::chat_completion;
 use rocket::{main, routes};
 use shared::{
-    client::reqwest::{PromptEngineConnection, PromptEngineError},
-    connections::qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
+    connections::{
+        prompt_engine::connect::{PromptEngineConnection, PromptEngineError},
+        qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
+    },
     constant::{CHAT_BACKEND_PORT, QDRANT_COLLECTION_LOG},
     router::rocket::build_rocket,
     tracing::setup::setup_tracing,

@@ -1,2 +1,2 @@
+pub mod connect;
 pub mod fairing;
-pub mod reqwest;
