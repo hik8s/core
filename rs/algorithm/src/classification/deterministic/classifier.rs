@@ -1,10 +1,9 @@
 use shared::{
-    connections::redis::connect::RedisConnection,
+    connections::{redis::connect::RedisConnection, shared::error::ConfigError},
     preprocessing::compare::compare,
     types::{
         classification::{class::Class, state::ClassifierState},
-        classifier::error::ClassifierError,
-        error::classificationerror::ClassificationError,
+        error::ClassifierError,
         record::{classified::ClassifiedLogRecord, preprocessed::PreprocessedLogRecord},
         tokenizer::tokenizer::Tokenizer,
     },
@@ -43,7 +42,7 @@ impl Classifier {
     pub fn classify(
         &mut self,
         log: &PreprocessedLogRecord,
-    ) -> Result<(Option<Class>, ClassifiedLogRecord), ClassificationError> {
+    ) -> Result<(Option<Class>, ClassifiedLogRecord), ClassifierError> {
         let mut best_match: Option<&mut Class> = None;
         let mut highest_similarity = 0 as f64;
         let state = &mut self.redis.get(&log.key)?;
@@ -117,14 +116,14 @@ mod tests {
     use shared::{
         connections::redis::connect::RedisConnection,
         tracing::setup::setup_tracing,
-        types::{error::testerror::TestError, record::preprocessed::PreprocessedLogRecord},
+        types::{error::ClassifierError, record::preprocessed::PreprocessedLogRecord},
         utils::mock::mock_data::{get_test_data, TestCase, TestData},
     };
 
     #[rstest]
     #[tokio::test]
     #[case(get_test_data(TestCase::Simple))]
-    async fn test_classify_json_nested(#[case] test_data: TestData) -> Result<(), TestError> {
+    async fn test_classify_json_nested(#[case] test_data: TestData) -> Result<(), ClassifierError> {
         setup_tracing();
 
         let redis = RedisConnection::new()?;

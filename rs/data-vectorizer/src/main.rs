@@ -15,7 +15,6 @@ use shared::{
             class::Class,
             vectorized::{to_qdrant_point, VectorizedClass},
         },
-        classifier::error::TokenizerError,
         tokenizer::tokenizer::Tokenizer,
     },
     utils::ratelimit::RateLimiter,
@@ -31,8 +30,8 @@ pub enum DataVectorizationError {
     FluvioOffsetError(#[from] OffsetError),
     #[error("Qdrant connection error: {0}")]
     QdrantConnectionError(#[from] QdrantConnectionError),
-    #[error("Tokenizer error: {0}")]
-    TokenizerError(#[from] TokenizerError),
+    #[error("Anyhow error: {0}")]
+    AnyhowError(#[from] anyhow::Error),
     #[error("OpenAI API error: {0}")]
     OpenAIError(#[from] RequestEmbeddingError),
     #[error("Json error: {0}")]

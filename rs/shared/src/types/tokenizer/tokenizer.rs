@@ -1,7 +1,5 @@
 use tiktoken_rs::{p50k_base, CoreBPE};
 
-use crate::types::classifier::error::TokenizerError;
-
 const TOKEN_LIMIT: usize = 8192;
 
 pub struct Tokenizer {
@@ -9,7 +7,7 @@ pub struct Tokenizer {
 }
 
 impl Tokenizer {
-    pub fn new() -> Result<Tokenizer, TokenizerError> {
+    pub fn new() -> Result<Tokenizer, anyhow::Error> {
         let bpe = p50k_base()?;
         Ok(Tokenizer { bpe })
     }

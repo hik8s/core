@@ -7,4 +7,6 @@ pub enum ConfigError {
     EnvVarError(#[source] VarError, String),
     #[error("Error: {0}")]
     ParseFloatError(#[from] ParseFloatError),
+    #[error("Anyhow error: {0}")]
+    AnyhowError(#[from] anyhow::Error),
 }

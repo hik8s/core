@@ -7,10 +7,10 @@ use shared::{
             middleware::insert::classified_log_to_insert_request,
         },
         redis::connect::{RedisConnection, RedisConnectionError},
+        shared::error::ConfigError,
     },
     types::{
-        classifier::error::ClassifierError,
-        error::classificationerror::ClassificationError,
+        error::ClassifierError,
         record::{log::LogRecord, preprocessed::PreprocessedLogRecord},
     },
 };
@@ -22,8 +22,6 @@ use algorithm::classification::deterministic::classifier::Classifier;
 
 #[derive(Error, Debug)]
 pub enum ProcessThreadError {
-    #[error("Classification error: {0}")]
-    ClassificationError(#[from] ClassificationError),
     #[error("Classifier error: {0}")]
     ClassifierError(#[from] ClassifierError),
     #[error("Failed to send result to main thread: {0}")]

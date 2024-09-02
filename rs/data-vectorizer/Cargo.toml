@@ -4,6 +4,7 @@ name = "data-vectorizer"
 version = "0.1.0"
 
 [dependencies]
+anyhow = {workspace = true}
 futures-util = {workspace = true}
 qdrant-client = {workspace = true}
 rstest = {workspace = true}
