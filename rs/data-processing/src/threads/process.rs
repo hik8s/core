@@ -1,13 +1,13 @@
 use greptimedb_ingester::Error as GreptimeIngestError;
 use shared::{
     connections::{
-        fluvio::{FluvioConnection, FluvioConnectionError},
         greptime::{
             connect::{GreptimeConnection, GreptimeConnectionError},
             middleware::insert::classified_log_to_insert_request,
         },
         redis::connect::{RedisConnection, RedisConnectionError},
     },
+    fluvio::{FluvioConnection, FluvioConnectionError},
     types::{
         classifier::error::ClassifierError,
         record::{log::LogRecord, preprocessed::PreprocessedLogRecord},

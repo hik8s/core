@@ -1,13 +1,11 @@
 use futures_util::StreamExt;
 use shared::{
     connections::{
-        fluvio::{
-            commit_and_flush_offsets, FluvioConnection, FluvioConnectionError, OffsetError,
-            TopicName,
-        },
+        fluvio::offset::commit_and_flush_offsets,
         qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
     },
     constant::{OPENAI_EMBEDDING_TOKEN_LIMIT, QDRANT_COLLECTION_LOG},
+    fluvio::{FluvioConnection, FluvioConnectionError, OffsetError, TopicName},
     openai::embed::{request_embedding, RequestEmbeddingError},
     tracing::setup::setup_tracing,
     types::{

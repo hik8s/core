@@ -14,7 +14,8 @@ use crate::constant::FLUVIO_BATCH_SIZE;
 use crate::types::metadata::Metadata;
 use crate::types::record::log::LogRecord;
 
-use super::{create_topic, FluvioConnectionError, FluvioTopic, TopicName};
+use super::error::FluvioConnectionError;
+use super::topic::{create_topic, FluvioTopic, TopicName};
 
 #[derive(Clone)]
 pub struct FluvioConnection {

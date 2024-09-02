@@ -2,7 +2,7 @@ use crate::LogRecord;
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use futures_util::StreamExt;
-use shared::connections::fluvio::{commit_and_flush_offsets, OffsetError};
+use shared::fluvio::{commit_and_flush_offsets, OffsetError};
 use shared::types::record::log::LogParseError;
 use thiserror::Error;
 use tokio::sync::mpsc;

@@ -6,7 +6,7 @@ use crate::constant::{
     TOPIC_LOG_PARTITIONS, TOPIC_LOG_REPLICAS,
 };
 
-use super::FluvioConnectionError;
+use super::error::FluvioConnectionError;
 
 pub enum TopicName {
     Log,

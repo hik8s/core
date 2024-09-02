@@ -1,6 +1,9 @@
-use crate::connections::{
-    fluvio::FluvioConnection, greptime::connect::GreptimeConnection,
-    prompt_engine::connect::PromptEngineConnection, qdrant::connect::QdrantConnection,
+use crate::{
+    connections::{
+        greptime::connect::GreptimeConnection, prompt_engine::connect::PromptEngineConnection,
+        qdrant::connect::QdrantConnection,
+    },
+    fluvio::FluvioConnection,
 };
 use rocket::{catch, catchers, Build, Rocket, Route};
 

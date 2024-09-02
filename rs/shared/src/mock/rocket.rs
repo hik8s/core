@@ -1,8 +1,8 @@
 use crate::{
     connections::{
-        fluvio::FluvioConnectionError, greptime::connect::GreptimeConnectionError,
-        redis::connect::RedisConnectionError,
+        greptime::connect::GreptimeConnectionError, redis::connect::RedisConnectionError,
     },
+    fluvio::FluvioConnectionError,
     router::rocket::{build_rocket, Attach},
 };
 use rocket::{local::asynchronous::Client, Route};

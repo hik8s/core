@@ -5,10 +5,8 @@ use rocket::{main, routes, Error};
 
 use log::route::log_intake;
 use shared::{
-    connections::{
-        fluvio::{FluvioConnection, TopicName},
-        greptime::connect::GreptimeConnection,
-    },
+    connections::greptime::connect::GreptimeConnection,
+    fluvio::{FluvioConnection, TopicName},
     router::rocket::{build_rocket, Connection},
     tracing::setup::setup_tracing,
 };

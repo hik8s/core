@@ -1,3 +1,4 @@
+use fluvio::dataplane::link::ErrorCode;
 use fluvio::FluvioError;
 use thiserror::Error;
 
@@ -13,4 +14,12 @@ pub enum FluvioConnectionError {
     ConsumerConfigError(String),
     #[error("Consumer error: {0}")]
     ConsumerError(String),
+}
+
+#[derive(Error, Debug)]
+pub enum OffsetError {
+    #[error("Failed to commit offset for key {1}: {0}. ID: {2}")]
+    Commit(ErrorCode, String, String),
+    #[error("Failed to flush offset for key {1}: {0}. ID: {2}")]
+    Flush(ErrorCode, String, String),
 }
