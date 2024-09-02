@@ -1,7 +1,7 @@
 use redis::{from_redis_value, FromRedisValue, RedisResult, RedisWrite, ToRedisArgs, Value};
 use serde::{Deserialize, Serialize};
 
-use super::class::Class;
+use crate::types::class::Class;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ClassifierState {

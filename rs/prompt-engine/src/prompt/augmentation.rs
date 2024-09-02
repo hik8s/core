@@ -1,4 +1,4 @@
-use shared::types::classification::vectorized::VectorizedClass;
+use shared::types::class::vectorized::VectorizedClass;
 
 pub fn create_augmented_prompt(
     user_message: &str,

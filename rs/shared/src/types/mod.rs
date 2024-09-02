@@ -1,5 +1,5 @@
-pub mod classification;
-pub mod error;
+pub mod class;
+pub mod classifier;
 pub mod metadata;
 pub mod record;
 pub mod tokenizer;

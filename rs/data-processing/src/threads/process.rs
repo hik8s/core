@@ -7,10 +7,9 @@ use shared::{
             middleware::insert::classified_log_to_insert_request,
         },
         redis::connect::{RedisConnection, RedisConnectionError},
-        shared::error::ConfigError,
     },
     types::{
-        error::ClassifierError,
+        classifier::error::ClassifierError,
         record::{log::LogRecord, preprocessed::PreprocessedLogRecord},
     },
 };

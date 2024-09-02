@@ -5,7 +5,7 @@ use qdrant_client::qdrant::{PointStruct, ScoredPoint, Value};
 use serde::{Deserialize, Serialize};
 use serde_json::Error as JsonError;
 
-use super::class::Class;
+use super::Class;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct VectorizedClass {

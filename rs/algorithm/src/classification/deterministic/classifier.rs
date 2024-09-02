@@ -1,11 +1,11 @@
 use shared::{
-    connections::{redis::connect::RedisConnection, shared::error::ConfigError},
+    connections::redis::connect::RedisConnection,
     preprocessing::compare::compare,
     types::{
-        classification::{class::Class, state::ClassifierState},
-        error::ClassifierError,
+        class::Class,
+        classifier::{error::ClassifierError, state::ClassifierState},
         record::{classified::ClassifiedLogRecord, preprocessed::PreprocessedLogRecord},
-        tokenizer::tokenizer::Tokenizer,
+        tokenizer::Tokenizer,
     },
 };
 use std::env::var;
@@ -116,7 +116,7 @@ mod tests {
     use shared::{
         connections::redis::connect::RedisConnection,
         tracing::setup::setup_tracing,
-        types::{error::ClassifierError, record::preprocessed::PreprocessedLogRecord},
+        types::{classifier::error::ClassifierError, record::preprocessed::PreprocessedLogRecord},
         utils::mock::mock_data::{get_test_data, TestCase, TestData},
     };
 

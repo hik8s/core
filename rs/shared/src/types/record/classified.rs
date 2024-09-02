@@ -1,4 +1,4 @@
-use crate::types::classification::class::Class;
+use crate::types::class::Class;
 
 use super::preprocessed::PreprocessedLogRecord;
 

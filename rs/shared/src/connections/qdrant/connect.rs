@@ -12,7 +12,7 @@ use tracing::info;
 
 use crate::{
     constant::{EMBEDDING_SIZE, EMBEDDING_USIZE},
-    types::classification::vectorized::{to_vectorized_class, VectorizedClass},
+    types::class::vectorized::{to_vectorized_class, VectorizedClass},
 };
 
 use super::{config::QdrantConfig, error::QdrantConnectionError};

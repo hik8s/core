@@ -3,7 +3,7 @@ use std::vec::IntoIter;
 
 use uuid7::uuid7;
 
-use crate::types::classification::{class::Class, item::Item};
+use crate::types::class::{item::Item, Class};
 use crate::types::metadata::Metadata;
 
 use super::mock_client::{generate_podname, get_test_metadata};

@@ -1,14 +1,16 @@
+pub mod item;
+pub mod vectorized;
+
 use std::convert::TryInto;
 use std::fmt::{self, Display, Formatter};
 
 use fluvio::dataplane::record::ConsumerRecord;
+use item::Item;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string};
 use uuid7::uuid7;
 
 use crate::types::record::preprocessed::PreprocessedLogRecord;
-
-use super::item::Item;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Class {

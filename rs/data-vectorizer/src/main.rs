@@ -11,11 +11,11 @@ use shared::{
     openai::embed::{request_embedding, RequestEmbeddingError},
     tracing::setup::setup_tracing,
     types::{
-        classification::{
-            class::Class,
+        class::{
             vectorized::{to_qdrant_point, VectorizedClass},
+            Class,
         },
-        tokenizer::tokenizer::Tokenizer,
+        tokenizer::Tokenizer,
     },
     utils::ratelimit::RateLimiter,
 };
