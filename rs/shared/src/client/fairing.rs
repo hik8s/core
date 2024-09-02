@@ -1,21 +1,24 @@
 use rocket::{request::FromRequest, State};
 
-use super::reqwest::ReqwestClient;
+use super::reqwest::PromptEngineConnection;
 
 #[rocket::async_trait]
-impl<'r> FromRequest<'r> for ReqwestClient {
+impl<'r> FromRequest<'r> for PromptEngineConnection {
     type Error = ();
 
     async fn from_request(
         request: &'r rocket::Request<'_>,
     ) -> rocket::request::Outcome<Self, Self::Error> {
-        let connection = request.guard::<&State<ReqwestClient>>().await.unwrap();
+        let connection = request
+            .guard::<&State<PromptEngineConnection>>()
+            .await
+            .unwrap();
         rocket::request::Outcome::Success(connection.inner().clone())
     }
 }
 
 #[rocket::async_trait]
-impl rocket::fairing::Fairing for ReqwestClient {
+impl rocket::fairing::Fairing for PromptEngineConnection {
     fn info(&self) -> rocket::fairing::Info {
         rocket::fairing::Info {
             name: "Reqwest http client",

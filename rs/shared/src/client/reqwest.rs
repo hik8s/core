@@ -1,35 +1,66 @@
-use reqwest::{Client, Error};
+use reqwest::{Client, Error as ClientError};
+use std::env::var;
 use std::sync::Arc;
+
 use thiserror::Error;
 
+use crate::connections::shared::error::ConfigError;
+use crate::constant::{PROMPT_ENGINE_PATH, PROMPT_ENGINE_PORT};
+
 #[derive(Error, Debug)]
-pub enum ReqwestError {
+pub enum PromptEngineError {
     #[error("HTTP client error: {0}")]
-    ClientError(#[from] Error),
+    ClientError(#[from] ClientError),
     #[error("Reqwest error: {0}")]
     AnyhowError(#[from] anyhow::Error),
+    #[error("Configuration error: {0}")]
+    ConfigError(#[from] ConfigError),
 }
 
 #[derive(Clone)]
-pub struct ReqwestClient {
-    // this is a wrapped reqwest client necessary to implement a rocket fairing
-    inner: Arc<Client>,
+pub struct PromptEngineConfig {
+    pub host: String,
+    pub port: String,
+    pub path: String,
+}
+impl PromptEngineConfig {
+    pub fn new() -> Result<Self, ConfigError> {
+        let host = var("PROMPT_ENGINE_HOST")
+            .map_err(|e| ConfigError::EnvVarError(e, "PROMPT_ENGINE_HOST".to_owned()))?;
+
+        Ok(Self {
+            host,
+            port: PROMPT_ENGINE_PORT.to_owned(),
+            path: PROMPT_ENGINE_PATH.to_owned(),
+        })
+    }
+    pub fn get_uri(&self) -> String {
+        format!("http://{}:{}/{}", self.host, self.port, self.path)
+    }
 }
 
-impl ReqwestClient {
-    pub fn new() -> Result<Self, ReqwestError> {
+#[derive(Clone)]
+pub struct PromptEngineConnection {
+    pub client: Arc<Client>,
+    pub config: PromptEngineConfig,
+}
+
+impl PromptEngineConnection {
+    pub fn new() -> Result<Self, PromptEngineError> {
+        let config = PromptEngineConfig::new()?;
         let client = Client::builder().use_rustls_tls().build()?;
-        let wrapped_client = ReqwestClient {
-            inner: Arc::new(client),
+        let connection = PromptEngineConnection {
+            client: Arc::new(client),
+            config,
         };
-        Ok(wrapped_client)
+        Ok(connection)
     }
-
-    pub fn inner(&self) -> &Client {
-        &self.inner
+    pub async fn request_augmentation(
+        &self,
+        user_message: String,
+    ) -> Result<String, PromptEngineError> {
+        let endpoint = self.config.get_uri();
+        let response = self.client.post(endpoint).body(user_message).send().await?;
+        Ok(response.text().await?)
     }
-}
-
-pub fn get_http_client() -> Result<ReqwestClient, ReqwestError> {
-    Ok(ReqwestClient::new()?)
 }

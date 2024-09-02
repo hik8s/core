@@ -1,6 +1,11 @@
 // chat-backend
 // pub const OPENAI_CHAT_MODEL: &str = "gpt-3.5-turbo-0125";
+pub const CHAT_BACKEND_PORT: &str = "8080";
 pub const OPENAI_CHAT_MODEL: &str = "gpt-4-0125-preview";
+
+// prompt-engine
+pub const PROMPT_ENGINE_PORT: &str = "8081";
+pub const PROMPT_ENGINE_PATH: &str = "prompt";
 
 // qdrant
 pub const QDRANT_COLLECTION_LOG: &str = "logs";

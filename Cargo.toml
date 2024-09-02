@@ -2,7 +2,7 @@
 resolver = "2"
 
 members = [
-    "rs/algorithm",
+    "rs/algorithm", "rs/chat-backend",
     "rs/data-intake",
     "rs/data-processing",
     "rs/data-vectorizer",
