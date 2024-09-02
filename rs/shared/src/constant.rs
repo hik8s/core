@@ -20,8 +20,12 @@ pub const EMBEDDING_SIZE: u64 = 3072;
 pub const EMBEDDING_USIZE: usize = EMBEDDING_SIZE as usize;
 
 // fluvio
-pub const BATCH_SIZE: usize = 100;
-pub const TOPIC_NAME_LOG: &str = "logs";
-pub const TOPIC_NAME_CLASS: &str = "classes";
-pub const CONSUMER_PARTITIONS_LOG: u32 = 2;
-pub const CONSUMER_PARTITIONS_CLASS: u32 = 1;
+pub const FLUVIO_BATCH_SIZE: usize = 100;
+
+pub const TOPIC_LOG_NAME: &str = "logs";
+pub const TOPIC_LOG_PARTITIONS: u32 = 2;
+pub const TOPIC_LOG_REPLICAS: u32 = 1;
+
+pub const TOPIC_CLASS_NAME: &str = "classes";
+pub const TOPIC_CLASS_PARTITIONS: u32 = 1;
+pub const TOPIC_CLASS_REPLICAS: u32 = 1;
