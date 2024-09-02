@@ -16,7 +16,6 @@ use shared::{
             vectorized::{to_qdrant_point, VectorizedClass},
         },
         classifier::error::TokenizerError,
-        record::consumer_record::ConsumerRecordError,
         tokenizer::tokenizer::Tokenizer,
     },
     utils::ratelimit::RateLimiter,
@@ -28,8 +27,6 @@ use tracing::info;
 pub enum DataVectorizationError {
     #[error("Fluvio connection error: {0}")]
     FluvioConnectionError(#[from] FluvioConnectionError),
-    #[error("Failed to parse fluvio consumer record: {0}")]
-    ConsumerRecordError(#[from] ConsumerRecordError),
     #[error("Fluvio offset error: {0}")]
     FluvioOffsetError(#[from] OffsetError),
     #[error("Qdrant connection error: {0}")]

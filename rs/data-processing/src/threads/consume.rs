@@ -3,7 +3,6 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use futures_util::StreamExt;
 use shared::connections::fluvio::connect::{commit_and_flush_offsets, OffsetError};
-use shared::types::record::consumer_record::ConsumerRecordError;
 use shared::types::record::log::LogParseError;
 use thiserror::Error;
 use tokio::sync::mpsc;
@@ -17,8 +16,6 @@ pub enum ConsumerThreadError {
     LogRecordError(#[from] LogParseError),
     #[error("Fluvio offset error: {0}")]
     OffsetError(#[from] OffsetError),
-    #[error("Failed to parse fluvio consumer record: {0}")]
-    ConsumerRecordError(#[from] ConsumerRecordError),
     #[error("Serde Json error: {0}")]
     DeserializationError(#[from] serde_json::Error),
 }

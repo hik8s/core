@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string};
 use uuid7::uuid7;
 
-use crate::types::record::consumer_record::{get_payload_and_key, ConsumerRecordError};
 use crate::types::record::preprocessed::PreprocessedLogRecord;
 
 use super::item::Item;
@@ -87,14 +86,10 @@ impl TryFrom<Vec<u8>> for Class {
 }
 
 impl TryFrom<ConsumerRecord> for Class {
-    type Error = ConsumerRecordError;
+    type Error = serde_json::Error;
 
     fn try_from(record: ConsumerRecord) -> Result<Self, Self::Error> {
-        let (payload, _key) = get_payload_and_key(record)?;
-        // key is also provided in payload
-        // remove key retrieval once key is added in LogRecord
-        let class: Class = payload.try_into()?;
-
+        let class: Class = record.value().to_vec().try_into()?;
         Ok(class)
     }
 }
