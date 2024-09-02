@@ -1,5 +1,5 @@
 use rocket::{http::Status, response::Responder, Request, Response};
-use shared::connections::fluvio::connect::FluvioConnectionError;
+use shared::connections::fluvio::FluvioConnectionError;
 use std::io::Cursor;
 use thiserror::Error;
 use tracing::error;

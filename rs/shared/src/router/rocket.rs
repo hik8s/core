@@ -1,5 +1,5 @@
 use crate::connections::{
-    fluvio::connect::FluvioConnection, greptime::connect::GreptimeConnection,
+    fluvio::FluvioConnection, greptime::connect::GreptimeConnection,
     prompt_engine::connect::PromptEngineConnection, qdrant::connect::QdrantConnection,
 };
 use rocket::{catch, catchers, Build, Rocket, Route};

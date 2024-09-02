@@ -1,6 +1,6 @@
 use crate::{
     connections::{
-        fluvio::connect::FluvioConnectionError, greptime::connect::GreptimeConnectionError,
+        fluvio::FluvioConnectionError, greptime::connect::GreptimeConnectionError,
         redis::connect::RedisConnectionError,
     },
     router::rocket::{build_rocket, Attach},

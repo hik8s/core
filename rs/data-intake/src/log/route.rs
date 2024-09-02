@@ -4,7 +4,7 @@ use super::error::LogIntakeError;
 use rocket::http::ContentType;
 use rocket::post;
 use rocket::Data;
-use shared::connections::fluvio::connect::FluvioConnection;
+use shared::connections::fluvio::FluvioConnection;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
 use shared::types::metadata::Metadata;
@@ -74,7 +74,7 @@ pub async fn log_intake<'a>(
 #[cfg(test)]
 mod tests {
     use rocket::routes;
-    use shared::connections::fluvio::connect::{FluvioConnection, TopicName};
+    use shared::connections::fluvio::{FluvioConnection, TopicName};
     use shared::connections::greptime::connect::GreptimeConnection;
     use shared::mock::rocket::{rocket_test_client, TestClientError};
     use shared::router::rocket::Connection;

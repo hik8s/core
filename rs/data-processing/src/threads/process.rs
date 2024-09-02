@@ -1,7 +1,7 @@
 use greptimedb_ingester::Error as GreptimeIngestError;
 use shared::{
     connections::{
-        fluvio::connect::{FluvioConnection, FluvioConnectionError},
+        fluvio::{FluvioConnection, FluvioConnectionError},
         greptime::{
             connect::{GreptimeConnection, GreptimeConnectionError},
             middleware::insert::classified_log_to_insert_request,

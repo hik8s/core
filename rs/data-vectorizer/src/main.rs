@@ -1,7 +1,7 @@
 use futures_util::StreamExt;
 use shared::{
     connections::{
-        fluvio::connect::{
+        fluvio::{
             commit_and_flush_offsets, FluvioConnection, FluvioConnectionError, OffsetError,
             TopicName,
         },

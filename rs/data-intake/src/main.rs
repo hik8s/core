@@ -6,7 +6,7 @@ use rocket::{main, routes, Error};
 use log::route::log_intake;
 use shared::{
     connections::{
-        fluvio::connect::{FluvioConnection, TopicName},
+        fluvio::{FluvioConnection, TopicName},
         greptime::connect::GreptimeConnection,
     },
     router::rocket::{build_rocket, Connection},

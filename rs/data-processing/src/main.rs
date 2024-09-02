@@ -1,6 +1,7 @@
-use shared::connections::fluvio::connect::{FluvioConnectionError, TopicName, BATCH_SIZE};
+use shared::connections::fluvio::{FluvioConnectionError, TopicName};
+use shared::constant::BATCH_SIZE;
 use shared::types::record::log::LogRecord;
-use shared::{connections::fluvio::connect::FluvioConnection, tracing::setup::setup_tracing};
+use shared::{connections::fluvio::FluvioConnection, tracing::setup::setup_tracing};
 use thiserror::Error;
 use threads::consume::{consume_logs, ConsumerThreadError};
 use threads::process::{process_logs, ProcessThreadError};

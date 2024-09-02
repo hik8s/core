@@ -18,3 +18,10 @@ pub const OPENAI_EMBEDDING_MODEL: &str = "text-embedding-3-large";
 pub const OPENAI_EMBEDDING_TOKEN_LIMIT: usize = 100000;
 pub const EMBEDDING_SIZE: u64 = 3072;
 pub const EMBEDDING_USIZE: usize = EMBEDDING_SIZE as usize;
+
+// fluvio
+pub const BATCH_SIZE: usize = 100;
+pub const TOPIC_NAME_LOG: &str = "logs";
+pub const TOPIC_NAME_CLASS: &str = "classes";
+pub const CONSUMER_PARTITIONS_LOG: u32 = 2;
+pub const CONSUMER_PARTITIONS_CLASS: u32 = 1;
