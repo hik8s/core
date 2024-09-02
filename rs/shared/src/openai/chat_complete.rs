@@ -28,7 +28,7 @@ struct Message {
 }
 
 pub async fn process_user_message<F>(
-    connection: PromptEngineConnection,
+    prompt_engine: PromptEngineConnection,
     mut payload: RequestOptions,
     on_progress: F,
 ) -> Result<()>
@@ -42,7 +42,7 @@ where
         .rev()
         .find(|message| message.role == "user")
     {
-        user_message.content = connection
+        user_message.content = prompt_engine
             .request_augmentation(user_message.content.clone())
             .await?;
     }

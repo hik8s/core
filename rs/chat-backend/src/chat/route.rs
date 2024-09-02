@@ -12,7 +12,7 @@ use super::header::LastEventId;
 #[post("/chat/completions", format = "json", data = "<payload>")]
 pub fn chat_completion(
     id: LastEventId,
-    client: PromptEngineConnection,
+    prompt_engine: PromptEngineConnection,
     payload: Json<RequestOptions>,
 ) -> EventStream![] {
     let id = id.0;
@@ -20,7 +20,7 @@ pub fn chat_completion(
 
     // producer: openai api (tx)
     tokio::spawn(async move {
-        match process_user_message(client, payload.into_inner(), move |chat_message| {
+        match process_user_message(prompt_engine, payload.into_inner(), move |chat_message| {
             tx.send(chat_message).ok();
         })
         .await
