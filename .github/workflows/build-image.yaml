@@ -17,57 +17,17 @@ jobs:
       
       - name: Docker Build
         run: |
-          # Data Intake
-          IMAGE='data-intake'
-          docker build --target $IMAGE --tag $IMAGE .
-
-          # Data Processing
-          IMAGE='data-processing'
-          docker build --target $IMAGE --tag $IMAGE .
-
-          # Data Vectorizer
-          IMAGE='data-vectorizer'
-          docker build --target $IMAGE --tag $IMAGE .
-
-          # Prompt Engine
-          IMAGE='prompt-engine'
-          docker build --target $IMAGE --tag $IMAGE .
-
-          # Chat Backend
-          IMAGE='chat-backend'
-          docker build --target $IMAGE --tag $IMAGE .
-
+          IMAGES=("data-intake" "data-processing" "data-vectorizer" "prompt-engine" "chat-backend")
+          for IMAGE in "${IMAGES[@]}"; do
+            docker build --target $IMAGE --tag $IMAGE .
+          done
 
       - name: Docker Tag and Push
         run: |
           REGISTRY='ghcr.io/hik8s'
-          
-          # Data Intake
-          IMAGE='data-intake'
-          VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
-          docker tag image $REGISTRY/$IMAGE:$VERSION
-          docker push $REGISTRY/$IMAGE:$VERSION
-          
-          # Data Processing
-          IMAGE='data-processing'
-          VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
-          docker tag image $REGISTRY/$IMAGE:$VERSION
-          docker push $REGISTRY/$IMAGE:$VERSION
-          
-          # Data Vectorizer
-          IMAGE='data-vectorizer'
-          VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
-          docker tag image $REGISTRY/$IMAGE:$VERSION
-          docker push $REGISTRY/$IMAGE:$VERSION
-          
-          # Prompt Engine
-          IMAGE='prompt-engine'
-          VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
-          docker tag image $REGISTRY/$IMAGE:$VERSION
-          docker push $REGISTRY/$IMAGE:$VERSION
-
-          # Chat Backend
-          IMAGE='chat-backend'
-          VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
-          docker tag image $REGISTRY/$IMAGE:$VERSION
-          docker push $REGISTRY/$IMAGE:$VERSION
+          IMAGES=("data-intake" "data-processing" "data-vectorizer" "prompt-engine" "chat-backend")
+          for IMAGE in "${IMAGES[@]}"; do
+            VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
+            docker tag $IMAGE $REGISTRY/$IMAGE:$VERSION
+            docker push $REGISTRY/$IMAGE:$VERSION
+          done
