@@ -9,6 +9,10 @@ jobs:
   build-images:
     runs-on: ubuntu-latest
 
+    env:
+      IMAGES: "data-intake data-processing data-vectorizer prompt-engine chat-backend"
+      REGISTRY: "ghcr.io/hik8s"
+
     steps:
       - uses: actions/checkout@v2
 
@@ -17,16 +21,13 @@ jobs:
       
       - name: Docker Build
         run: |
-          IMAGES=("data-intake" "data-processing" "data-vectorizer" "prompt-engine" "chat-backend")
-          for IMAGE in "${IMAGES[@]}"; do
+          for IMAGE in $IMAGES; do
             docker build --target $IMAGE --tag $IMAGE .
           done
 
       - name: Docker Tag and Push
         run: |
-          REGISTRY='ghcr.io/hik8s'
-          IMAGES=("data-intake" "data-processing" "data-vectorizer" "prompt-engine" "chat-backend")
-          for IMAGE in "${IMAGES[@]}"; do
+          for IMAGE in $IMAGES; do
             VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
             docker tag $IMAGE $REGISTRY/$IMAGE:$VERSION
             docker push $REGISTRY/$IMAGE:$VERSION
