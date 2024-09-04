@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  buck-build:
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGES: "data-intake data-processing data-vectorizer prompt-engine chat-backend"
+      REGISTRY: "ghcr.io/hik8s"
+      BUCK_TAG: "2024-09-02"
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Login
+        run: echo "${{ secrets.HIK8S_BOT_GHCR_WRITE_TOKEN }}" | docker login ghcr.io -u hik8s --password-stdin
+      
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl zstd
+
+      - name: Install Buck2
+        run: |
+          curl -L -o /tmp/buck2.zst https://github.com/facebook/buck2/releases/download/$BUCK_TAG/buck2-x86_64-unknown-linux-gnu.zst
+          zstd -d /tmp/buck2.zst -o /usr/local/bin/buck2
+          chmod +x /usr/local/bin/buck2
+
+      - name: Buck2 Version
+        run: |
+          /usr/local/bin/buck2 --version
