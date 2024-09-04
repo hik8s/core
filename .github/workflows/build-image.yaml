@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-images:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Login
+        run: echo "${{ secrets.HIK8S_BOT_GHCR_WRITE_TOKEN }}" | docker login ghcr.io -u hik8s --password-stdin
+      
+      - name: Docker Build
+        run: |
+          # Data Intake
+          IMAGE='data-intake'
+          docker build --target $IMAGE --tag $IMAGE .
+
+          # Data Processing
+          IMAGE='data-processing'
+          docker build --target $IMAGE --tag $IMAGE .
+
+          # Data Vectorizer
+          IMAGE='data-vectorizer'
+          docker build --target $IMAGE --tag $IMAGE .
+
+          # Prompt Engine
+          IMAGE='prompt-engine'
+          docker build --target $IMAGE --tag $IMAGE .
+
+          # Chat Backend
+          IMAGE='chat-backend'
+          docker build --target $IMAGE --tag $IMAGE .
+
+
+      - name: Docker Tag and Push
+        run: |
+          REGISTRY='ghcr.io/hik8s'
+          
+          # Data Intake
+          IMAGE='data-intake'
+          VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
+          docker tag image $REGISTRY/$IMAGE:$VERSION
+          docker push $REGISTRY/$IMAGE:$VERSION
+          
+          # Data Processing
+          IMAGE='data-processing'
+          VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
+          docker tag image $REGISTRY/$IMAGE:$VERSION
+          docker push $REGISTRY/$IMAGE:$VERSION
+          
+          # Data Vectorizer
+          IMAGE='data-vectorizer'
+          VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
+          docker tag image $REGISTRY/$IMAGE:$VERSION
+          docker push $REGISTRY/$IMAGE:$VERSION
+          
+          # Prompt Engine
+          IMAGE='prompt-engine'
+          VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
+          docker tag image $REGISTRY/$IMAGE:$VERSION
+          docker push $REGISTRY/$IMAGE:$VERSION
+
+          # Chat Backend
+          IMAGE='chat-backend'
+          VERSION=$(grep -E 'version = "[^"]*"$' rs/$IMAGE/Cargo.toml | awk -F\" '{print $2}')
+          docker tag image $REGISTRY/$IMAGE:$VERSION
+          docker push $REGISTRY/$IMAGE:$VERSION
