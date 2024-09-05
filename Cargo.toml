@@ -2,7 +2,8 @@
 resolver = "2"
 
 members = [
-    "rs/algorithm", "rs/chat-backend",
+    "rs/algorithm",
+    "rs/chat-backend",
     "rs/data-intake",
     "rs/data-processing",
     "rs/data-vectorizer",
@@ -25,29 +26,29 @@ dotenv = "0.15.0"
 fluvio = {version = "0.23.1", default-features = false}
 futures-util = "0.3.30"
 greptimedb-ingester = {git = "https://github.com/GreptimeTeam/greptimedb-ingester-rust.git", rev = "2e6b0c5eb6a5e7549c3100e4d356b07d15cce66d"}
-jsonwebtoken = {version = "9.3", default-features = false}
+jsonwebtoken = {version = "9.3.0", default-features = false}
 multipart = "0.18.0"
 qdrant-client = "1.11.0"
 rand = "0.8.5"
 redis = {version = "0.26.1", features = ["json"]}
-reqwest = {version = "0.12", default-features = false, features = [
+reqwest = {version = "0.12.7", default-features = false, features = [
     "json",
     "rustls-tls",
 ]}
 rocket = {version = "0.5.1", features = ["json"]}
 rstest = "0.22.0"
 rustls = "0.23.12"
-serde = {version = "1.0", features = ["derive"]}
-serde_json = {version = "1.0.125", features = ["preserve_order"]}
+serde = {version = "1.0.209", features = ["derive"]}
+serde_json = {version = "1.0.128", features = ["preserve_order"]}
 shared = {path = "rs/shared"}
-sqlx = {version = "0.8.0", features = [
+sqlx = {version = "0.8.2", features = [
     "postgres",
     "runtime-tokio",
     "tls-rustls",
 ]}
-thiserror = "1.0"
+thiserror = "1.0.63"
 tiktoken-rs = "0.5.9"
 tokio = "1.36.0"
 tracing = "0.1.40"
 tracing-subscriber = {version = "0.3.18", features = ["env-filter"]}
-uuid7 = "1.0.0"
+uuid7 = "1.0.2"
