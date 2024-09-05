@@ -44,8 +44,10 @@ pub async fn create_topic(
     admin: FluvioAdmin,
     topic: &FluvioTopic,
 ) -> Result<(), FluvioConnectionError> {
-    // Check if the topic already exists
-    let topics = admin.list::<TopicSpec, String>(vec![]).await?;
+    let topics = admin
+        .list::<TopicSpec, String>(vec![])
+        .await
+        .map_err(|e| FluvioConnectionError::AdminList(e.into()))?;
     if topics.iter().any(|t| t.name == topic.name) {
         info!("Topic '{}' already exists", topic.name);
         return Ok(());
@@ -56,7 +58,7 @@ pub async fn create_topic(
     admin
         .create(topic.name.to_owned(), false, topic_spec)
         .await
-        .map_err(FluvioConnectionError::from)?;
+        .map_err(|e| FluvioConnectionError::AdminCreate(e.into()))?;
     info!("Topic '{}' created", topic.name);
     Ok(())
 }

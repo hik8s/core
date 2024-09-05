@@ -30,7 +30,7 @@ impl FluvioConnection {
 
         let fluvio = Fluvio::connect()
             .await
-            .map_err(FluvioConnectionError::from)?;
+            .map_err(|e| FluvioConnectionError::ClientConnection(e.into()))?;
 
         let admin = fluvio.admin().await;
         create_topic(admin, &topic).await?;
@@ -38,7 +38,7 @@ impl FluvioConnection {
         let producer = fluvio
             .topic_producer(topic.name.to_owned())
             .await
-            .map_err(FluvioConnectionError::from)?;
+            .map_err(|e| FluvioConnectionError::TopicProducer(e.into()))?;
 
         let fluvio = Arc::new(fluvio);
         let producer = Arc::new(producer);
@@ -67,10 +67,10 @@ impl FluvioConnection {
                     .offset_start(Offset::beginning())
                     .offset_strategy(OffsetManagementStrategy::Manual)
                     .build()
-                    .map_err(|e| FluvioConnectionError::ConsumerConfigError(e.to_string()))?,
+                    .map_err(|e| FluvioConnectionError::ConsumerConfigError(e.into()))?,
             )
             .await
-            .map_err(|e| FluvioConnectionError::ConsumerError(e.to_string()))?;
+            .map_err(|e| FluvioConnectionError::ConsumerError(e.into()))?;
         info!(
             "Consumer '{}' created",
             self.topic.consumer_id(partition_id)
@@ -96,24 +96,23 @@ impl FluvioConnection {
                 self.producer
                     .send_all(batch.drain(..))
                     .await
-                    .map_err(FluvioConnectionError::Anyhow)?;
+                    .map_err(|e| FluvioConnectionError::ProducerSend(e.into()))?;
             }
-        }
 
-        // Send any remaining logs in the batch
-        if !batch.is_empty() {
+            // Send any remaining logs in the batch
+            if !batch.is_empty() {
+                self.producer
+                    .send_all(batch.drain(..))
+                    .await
+                    .map_err(|e| FluvioConnectionError::ProducerSend(e.into()))?;
+            }
+
+            // Ensure the producer flushes the messages
             self.producer
-                .send_all(batch.drain(..))
+                .flush()
                 .await
-                .map_err(FluvioConnectionError::Anyhow)?;
+                .map_err(|e| FluvioConnectionError::ProducerFlush(e.into()))?;
         }
-
-        // Ensure the producer flushes the messages
-        self.producer
-            .flush()
-            .await
-            .map_err(FluvioConnectionError::Anyhow)?;
-
         Ok(())
     }
 }
