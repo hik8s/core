@@ -1,9 +1,7 @@
 const DEFAULT_GREPTIME_RPC_PORT: &str = "4001";
 const DEFAULT_GREPTIME_PSQL_PORT: &str = "4003";
 
-use std::env::var;
-
-use crate::{connections::shared::error::ConfigError, constant::GREPTIME_DB_NAME};
+use crate::{connections::ConfigError, constant::GREPTIME_DB_NAME, get_env_var};
 
 #[derive(Clone)]
 pub struct GreptimeConfig {
@@ -15,8 +13,7 @@ pub struct GreptimeConfig {
 impl GreptimeConfig {
     pub fn new() -> Result<Self, ConfigError> {
         Ok(Self {
-            host: var("GREPTIMEDB_HOST")
-                .map_err(|e| ConfigError::EnvVarError(e, "GREPTIMEDB_HOST".to_owned()))?,
+            host: get_env_var("GREPTIMEDB_HOST")?,
             port: DEFAULT_GREPTIME_RPC_PORT.to_owned(),
             psql_port: DEFAULT_GREPTIME_PSQL_PORT.to_owned(),
             db_name: GREPTIME_DB_NAME.to_owned(),

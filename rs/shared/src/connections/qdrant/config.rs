@@ -1,6 +1,4 @@
-use std::env::var;
-
-use crate::connections::shared::error::ConfigError;
+use crate::{connections::ConfigError, get_env_var};
 
 const DEFAULT_QDRANT_PORT: &str = "6334";
 
@@ -12,8 +10,7 @@ pub struct QdrantConfig {
 }
 impl QdrantConfig {
     pub fn new(collection_name: String) -> Result<Self, ConfigError> {
-        let host = var("QDRANT_HOST")
-            .map_err(|e| ConfigError::EnvVarError(e, "QDRANT_HOST".to_owned()))?;
+        let host = get_env_var("QDRANT_HOST")?;
 
         Ok(Self {
             host,

@@ -1,11 +1,11 @@
 use reqwest::{Client, Error as ClientError};
-use std::env::var;
 use std::sync::Arc;
 
 use thiserror::Error;
 
-use crate::connections::shared::error::ConfigError;
+use crate::connections::ConfigError;
 use crate::constant::{PROMPT_ENGINE_PATH, PROMPT_ENGINE_PORT};
+use crate::get_env_var;
 
 #[derive(Error, Debug)]
 pub enum PromptEngineError {
@@ -25,11 +25,8 @@ pub struct PromptEngineConfig {
 }
 impl PromptEngineConfig {
     pub fn new() -> Result<Self, ConfigError> {
-        let host = var("PROMPT_ENGINE_HOST")
-            .map_err(|e| ConfigError::EnvVarError(e, "PROMPT_ENGINE_HOST".to_owned()))?;
-
         Ok(Self {
-            host,
+            host: get_env_var("PROMPT_ENGINE_HOST")?,
             port: PROMPT_ENGINE_PORT.to_owned(),
             path: PROMPT_ENGINE_PATH.to_owned(),
         })
