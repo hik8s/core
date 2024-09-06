@@ -7,11 +7,13 @@ use rocket::Data;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
 use shared::fluvio::FluvioConnection;
+use shared::router::auth::guard::AuthenticatedUser;
 use shared::types::metadata::Metadata;
 use std::ops::Deref;
 
 #[post("/logs", data = "<data>")]
 pub async fn log_intake<'a>(
+    _user: AuthenticatedUser,
     greptime_connection: GreptimeConnection,
     fluvio_connection: FluvioConnection,
     content_type: &ContentType,

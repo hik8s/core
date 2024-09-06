@@ -43,7 +43,11 @@ pub async fn validate_token(token: &str) -> Result<bool, Box<dyn Error>> {
     let header = decode_header(token)?;
     let kid = header.kid.ok_or("Missing 'kid' in token header")?;
 
-    let jwk = jwks.keys.into_iter().find(|key| key.kid == kid).ok_or("Key not found")?;
+    let jwk = jwks
+        .keys
+        .into_iter()
+        .find(|key| key.kid == kid)
+        .ok_or("Key not found")?;
 
     let decoding_key = DecodingKey::from_rsa_components(&jwk.n, &jwk.e)?;
     let mut validation = Validation::new(Algorithm::RS256);
