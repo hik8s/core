@@ -17,7 +17,7 @@ greptime/greptimedb:v0.9.1 standalone start \
 ## Redis
 
 ```bash
-docker run -d --name redis -p 6379:6379 redis
+docker run -d --name redis -p 6379:6379 redis redis-server --requirepass $REDIS_PASSWORD
 ```
 
 ## Fluvio

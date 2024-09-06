@@ -15,3 +15,4 @@ pub mod fluvio {
         offset::commit_and_flush_offsets, topic::TopicName,
     };
 }
+pub use crate::connections::shared::error::get_env_var;
