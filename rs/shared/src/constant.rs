@@ -1,7 +1,6 @@
 // chat-backend
-// pub const OPENAI_CHAT_MODEL: &str = "gpt-3.5-turbo-0125";
 pub const CHAT_BACKEND_PORT: &str = "8080";
-pub const OPENAI_CHAT_MODEL: &str = "gpt-4-0125-preview";
+pub const OPENAI_CHAT_MODEL: &str = "gpt-4o-2024-08-06";
 
 // prompt-engine
 pub const PROMPT_ENGINE_PORT: &str = "8081";
