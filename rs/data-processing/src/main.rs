@@ -6,6 +6,7 @@ use thiserror::Error;
 use threads::consume::{consume_logs, ConsumerThreadError};
 use threads::process::{process_logs, ProcessThreadError};
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 use tracing::error;
 
 pub mod threads;
@@ -28,7 +29,7 @@ async fn main() -> Result<(), DataProcessingError> {
     let fluvio_connection_log = FluvioConnection::new(TopicName::Log).await?;
     let fluvio_connection_class = FluvioConnection::new(TopicName::Class).await?;
     // Vector to hold all spawned threads
-    let mut threads = Vec::new();
+    let mut threads: Vec<JoinHandle<Result<(), DataProcessingError>>> = Vec::new();
 
     // Loop through each partition to create consumers and processing threads
     for partition_id in 0..fluvio_connection_log.topic.partitions {
@@ -40,13 +41,13 @@ async fn main() -> Result<(), DataProcessingError> {
         let fluvio_connection_class_clone = fluvio_connection_class.clone();
         threads.push(tokio::spawn(async move {
             process_logs(data_receiver, result_sender, fluvio_connection_class_clone).await?;
-            Ok::<(), DataProcessingError>(())
+            Ok(())
         }));
 
         // Spawn a thread to consume logs for each partition
         threads.push(tokio::spawn(async move {
             consume_logs(consumer, data_sender, result_receiver).await?;
-            Ok::<(), DataProcessingError>(())
+            Ok(())
         }));
     }
 

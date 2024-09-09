@@ -48,3 +48,23 @@ docker run -d -p 6333:6333 -p 6334:6334 \
     -v $(pwd)/qdrant_storage:/qdrant/storage:z \
     qdrant/qdrant:v1.9.7
 ```
+
+## Data Intake
+
+Test command for data-intake.
+
+```bash
+curl -X POST \
+     -F 'metadata={"path": "/var/log/pods/ns_my-pod_uid-123/container", "file": "file_name_value"};type=application/json' \
+     -F 'stream=@/tmp/stream_test_file;type=application/octet-stream' \
+     http://localhost:8000/logs -v
+```
+
+production environment
+
+```bash
+curl -X POST \
+     -F 'metadata={"path": "/var/log/pods/ns_my-pod_uid-123/container", "file": "file_name_value"};type=application/json' \
+     -F 'stream=@/tmp/stream_test_file;type=application/octet-stream' \
+     https://api.hik8s.ai/logs -v
+```
