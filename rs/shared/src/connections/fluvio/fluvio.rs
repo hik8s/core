@@ -68,7 +68,7 @@ impl FluvioConnection {
                 ConsumerConfigExtBuilder::default()
                     .topic(self.topic.name.to_owned())
                     .partition(partition_id)
-                    .offset_consumer(self.topic.consumer_id(partition_id))
+                    .offset_consumer(self.topic.name.to_owned())
                     .offset_start(Offset::beginning())
                     .offset_strategy(OffsetManagementStrategy::Manual)
                     .build()
@@ -76,10 +76,6 @@ impl FluvioConnection {
             )
             .await
             .map_err(|e| FluvioConnectionError::ConsumerError(e.into()))?;
-        info!(
-            "Consumer '{}' created",
-            self.topic.consumer_id(partition_id)
-        );
         Ok(consumer)
     }
 

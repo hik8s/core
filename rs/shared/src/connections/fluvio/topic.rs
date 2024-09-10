@@ -35,9 +35,6 @@ impl FluvioTopic {
             },
         }
     }
-    pub fn consumer_id(&self, partition_id: u32) -> String {
-        format!("consumer_{}_{}", self.name, partition_id)
-    }
 }
 
 pub async fn create_topic(

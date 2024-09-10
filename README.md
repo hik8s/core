@@ -68,5 +68,5 @@ curl -X POST \
      -H "Authorization: Bearer $AUTH0_TOKEN" \
      -F 'metadata={"path": "/var/log/pods/ns_my-pod_uid-123/container", "file": "file_name_value"};type=application/json' \
      -F 'stream=@/tmp/records.txt;type=application/octet-stream' \
-     https://api.hik8s.ai/logs -v
+     https://dev.api.hik8s.ai/logs -v
 ```
