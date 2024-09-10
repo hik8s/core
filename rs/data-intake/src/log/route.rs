@@ -10,6 +10,7 @@ use shared::fluvio::FluvioConnection;
 use shared::router::auth::guard::AuthenticatedUser;
 use shared::types::metadata::Metadata;
 use std::ops::Deref;
+use tracing::warn;
 
 #[post("/logs", data = "<data>")]
 pub async fn log_intake<'a>(
@@ -57,10 +58,18 @@ pub async fn log_intake<'a>(
                     .map_err(|e| LogIntakeError::GreptimeIngestError(e))?;
 
                 // send to fluvio
-                fluvio_connection
-                    .send_batch(logs, &metadata)
-                    .await
-                    .map_err(|e| LogIntakeError::FluvioConnectionError(e))?;
+                if let Err(e) = fluvio_connection.send_batch(&logs, &metadata).await {
+                    let error = e.to_string();
+                    for log in &logs {
+                        let record_id = &log.record_id;
+                        let key = &log.key;
+                        let message_length = log.message.len();
+                        warn!(
+                            "Error: {}, Key: {}, Record ID: {}, Message Length: {}",
+                            error, key, record_id, message_length
+                        );
+                    }
+                }
 
                 return Ok("Success".to_string());
             }

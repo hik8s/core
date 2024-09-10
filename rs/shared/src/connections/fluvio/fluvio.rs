@@ -1,11 +1,11 @@
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
-use fluvio::RecordKey;
 use fluvio::{
     consumer::{ConsumerConfigExtBuilder, OffsetManagementStrategy},
     Offset,
 };
 use fluvio::{spu::SpuSocketPool, Fluvio, TopicProducer};
+use fluvio::{Compression, RecordKey, TopicProducerConfigBuilder};
 use serde_json::to_string;
 use std::sync::Arc;
 use tracing::info;
@@ -35,8 +35,13 @@ impl FluvioConnection {
         let admin = fluvio.admin().await;
         create_topic(admin, &topic).await?;
 
+        let topic_config = TopicProducerConfigBuilder::default()
+            .compression(Compression::Zstd)
+            .build()
+            .expect("Failed to create topic producer config");
+
         let producer = fluvio
-            .topic_producer(topic.name.to_owned())
+            .topic_producer_with_config(topic.name.to_owned(), topic_config)
             .await
             .map_err(|e| FluvioConnectionError::TopicProducer(e.into()))?;
 
@@ -80,12 +85,12 @@ impl FluvioConnection {
 
     pub async fn send_batch(
         &self,
-        logs: Vec<LogRecord>,
+        logs: &Vec<LogRecord>,
         metadata: &Metadata,
     ) -> Result<(), FluvioConnectionError> {
         let mut batch = Vec::with_capacity(FLUVIO_BATCH_SIZE);
 
-        for log in &logs {
+        for log in logs {
             let serialized_record = to_string(&log).expect("Failed to serialize record");
             batch.push((
                 RecordKey::from(metadata.pod_name.to_owned()),
