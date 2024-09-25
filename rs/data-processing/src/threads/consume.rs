@@ -30,8 +30,12 @@ pub async fn consume_logs(
         sender.send(log).await?;
 
         if let Some((key, record_id)) = receiver.recv().await {
-            info!("Successfully inserted classified log with key: {key}, id: {record_id}");
-            commit_and_flush_offsets(&mut consumer, key, record_id).await?;
+            commit_and_flush_offsets(&mut consumer, key, record_id)
+                .await
+                .map_err(|e| {
+                    error!("Commit or flush error: {e}");
+                    e
+                })?;
         }
     }
     Ok(())

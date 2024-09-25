@@ -8,7 +8,6 @@ use fluvio::{spu::SpuSocketPool, Fluvio, TopicProducer};
 use fluvio::{Compression, RecordKey, TopicProducerConfigBuilder};
 use serde_json::to_string;
 use std::sync::Arc;
-use tracing::info;
 
 use crate::constant::FLUVIO_BATCH_SIZE;
 use crate::types::metadata::Metadata;

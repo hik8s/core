@@ -43,19 +43,10 @@ pub async fn log_intake<'a>(
                 let logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
-                let stream_inserter = greptime_connection
-                    .greptime
-                    .streaming_inserter()
-                    .map_err(|e| LogIntakeError::GreptimeIngestError(e))?;
+                let stream_inserter = greptime_connection.greptime.streaming_inserter()?;
                 let insert_request = logs_to_insert_request(&logs, &metadata.pod_name);
-                stream_inserter
-                    .insert(vec![insert_request])
-                    .await
-                    .map_err(|e| LogIntakeError::GreptimeIngestError(e))?;
-                stream_inserter
-                    .finish()
-                    .await
-                    .map_err(|e| LogIntakeError::GreptimeIngestError(e))?;
+                stream_inserter.insert(vec![insert_request]).await?;
+                stream_inserter.finish().await?;
 
                 // send to fluvio
                 if let Err(e) = fluvio_connection.send_batch(&logs, &metadata).await {
