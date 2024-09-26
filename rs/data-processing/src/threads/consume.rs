@@ -6,7 +6,7 @@ use shared::fluvio::{commit_and_flush_offsets, OffsetError};
 use shared::types::record::log::LogParseError;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use tracing::{error, info};
+use tracing::error;
 
 #[derive(Error, Debug)]
 pub enum ConsumerThreadError {

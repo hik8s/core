@@ -50,5 +50,5 @@ thiserror = "1.0.63"
 tiktoken-rs = "0.5.9"
 tokio = "1.36.0"
 tracing = "0.1.40"
-tracing-subscriber = {version = "0.3.18", features = ["env-filter"]}
+tracing-subscriber = {version = "0.3.18", features = ["env-filter", "time"]}
 uuid7 = "1.0.2"
