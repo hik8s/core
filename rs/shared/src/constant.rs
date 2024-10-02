@@ -9,9 +9,6 @@ pub const PROMPT_ENGINE_PATH: &str = "prompt";
 // qdrant
 pub const QDRANT_COLLECTION_LOG: &str = "logs";
 
-// greptime
-pub const GREPTIME_DB_NAME: &str = "logs";
-
 // embedding
 pub const OPENAI_EMBEDDING_MODEL: &str = "text-embedding-3-large";
 pub const OPENAI_EMBEDDING_TOKEN_LIMIT: usize = 100000;

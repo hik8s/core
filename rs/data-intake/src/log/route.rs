@@ -14,9 +14,9 @@ use tracing::warn;
 
 #[post("/logs", data = "<data>")]
 pub async fn log_intake<'a>(
-    _user: AuthenticatedUser,
-    greptime_connection: GreptimeConnection,
-    fluvio_connection: FluvioConnection,
+    user: AuthenticatedUser,
+    greptime: GreptimeConnection,
+    fluvio: FluvioConnection,
     content_type: &ContentType,
     data: Data<'a>,
 ) -> Result<String, LogIntakeError> {
@@ -25,6 +25,9 @@ pub async fn log_intake<'a>(
 
     // The loop will exit successfully if the stream field is processed,
     // exit with an error during processing and if no more field is found
+    greptime
+        .create_database_if_not_exists(&user.customer_id)
+        .await?;
     loop {
         // read multipart entry
         let field = multipart
@@ -43,21 +46,21 @@ pub async fn log_intake<'a>(
                 let logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
-                let stream_inserter = greptime_connection.greptime.streaming_inserter()?;
+                let stream_inserter = greptime.streaming_inserter(&user.customer_id)?;
                 let insert_request = logs_to_insert_request(&logs, &metadata.pod_name);
                 stream_inserter.insert(vec![insert_request]).await?;
                 stream_inserter.finish().await?;
 
                 // send to fluvio
-                if let Err(e) = fluvio_connection.send_batch(&logs, &metadata).await {
+                if let Err(e) = fluvio.send_batch(&logs, &user.customer_id).await {
                     let error = e.to_string();
                     for log in &logs {
                         let record_id = &log.record_id;
                         let key = &log.key;
                         let message_length = log.message.len();
                         warn!(
-                            "Error: {}, Key: {}, Record ID: {}, Message Length: {}",
-                            error, key, record_id, message_length
+                            "Error: {}, Client ID: {}, Key: {}, Record ID: {}, Message Length: {}",
+                            user.customer_id, error, key, record_id, message_length
                         );
                     }
                 }

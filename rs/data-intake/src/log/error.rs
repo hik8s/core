@@ -1,5 +1,7 @@
 use rocket::{http::Status, response::Responder, Request, Response};
-use shared::fluvio::FluvioConnectionError;
+use shared::{
+    connections::greptime::connect::GreptimeConnectionError, fluvio::FluvioConnectionError,
+};
 use std::io::Cursor;
 use thiserror::Error;
 use tracing::error;
@@ -32,6 +34,8 @@ pub enum LogIntakeError {
     FinishError(#[source] std::io::Error),
     #[error("Failed to send batch to Fluvio topic: {0}")]
     FluvioConnectionError(#[source] FluvioConnectionError),
+    #[error("GreptimeDB connection error: {0}")]
+    GreptimeError(#[from] GreptimeConnectionError),
 }
 
 impl From<LogIntakeError> for Status {
@@ -84,6 +88,10 @@ impl From<LogIntakeError> for Status {
             LogIntakeError::MultipartUnexpectedFieldName(e) => {
                 error!("Multipart unexpected field name: {:?}", e);
                 Status::BadRequest
+            }
+            LogIntakeError::GreptimeError(e) => {
+                error!("Greptime error: {:?}", e);
+                Status::InternalServerError
             }
         }
     }
