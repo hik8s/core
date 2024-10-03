@@ -1,6 +1,13 @@
-use std::str::{from_utf8, Utf8Error};
+use fluvio::consumer::ConsumerStream;
+use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
+use fluvio::spu::SpuSocketPool;
+use fluvio::TopicProducer;
+use shared::fluvio::{commit_and_flush_offsets, OffsetError};
 
-use fluvio::dataplane::record::ConsumerRecord;
+use std::str::{from_utf8, Utf8Error};
+use std::sync::Arc;
+
+use futures_util::StreamExt;
 use greptimedb_ingester::Error as GreptimeIngestError;
 use shared::{
     connections::{
@@ -17,7 +24,6 @@ use shared::{
     },
 };
 use thiserror::Error;
-use tokio::sync::mpsc::{self, error::SendError};
 use tracing::error;
 
 use algorithm::classification::deterministic::classifier::Classifier;
@@ -26,8 +32,6 @@ use algorithm::classification::deterministic::classifier::Classifier;
 pub enum ProcessThreadError {
     #[error("Classifier error: {0}")]
     ClassifierError(#[from] ClassifierError),
-    #[error("Failed to send result to main thread: {0}")]
-    SendError(#[from] SendError<(String, String)>),
     #[error("Greptime connection error: {0}")]
     GreptimeConnectionError(#[from] GreptimeConnectionError),
     #[error("Redis connection error: {0}")]
@@ -42,17 +46,18 @@ pub enum ProcessThreadError {
     FluvioProducerError(#[from] anyhow::Error),
     #[error("UTF-8 error: {0}")]
     Utf8Error(#[from] Utf8Error),
+    #[error("Fluvio offset error: {0}")]
+    OffsetError(#[from] OffsetError),
 }
 
 pub async fn process_logs(
-    mut receiver: mpsc::Receiver<ConsumerRecord>,
-    sender: mpsc::Sender<(String, String)>,
-    fluvio: FluvioConnection,
+    mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
+    producer: Arc<TopicProducer<SpuSocketPool>>,
 ) -> Result<(), ProcessThreadError> {
     let redis = RedisConnection::new()?;
     let mut classifier = Classifier::new(None, redis)?;
     let greptime = GreptimeConnection::new().await?;
-    while let Some(record) = receiver.recv().await {
+    while let Some(Ok(record)) = consumer.next().await {
         let customer_id = get_record_key(&record)?;
         let log = LogRecord::try_from(record)?;
 
@@ -71,17 +76,18 @@ pub async fn process_logs(
         // produce to fluvio
         if updated_class.is_some() {
             let class = updated_class.unwrap();
-            fluvio
-                .producer
+            producer
                 .send(customer_id.clone(), TryInto::<String>::try_into(class)?)
                 .await?;
         }
 
-        // send result for offset commit
-        sender
-            .send((customer_id, record_id))
+        // commit consumed offsets
+        commit_and_flush_offsets(&mut consumer, customer_id, record_id)
             .await
-            .map_err(ProcessThreadError::SendError)?;
+            .map_err(|e| {
+                error!("Commit or flush error: {e}");
+                e
+            })?;
     }
     Ok(())
 }
