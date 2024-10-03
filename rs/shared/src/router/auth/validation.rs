@@ -58,8 +58,14 @@ pub async fn validate_token(token: &str) -> Result<String, AuthenticationError> 
 
     let token_data = decode::<Claims>(token, &decoding_key, &validation)?;
     if token_data.claims.exp > chrono::Utc::now().timestamp() as usize {
-        Ok(token_data.claims.sub)
+        let client_id = parse_client_id(&token_data.claims.sub);
+        Ok(client_id.to_string())
     } else {
         Err(AuthenticationError::TokenExpired)
     }
+}
+
+fn parse_client_id(input: &str) -> &str {
+    // TODO: sanitize input
+    input.split('@').next().unwrap_or(input)
 }
