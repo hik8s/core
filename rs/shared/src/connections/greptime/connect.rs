@@ -1,4 +1,5 @@
 use crate::connections::shared::error::ConfigError;
+use crate::log_error;
 
 use super::config::GreptimeConfig;
 use greptimedb_ingester::{Client as GreptimeClient, ClientBuilder, Database, StreamInserter};
@@ -7,6 +8,7 @@ use sqlx::Error as SqlxError;
 use sqlx::{postgres::PgPoolOptions, Error, Pool, Postgres};
 use std::borrow::Cow;
 use thiserror::Error;
+use tracing::error;
 
 #[derive(Clone)]
 pub struct GreptimeConnection {
@@ -23,8 +25,6 @@ pub enum GreptimeConnectionError {
     GrpcClientError(String),
     #[error("Failed to connect to PostgreSQL: {0}")]
     PostgresConnectionError(#[from] SqlxError),
-    #[error("PostgreSQL failed to create database: '{0}', error: {1}")]
-    DbCreationError(String, #[source] SqlxError),
     #[error("GreptimeDB streaming inserter error: {0}")]
     StreamingInserterError(#[from] greptimedb_ingester::Error),
 }
@@ -59,41 +59,19 @@ impl GreptimeConnection {
             .map_err(GreptimeConnectionError::from)
     }
 
-    pub async fn create_database_if_not_exists(
-        &self,
-        customer_id: &str,
-    ) -> Result<(), GreptimeConnectionError> {
-        if !self.database_exists(customer_id).await? {
-            self.create_database(customer_id).await?;
-        }
-        Ok(())
-    }
-
-    async fn database_exists(&self, customer_id: &str) -> Result<bool, GreptimeConnectionError> {
-        let result = sqlx::query("SELECT 1 FROM pg_database WHERE datname = $1")
-            .bind(customer_id)
-            .fetch_optional(&self.admin_psql)
-            .await?;
-        Ok(result.is_some())
-    }
-
-    async fn create_database(&self, customer_id: &str) -> Result<(), GreptimeConnectionError> {
-        tracing::info!("Creating database {}.", customer_id);
-        sqlx::query(&format!("CREATE DATABASE {}", customer_id))
+    pub async fn create_database(&self, db_name: &str) -> Result<(), GreptimeConnectionError> {
+        let result = sqlx::query(&format!("CREATE DATABASE {}", db_name))
             .execute(&self.admin_psql)
-            .await
-            .map_err(|e| match e {
+            .await;
+        if let Err(e) = result {
+            match e {
                 Error::Database(ref db_err) if db_err.code() == Some(Cow::Borrowed("22023")) => {
                     // this could happen if the database was created between the check and the create
-                    tracing::info!("Database {} already exists.", customer_id);
-                    Ok(())
+                    tracing::info!("Database {} already exists.", db_name);
                 }
-                _ => Err(GreptimeConnectionError::DbCreationError(
-                    customer_id.to_owned(),
-                    e,
-                )),
-            })
-            .ok();
+                e => return Err(log_error!(e).into()),
+            }
+        }
         Ok(())
     }
 }

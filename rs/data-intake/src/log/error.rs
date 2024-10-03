@@ -89,10 +89,7 @@ impl From<LogIntakeError> for Status {
                 error!("Multipart unexpected field name: {:?}", e);
                 Status::BadRequest
             }
-            LogIntakeError::GreptimeError(e) => {
-                error!("Greptime error: {:?}", e);
-                Status::InternalServerError
-            }
+            LogIntakeError::GreptimeError(_) => Status::InternalServerError,
         }
     }
 }

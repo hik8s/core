@@ -23,11 +23,9 @@ pub async fn log_intake<'a>(
     let mut multipart = into_multipart(content_type, data).await?;
     let mut metadata: Option<Metadata> = None;
 
+    greptime.create_database(&user.db_name).await?;
     // The loop will exit successfully if the stream field is processed,
     // exit with an error during processing and if no more field is found
-    greptime
-        .create_database_if_not_exists(&user.customer_id)
-        .await?;
     loop {
         // read multipart entry
         let field = multipart
@@ -46,7 +44,7 @@ pub async fn log_intake<'a>(
                 let logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
-                let stream_inserter = greptime.streaming_inserter(&user.customer_id)?;
+                let stream_inserter = greptime.streaming_inserter(&user.db_name)?;
                 let insert_request = logs_to_insert_request(&logs, &metadata.pod_name);
                 stream_inserter.insert(vec![insert_request]).await?;
                 stream_inserter.finish().await?;
@@ -60,7 +58,7 @@ pub async fn log_intake<'a>(
                         let message_length = log.message.len();
                         warn!(
                             "Error: {}, Client ID: {}, Key: {}, Record ID: {}, Message Length: {}",
-                            user.customer_id, error, key, record_id, message_length
+                            &user.customer_id, error, key, record_id, message_length
                         );
                     }
                 }
