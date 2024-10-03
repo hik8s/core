@@ -56,7 +56,7 @@ impl GreptimeConnection {
         let database = Database::new_with_dbname(customer_id, self.client.clone());
         database
             .streaming_inserter()
-            .map_err(GreptimeConnectionError::from)
+            .map_err(|e| log_error!(e).into())
     }
 
     pub async fn create_database(&self, db_name: &str) -> Result<(), GreptimeConnectionError> {

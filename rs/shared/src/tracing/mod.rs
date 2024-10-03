@@ -6,7 +6,7 @@ macro_rules! log_error {
         let file_line = format!("{}:{}:{}", file!(), line!(), column!());
         let span = tracing::span!(tracing::Level::ERROR, "error", caller = file_line);
         let _enter = span.enter();
-        error!("{:?}", $e);
+        tracing::error!("{:?}", $e);
         $e
     }};
 }

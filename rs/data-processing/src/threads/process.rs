@@ -3,6 +3,7 @@ use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::spu::SpuSocketPool;
 use fluvio::TopicProducer;
 use shared::fluvio::{commit_and_flush_offsets, OffsetError};
+use shared::log_error;
 
 use std::str::{from_utf8, Utf8Error};
 use std::sync::Arc;
@@ -17,7 +18,6 @@ use shared::{
         },
         redis::connect::{RedisConnection, RedisConnectionError},
     },
-    fluvio::{FluvioConnection, FluvioConnectionError},
     types::{
         classifier::error::ClassifierError,
         record::{log::LogRecord, preprocessed::PreprocessedLogRecord},
@@ -36,8 +36,6 @@ pub enum ProcessThreadError {
     GreptimeConnectionError(#[from] GreptimeConnectionError),
     #[error("Redis connection error: {0}")]
     RedisConnectionError(#[from] RedisConnectionError),
-    #[error("Fluvio connection error: {0}")]
-    FluvioConnectionError(#[from] FluvioConnectionError),
     #[error("Stream inserter error: {0}")]
     StreamInserterError(#[from] GreptimeIngestError),
     #[error("Failed to serialize: {0}")]
@@ -78,25 +76,20 @@ pub async fn process_logs(
             let class = updated_class.unwrap();
             producer
                 .send(customer_id.clone(), TryInto::<String>::try_into(class)?)
-                .await?;
+                .await
+                .map_err(|e| log_error!(e))?;
         }
 
         // commit consumed offsets
         commit_and_flush_offsets(&mut consumer, customer_id, record_id)
             .await
-            .map_err(|e| {
-                error!("Commit or flush error: {e}");
-                e
-            })?;
+            .map_err(|e| log_error!(e))?;
     }
     Ok(())
 }
 
 fn get_record_key(record: &ConsumerRecord) -> Result<String, Utf8Error> {
     let key = record.key().unwrap();
-    let key = from_utf8(key).map_err(|e| {
-        error!("{e}");
-        e
-    })?;
+    let key = from_utf8(key).map_err(|e| log_error!(e))?;
     Ok(key.to_owned())
 }

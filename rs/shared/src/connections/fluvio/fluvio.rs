@@ -10,6 +10,7 @@ use serde_json::to_string;
 use std::sync::Arc;
 
 use crate::constant::FLUVIO_BATCH_SIZE;
+use crate::log_error;
 use crate::types::record::log::LogRecord;
 
 use super::error::FluvioConnectionError;
@@ -28,7 +29,7 @@ impl FluvioConnection {
 
         let fluvio = Fluvio::connect()
             .await
-            .map_err(|e| FluvioConnectionError::ClientConnection(e.into()))?;
+            .map_err(|e| FluvioConnectionError::ClientConnection(log_error!(e).into()))?;
 
         let admin = fluvio.admin().await;
         create_topic(admin, &topic).await?;
@@ -41,7 +42,7 @@ impl FluvioConnection {
         let producer = fluvio
             .topic_producer_with_config(topic.name.to_owned(), topic_config)
             .await
-            .map_err(|e| FluvioConnectionError::TopicProducer(e.into()))?;
+            .map_err(|e| FluvioConnectionError::TopicProducer(log_error!(e).into()))?;
 
         let fluvio = Arc::new(fluvio);
         let producer = Arc::new(producer);
@@ -70,10 +71,12 @@ impl FluvioConnection {
                     .offset_start(Offset::beginning())
                     .offset_strategy(OffsetManagementStrategy::Manual)
                     .build()
-                    .map_err(|e| FluvioConnectionError::ConsumerConfigError(e.into()))?,
+                    .map_err(|e| {
+                        FluvioConnectionError::ConsumerConfigError(log_error!(e).into())
+                    })?,
             )
             .await
-            .map_err(|e| FluvioConnectionError::ConsumerError(e.into()))?;
+            .map_err(|e| FluvioConnectionError::ConsumerError(log_error!(e).into()))?;
         Ok(consumer)
     }
 
@@ -92,7 +95,7 @@ impl FluvioConnection {
                 self.producer
                     .send_all(batch.drain(..))
                     .await
-                    .map_err(|e| FluvioConnectionError::ProducerSend(e.into()))?;
+                    .map_err(|e| FluvioConnectionError::ProducerSend(log_error!(e).into()))?;
             }
 
             // Send any remaining logs in the batch
@@ -100,14 +103,14 @@ impl FluvioConnection {
                 self.producer
                     .send_all(batch.drain(..))
                     .await
-                    .map_err(|e| FluvioConnectionError::ProducerSend(e.into()))?;
+                    .map_err(|e| FluvioConnectionError::ProducerSend(log_error!(e).into()))?;
             }
 
             // Ensure the producer flushes the messages
             self.producer
                 .flush()
                 .await
-                .map_err(|e| FluvioConnectionError::ProducerFlush(e.into()))?;
+                .map_err(|e| FluvioConnectionError::ProducerFlush(log_error!(e).into()))?;
         }
         Ok(())
     }
