@@ -80,13 +80,13 @@ impl FluvioConnection {
     pub async fn send_batch(
         &self,
         logs: &Vec<LogRecord>,
-        customer_id: &str,
+        key: &str,
     ) -> Result<(), FluvioConnectionError> {
         let mut batch = Vec::with_capacity(FLUVIO_BATCH_SIZE);
 
         for log in logs {
             let serialized_record = to_string(&log).expect("Failed to serialize record");
-            batch.push((RecordKey::from(customer_id), serialized_record));
+            batch.push((RecordKey::from(key), serialized_record));
 
             if batch.len() == FLUVIO_BATCH_SIZE {
                 self.producer

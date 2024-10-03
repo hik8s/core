@@ -1,4 +1,3 @@
-use crate::LogRecord;
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use futures_util::StreamExt;
@@ -11,7 +10,7 @@ use tracing::error;
 #[derive(Error, Debug)]
 pub enum ConsumerThreadError {
     #[error("Failed to send task to worker: {0}")]
-    SendError(#[from] mpsc::error::SendError<LogRecord>),
+    SendError(#[from] mpsc::error::SendError<ConsumerRecord>),
     #[error("Failed to parse log record: {0}")]
     LogRecordError(#[from] LogParseError),
     #[error("Fluvio offset error: {0}")]
@@ -22,12 +21,12 @@ pub enum ConsumerThreadError {
 
 pub async fn consume_logs(
     mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
-    sender: mpsc::Sender<LogRecord>,
+    sender: mpsc::Sender<ConsumerRecord>,
     mut receiver: mpsc::Receiver<(String, String)>,
 ) -> Result<(), ConsumerThreadError> {
+    // TODO: move this to the process thread
     while let Some(Ok(record)) = consumer.next().await {
-        let log = LogRecord::try_from(record)?;
-        sender.send(log).await?;
+        sender.send(record).await?;
 
         if let Some((key, record_id)) = receiver.recv().await {
             commit_and_flush_offsets(&mut consumer, key, record_id)

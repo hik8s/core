@@ -1,6 +1,6 @@
+use fluvio::dataplane::record::ConsumerRecord;
 use shared::constant::FLUVIO_BATCH_SIZE;
 use shared::fluvio::{FluvioConnectionError, TopicName};
-use shared::types::record::log::LogRecord;
 use shared::{fluvio::FluvioConnection, tracing::setup::setup_tracing};
 use thiserror::Error;
 use threads::consume::{consume_logs, ConsumerThreadError};
@@ -35,7 +35,7 @@ async fn main() -> Result<(), DataProcessingError> {
     for partition_id in 0..fluvio_connection_log.topic.partitions {
         let consumer = fluvio_connection_log.create_consumer(partition_id).await?;
         let (result_sender, result_receiver) = mpsc::channel::<(String, String)>(FLUVIO_BATCH_SIZE);
-        let (data_sender, data_receiver) = mpsc::channel::<LogRecord>(FLUVIO_BATCH_SIZE);
+        let (data_sender, data_receiver) = mpsc::channel::<ConsumerRecord>(FLUVIO_BATCH_SIZE);
 
         // Spawn worker thread for each partition
         let fluvio_connection_class_clone = fluvio_connection_class.clone();
