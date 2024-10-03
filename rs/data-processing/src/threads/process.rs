@@ -2,10 +2,11 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::spu::SpuSocketPool;
 use fluvio::TopicProducer;
+use shared::connections::fluvio::util::get_record_key;
 use shared::fluvio::{commit_and_flush_offsets, OffsetError};
 use shared::log_error;
 
-use std::str::{from_utf8, Utf8Error};
+use std::str::Utf8Error;
 use std::sync::Arc;
 
 use futures_util::StreamExt;
@@ -56,7 +57,7 @@ pub async fn process_logs(
     let mut classifier = Classifier::new(None, redis)?;
     let greptime = GreptimeConnection::new().await?;
     while let Some(Ok(record)) = consumer.next().await {
-        let customer_id = get_record_key(&record)?;
+        let customer_id = get_record_key(&record).map_err(|e| log_error!(e))?;
         let log = LogRecord::try_from(record)?;
 
         // preprocess
@@ -86,10 +87,4 @@ pub async fn process_logs(
             .map_err(|e| log_error!(e))?;
     }
     Ok(())
-}
-
-fn get_record_key(record: &ConsumerRecord) -> Result<String, Utf8Error> {
-    let key = record.key().unwrap();
-    let key = from_utf8(key).map_err(|e| log_error!(e))?;
-    Ok(key.to_owned())
 }
