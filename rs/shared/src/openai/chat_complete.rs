@@ -1,4 +1,5 @@
 use crate::connections::prompt_engine::connect::{AugmentationRequest, PromptEngineConnection};
+use crate::log_error;
 use async_openai::types::ChatCompletionRequestMessage;
 use async_openai::{types::CreateChatCompletionRequestArgs, Client};
 use futures_util::StreamExt;
@@ -44,7 +45,10 @@ where
         .find(|message| message.role == "user")
     {
         let request = AugmentationRequest::new(&user_message.content, &payload.client_id);
-        user_message.content = prompt_engine.request_augmentation(request).await?;
+        user_message.content = prompt_engine
+            .request_augmentation(request)
+            .await
+            .map_err(|e| log_error!(e))?;
     }
 
     let messages: Vec<ChatCompletionRequestMessage> = payload
@@ -84,7 +88,8 @@ where
         .model(&payload.model)
         .max_tokens(1024u16)
         .messages(messages)
-        .build()?;
+        .build()
+        .map_err(|e| log_error!(e))?;
 
     let mut stream = client.chat().create_stream(request).await?;
 
