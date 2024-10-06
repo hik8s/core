@@ -1,4 +1,4 @@
-use reqwest::{Client, Error as ClientError};
+use reqwest::{header, Client, Error as ClientError};
 use std::sync::Arc;
 
 use thiserror::Error;
@@ -11,6 +11,8 @@ use crate::{get_env_var, log_error};
 pub enum PromptEngineError {
     #[error("HTTP client error: {0}")]
     ClientError(#[from] ClientError),
+    #[error("Error from downstream server: {0}")]
+    ServerError(String),
     #[error("Reqwest error: {0}")]
     AnyhowError(#[from] anyhow::Error),
     #[error("Configuration error: {0}")]
@@ -84,7 +86,18 @@ impl PromptEngineConnection {
     ) -> Result<String, PromptEngineError> {
         let endpoint = self.config.get_uri();
         let body: String = request.try_into()?;
-        let response = self.client.post(endpoint).body(body).send().await?;
-        Ok(response.text().await?)
+        let response = self
+            .client
+            .post(endpoint)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(body)
+            .send()
+            .await?;
+        let status = response.status();
+        let response_body = response.text().await?;
+        if !status.is_success() {
+            return Err(PromptEngineError::ServerError(response_body));
+        }
+        Ok(response_body)
     }
 }
