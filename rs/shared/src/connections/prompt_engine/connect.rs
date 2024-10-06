@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::connections::ConfigError;
 use crate::constant::{PROMPT_ENGINE_PATH, PROMPT_ENGINE_PORT};
-use crate::get_env_var;
+use crate::{get_env_var, log_error};
 
 #[derive(Error, Debug)]
 pub enum PromptEngineError {
@@ -15,6 +15,8 @@ pub enum PromptEngineError {
     AnyhowError(#[from] anyhow::Error),
     #[error("Configuration error: {0}")]
     ConfigError(#[from] ConfigError),
+    #[error("Serialization error: {0}")]
+    SerializationError(#[from] serde_json::Error),
 }
 
 #[derive(Clone)]
@@ -36,6 +38,30 @@ impl PromptEngineConfig {
     }
 }
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct AugmentationRequest {
+    pub user_message: String,
+    pub client_id: String,
+}
+
+impl AugmentationRequest {
+    pub fn new(user_message: &str, client_id: &str) -> Self {
+        AugmentationRequest {
+            user_message: user_message.to_owned(),
+            client_id: client_id.to_owned(),
+        }
+    }
+}
+impl TryInto<String> for AugmentationRequest {
+    type Error = serde_json::Error;
+
+    fn try_into(self) -> Result<String, Self::Error> {
+        serde_json::to_string(&self).map_err(|e| log_error!(e))
+    }
+}
+
 #[derive(Clone)]
 pub struct PromptEngineConnection {
     pub client: Arc<Client>,
@@ -54,10 +80,11 @@ impl PromptEngineConnection {
     }
     pub async fn request_augmentation(
         &self,
-        user_message: String,
+        request: AugmentationRequest,
     ) -> Result<String, PromptEngineError> {
         let endpoint = self.config.get_uri();
-        let response = self.client.post(endpoint).body(user_message).send().await?;
+        let body: String = request.try_into()?;
+        let response = self.client.post(endpoint).body(body).send().await?;
         Ok(response.text().await?)
     }
 }

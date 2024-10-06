@@ -1,3 +1,15 @@
+use fluvio::consumer::ConsumerStream;
+use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
+use fluvio::spu::SpuSocketPool;
+use fluvio::TopicProducer;
+use shared::connections::fluvio::util::get_record_key;
+use shared::fluvio::{commit_and_flush_offsets, OffsetError};
+use shared::log_error;
+
+use std::str::Utf8Error;
+use std::sync::Arc;
+
+use futures_util::StreamExt;
 use greptimedb_ingester::Error as GreptimeIngestError;
 use shared::{
     connections::{
@@ -7,14 +19,12 @@ use shared::{
         },
         redis::connect::{RedisConnection, RedisConnectionError},
     },
-    fluvio::{FluvioConnection, FluvioConnectionError},
     types::{
         classifier::error::ClassifierError,
         record::{log::LogRecord, preprocessed::PreprocessedLogRecord},
     },
 };
 use thiserror::Error;
-use tokio::sync::mpsc::{self, error::SendError};
 use tracing::error;
 
 use algorithm::classification::deterministic::classifier::Classifier;
@@ -23,34 +33,35 @@ use algorithm::classification::deterministic::classifier::Classifier;
 pub enum ProcessThreadError {
     #[error("Classifier error: {0}")]
     ClassifierError(#[from] ClassifierError),
-    #[error("Failed to send result to main thread: {0}")]
-    SendError(#[from] SendError<(String, String)>),
     #[error("Greptime connection error: {0}")]
     GreptimeConnectionError(#[from] GreptimeConnectionError),
     #[error("Redis connection error: {0}")]
     RedisConnectionError(#[from] RedisConnectionError),
-    #[error("Fluvio connection error: {0}")]
-    FluvioConnectionError(#[from] FluvioConnectionError),
     #[error("Stream inserter error: {0}")]
     StreamInserterError(#[from] GreptimeIngestError),
     #[error("Failed to serialize: {0}")]
     SerializationError(#[from] serde_json::Error),
     #[error("Fluvio producer error: {0}")]
     FluvioProducerError(#[from] anyhow::Error),
+    #[error("UTF-8 error: {0}")]
+    Utf8Error(#[from] Utf8Error),
+    #[error("Fluvio offset error: {0}")]
+    OffsetError(#[from] OffsetError),
 }
 
 pub async fn process_logs(
-    mut receiver: mpsc::Receiver<LogRecord>,
-    sender: mpsc::Sender<(String, String)>,
-    fluvio: FluvioConnection,
+    mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
+    producer: Arc<TopicProducer<SpuSocketPool>>,
 ) -> Result<(), ProcessThreadError> {
     let redis = RedisConnection::new()?;
     let mut classifier = Classifier::new(None, redis)?;
     let greptime = GreptimeConnection::new().await?;
-    let stream_inserter = greptime.streaming_inserter()?;
-    while let Some(log) = receiver.recv().await {
+    while let Some(Ok(record)) = consumer.next().await {
+        let customer_id = get_record_key(&record).map_err(|e| log_error!(e))?;
+        let log = LogRecord::try_from(record)?;
+
         // preprocess
-        let (key, record_id) = (log.key.to_owned(), log.record_id.to_owned());
+        let record_id = log.record_id.to_owned();
         let preprocessed_log = PreprocessedLogRecord::from(log);
 
         // classify
@@ -58,22 +69,22 @@ pub async fn process_logs(
 
         // insert into greptimedb
         let insert_request = classified_log_to_insert_request(classified_log);
+        let stream_inserter = greptime.streaming_inserter(&customer_id)?;
         stream_inserter.insert(vec![insert_request]).await?;
 
         // produce to fluvio
         if updated_class.is_some() {
             let class = updated_class.unwrap();
-            fluvio
-                .producer
-                .send(key.to_owned(), TryInto::<String>::try_into(class)?)
-                .await?;
+            producer
+                .send(customer_id.clone(), TryInto::<String>::try_into(class)?)
+                .await
+                .map_err(|e| log_error!(e))?;
         }
 
-        // send result for offset commit
-        sender
-            .send((key, record_id))
+        // commit consumed offsets
+        commit_and_flush_offsets(&mut consumer, customer_id, record_id)
             .await
-            .map_err(ProcessThreadError::SendError)?;
+            .map_err(|e| log_error!(e))?;
     }
     Ok(())
 }

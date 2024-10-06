@@ -1,5 +1,4 @@
-use crate::connections::prompt_engine::connect::PromptEngineConnection;
-use crate::constant::OPENAI_CHAT_MODEL;
+use crate::connections::prompt_engine::connect::{AugmentationRequest, PromptEngineConnection};
 use async_openai::types::ChatCompletionRequestMessage;
 use async_openai::{types::CreateChatCompletionRequestArgs, Client};
 use futures_util::StreamExt;
@@ -18,6 +17,8 @@ pub struct ChatMessage {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct RequestOptions {
     messages: Vec<Message>,
+    model: String,
+    client_id: String,
     pub temperature: Option<f32>,
     pub top_p: Option<f32>,
 }
@@ -42,9 +43,8 @@ where
         .rev()
         .find(|message| message.role == "user")
     {
-        user_message.content = prompt_engine
-            .request_augmentation(user_message.content.clone())
-            .await?;
+        let request = AugmentationRequest::new(&user_message.content, &payload.client_id);
+        user_message.content = prompt_engine.request_augmentation(request).await?;
     }
 
     let messages: Vec<ChatCompletionRequestMessage> = payload
@@ -81,7 +81,7 @@ where
     let client = Client::new();
 
     let request = CreateChatCompletionRequestArgs::default()
-        .model(OPENAI_CHAT_MODEL)
+        .model(&payload.model)
         .max_tokens(1024u16)
         .messages(messages)
         .build()?;

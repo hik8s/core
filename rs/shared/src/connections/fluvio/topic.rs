@@ -1,9 +1,12 @@
 use fluvio::{metadata::topic::TopicSpec, FluvioAdmin};
 use tracing::info;
 
-use crate::constant::{
-    TOPIC_CLASS_NAME, TOPIC_CLASS_PARTITIONS, TOPIC_CLASS_REPLICAS, TOPIC_LOG_NAME,
-    TOPIC_LOG_PARTITIONS, TOPIC_LOG_REPLICAS,
+use crate::{
+    constant::{
+        TOPIC_CLASS_NAME, TOPIC_CLASS_PARTITIONS, TOPIC_CLASS_REPLICAS, TOPIC_LOG_NAME,
+        TOPIC_LOG_PARTITIONS, TOPIC_LOG_REPLICAS,
+    },
+    log_error,
 };
 
 use super::error::FluvioConnectionError;
@@ -44,7 +47,7 @@ pub async fn create_topic(
     let topics = admin
         .list::<TopicSpec, String>(vec![])
         .await
-        .map_err(|e| FluvioConnectionError::AdminList(e.into()))?;
+        .map_err(|e| FluvioConnectionError::AdminList(log_error!(e).into()))?;
     if topics.iter().any(|t| t.name == topic.name) {
         info!("Topic '{}' already exists", topic.name);
         return Ok(());
@@ -55,7 +58,7 @@ pub async fn create_topic(
     admin
         .create(topic.name.to_owned(), false, topic_spec)
         .await
-        .map_err(|e| FluvioConnectionError::AdminCreate(e.into()))?;
+        .map_err(|e| FluvioConnectionError::AdminCreate(log_error!(e).into()))?;
     info!("Topic '{}' created", topic.name);
     Ok(())
 }

@@ -1,3 +1,4 @@
+pub mod db_name;
 pub mod fluvio;
 pub mod greptime;
 pub mod prompt_engine;

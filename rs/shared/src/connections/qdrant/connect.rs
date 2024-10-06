@@ -24,8 +24,8 @@ pub struct QdrantConnection {
 }
 
 impl QdrantConnection {
-    pub async fn new(collection_name: String) -> Result<Self, QdrantConnectionError> {
-        let config = QdrantConfig::new(collection_name)?;
+    pub async fn new() -> Result<Self, QdrantConnectionError> {
+        let config = QdrantConfig::new()?;
 
         // Qdrant client
         let client = Arc::new(Qdrant::from_url(&config.get_qdrant_uri()).build().unwrap());
@@ -33,59 +33,45 @@ impl QdrantConnection {
         let connection = QdrantConnection { client, config };
 
         // Create collection
-        connection.create_collection().await?;
         Ok(connection)
     }
 
-    async fn create_collection(&self) -> Result<(), QdrantConnectionError> {
+    pub async fn create_collection(&self, db_name: &str) -> Result<(), QdrantConnectionError> {
         let collections = self.client.list_collections().await?;
         for collection in collections.collections {
-            if collection.name == self.config.collection_name {
-                info!(
-                    "Collection '{}' already exists",
-                    self.config.collection_name
-                );
+            if collection.name == db_name {
                 return Ok(());
             }
         }
 
         self.client
             .create_collection(
-                CreateCollectionBuilder::new(self.config.collection_name.to_owned())
+                CreateCollectionBuilder::new(db_name.to_owned())
                     .vectors_config(VectorParamsBuilder::new(EMBEDDING_SIZE, Distance::Cosine)),
             )
             .await?;
+        info!("Collection {} created", db_name);
         Ok(())
     }
     pub async fn upsert_point(
         &self,
         qdrant_point: PointStruct,
+        db_name: &str,
     ) -> Result<PointsOperationResponse, QdrantConnectionError> {
-        let response = self
-            .client
-            .upsert_points(
-                UpsertPointsBuilder::new(
-                    self.config.collection_name.to_owned(),
-                    vec![qdrant_point],
-                )
-                .wait(false),
-            )
-            .await?;
+        let request = UpsertPointsBuilder::new(db_name.to_owned(), vec![qdrant_point]).wait(false);
+        let response = self.client.upsert_points(request).await?;
         Ok(response)
     }
     pub async fn search_classes(
         &self,
+        db_name: &str,
         array: [f32; EMBEDDING_USIZE],
         filter: Filter,
         limit: u64,
     ) -> Result<Vec<VectorizedClass>, QdrantConnectionError> {
-        let request = SearchPointsBuilder::new(
-            self.config.collection_name.to_owned(),
-            array.to_vec(),
-            limit,
-        )
-        .filter(filter)
-        .with_payload(true);
+        let request = SearchPointsBuilder::new(db_name.to_owned(), array.to_vec(), limit)
+            .filter(filter)
+            .with_payload(true);
         let response = self.client.search_points(request).await?;
         let vectorized_classes = to_vectorized_class(response.result)?;
         Ok(vectorized_classes)

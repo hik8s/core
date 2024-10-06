@@ -1,17 +1,19 @@
 use crate::connections::shared::error::ConfigError;
+use crate::log_error;
 
 use super::config::GreptimeConfig;
-use greptimedb_ingester::{ClientBuilder, Database, Result as GreptimeResult, StreamInserter};
+use greptimedb_ingester::{Client as GreptimeClient, ClientBuilder, Database, StreamInserter};
 use rocket::{request::FromRequest, State};
 use sqlx::Error as SqlxError;
 use sqlx::{postgres::PgPoolOptions, Error, Pool, Postgres};
 use std::borrow::Cow;
 use thiserror::Error;
+use tracing::error;
 
 #[derive(Clone)]
 pub struct GreptimeConnection {
-    pub greptime: Database,
-    pub psql: Pool<Postgres>,
+    pub client: GreptimeClient,
+    pub admin_psql: Pool<Postgres>,
     pub config: GreptimeConfig,
 }
 
@@ -23,54 +25,54 @@ pub enum GreptimeConnectionError {
     GrpcClientError(String),
     #[error("Failed to connect to PostgreSQL: {0}")]
     PostgresConnectionError(#[from] SqlxError),
-    #[error("PostgreSQL failed to create database: '{0}', error: {1}")]
-    DbCreationError(String, #[source] SqlxError),
+    #[error("GreptimeDB streaming inserter error: {0}")]
+    StreamingInserterError(#[from] greptimedb_ingester::Error),
 }
 
 impl GreptimeConnection {
     pub async fn new() -> Result<Self, GreptimeConnectionError> {
         let config = GreptimeConfig::new()?;
-        // GreptimeDB
-        let grpc_client = ClientBuilder::default()
+        // GreptimeDB Client
+        let client = ClientBuilder::default()
             .peers(vec![config.get_uri()])
             .build();
-        let greptime = Database::new_with_dbname(config.db_name.clone(), grpc_client);
 
-        // GreptimeDB PostgreSQL
+        // GreptimeDB PostgreSQL Admin
         let admin_psql = PgPoolOptions::new()
-            .max_connections(5)
+            .max_connections(1)
             .connect(&config.get_psql_uri("public"))
             .await?;
 
-        sqlx::query(&format!("CREATE DATABASE {}", config.db_name))
-            .execute(&admin_psql)
-            .await
-            .map_err(|e| match e {
-                Error::Database(ref db_err) if db_err.code() == Some(Cow::Borrowed("22023")) => {
-                    tracing::info!("Database {} already exists.", config.db_name);
-                    Ok(())
-                }
-                _ => Err(GreptimeConnectionError::DbCreationError(
-                    config.db_name.to_owned(),
-                    e,
-                )),
-            })
-            .ok();
-
-        // Now connect to the newly created database
-        let psql = PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&config.get_psql_uri(&config.db_name))
-            .await?;
-
         Ok(Self {
-            greptime,
-            psql,
+            client,
+            admin_psql,
             config,
         })
     }
-    pub fn streaming_inserter(&self) -> GreptimeResult<StreamInserter> {
-        self.greptime.streaming_inserter()
+    pub fn streaming_inserter(
+        &self,
+        customer_id: &str,
+    ) -> Result<StreamInserter, GreptimeConnectionError> {
+        let database = Database::new_with_dbname(customer_id, self.client.clone());
+        database
+            .streaming_inserter()
+            .map_err(|e| log_error!(e).into())
+    }
+
+    pub async fn create_database(&self, db_name: &str) -> Result<(), GreptimeConnectionError> {
+        let result = sqlx::query(&format!("CREATE DATABASE {}", db_name))
+            .execute(&self.admin_psql)
+            .await;
+        if let Err(e) = result {
+            match e {
+                Error::Database(ref db_err) if db_err.code() == Some(Cow::Borrowed("22023")) => {
+                    // this could happen if the database was created between the check and the create
+                    tracing::info!("Database {} already exists.", db_name);
+                }
+                e => return Err(log_error!(e).into()),
+            }
+        }
+        Ok(())
     }
 }
 

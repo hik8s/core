@@ -1,11 +1,15 @@
+use std::str::Utf8Error;
+
 use futures_util::StreamExt;
 use shared::{
     connections::{
-        fluvio::offset::commit_and_flush_offsets,
+        db_name::get_db_name,
+        fluvio::{offset::commit_and_flush_offsets, util::get_record_key},
         qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
     },
-    constant::{OPENAI_EMBEDDING_TOKEN_LIMIT, QDRANT_COLLECTION_LOG},
+    constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
     fluvio::{FluvioConnection, FluvioConnectionError, OffsetError, TopicName},
+    log_error,
     openai::embed::{request_embedding, RequestEmbeddingError},
     tracing::setup::setup_tracing,
     types::{
@@ -34,19 +38,23 @@ pub enum DataVectorizationError {
     OpenAIError(#[from] RequestEmbeddingError),
     #[error("Json error: {0}")]
     JsonError(#[from] serde_json::Error),
+    #[error("UTF-8 error: {0}")]
+    Utf8Error(#[from] Utf8Error),
 }
 
 #[tokio::main]
 async fn main() -> Result<(), DataVectorizationError> {
     setup_tracing();
-    let fluvio_connection = FluvioConnection::new(TopicName::Class).await?;
-    let qdrant_connection = QdrantConnection::new(QDRANT_COLLECTION_LOG.to_owned()).await?;
-    let mut consumer = fluvio_connection.create_consumer(0).await?;
+    let fluvio = FluvioConnection::new(TopicName::Class).await?;
+    let qdrant = QdrantConnection::new().await?;
+    let mut consumer = fluvio.create_consumer(0).await?;
     let tokenizer = Tokenizer::new()?;
     let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
     while let Some(Ok(record)) = consumer.next().await {
+        let customer_id = get_record_key(&record).map_err(|e| log_error!(e))?;
+
         let class: Class = record.try_into()?;
-        let (key, class_id) = (class.key.clone(), class.class_id.clone());
+        let class_id = class.class_id.clone();
 
         // vectorize class
         let (representation, token_count) = tokenizer.clip_tail(class.to_string());
@@ -56,20 +64,22 @@ async fn main() -> Result<(), DataVectorizationError> {
         rate_limiter.check_rate_limit(token_count).await;
 
         // get embedding
-        let array = request_embedding(representation.clone()).await?;
+        let array = request_embedding(&representation).await?;
 
         // create qdrant point
         let qdrant_point = to_qdrant_point(vectorized_class, array)?;
 
         // upsert to qdrant
-        qdrant_connection.upsert_point(qdrant_point).await?;
+        let db_name = get_db_name(&customer_id);
+        qdrant.create_collection(&db_name).await?;
+        qdrant.upsert_point(qdrant_point, &db_name).await?;
         info!(
             "Successfully vectorized class with key: {}, id: {}",
-            key, class_id
+            customer_id, class_id
         );
 
         // commit fluvio offset
-        commit_and_flush_offsets(&mut consumer, key, class_id).await?;
+        commit_and_flush_offsets(&mut consumer, customer_id, class_id).await?;
     }
 
     Ok(())

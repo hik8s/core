@@ -752,7 +752,7 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "chat-backend"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "rocket",
  "rstest",
@@ -989,7 +989,7 @@ dependencies = [
 
 [[package]]
 name = "data-intake"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "greptimedb-ingester",
  "multipart",
@@ -1005,7 +1005,7 @@ dependencies = [
 
 [[package]]
 name = "data-processing"
-version = "0.1.6"
+version = "0.2.0"
 dependencies = [
  "algorithm",
  "anyhow",
@@ -1023,7 +1023,7 @@ dependencies = [
 
 [[package]]
 name = "data-vectorizer"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "futures-util",
@@ -3343,7 +3343,7 @@ dependencies = [
 
 [[package]]
 name = "prompt-engine"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rocket",
  "rstest",
@@ -5274,6 +5274,7 @@ dependencies = [
  "sharded-slab",
  "smallvec",
  "thread_local",
+ "time 0.3.36",
  "tracing",
  "tracing-core",
  "tracing-log",

@@ -56,8 +56,8 @@ Test command for data-intake.
 ```bash
 curl -X POST \
      -H "Authorization: Bearer $AUTH0_TOKEN" \
-     -F 'metadata={"path": "/var/log/pods/ns_my-pod_uid-123/container", "file": "file_name_value"};type=application/json' \
-     -F 'stream=@/tmp/records.txt;type=application/octet-stream' \
+     -F 'metadata={"path": "/var/log/pods/ns_my-pod-'$RANDOM'_uid-123/container", "file": "file_name_value"};type=application/json' \
+     -F "stream=@$HOME/tmp/records.txt;type=application/octet-stream" \
      http://localhost:8000/logs -v
 ```
 
@@ -66,7 +66,7 @@ production environment
 ```bash
 curl -X POST \
      -H "Authorization: Bearer $AUTH0_TOKEN" \
-     -F 'metadata={"path": "/var/log/pods/ns_my-pod_uid-123/container", "file": "file_name_value"};type=application/json' \
-     -F 'stream=@/tmp/records.txt;type=application/octet-stream' \
+     -F 'metadata={"path": "/var/log/pods/ns_my-pod-'$RANDOM'_uid-123/container", "file": "file_name_value"};type=application/json' \
+     -F "stream=@$HOME/tmp/records.txt;type=application/octet-stream" \
      https://dev.api.hik8s.ai/logs -v
 ```

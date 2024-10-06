@@ -8,7 +8,7 @@ pub enum RequestEmbeddingError {
     OpenAIError(#[from] OpenAIError),
 }
 
-pub async fn request_embedding(text: String) -> Result<[f32; 3072], RequestEmbeddingError> {
+pub async fn request_embedding(text: &str) -> Result<[f32; 3072], RequestEmbeddingError> {
     let client = Client::new();
 
     let request = CreateEmbeddingRequestArgs::default()

@@ -1,36 +1,48 @@
-use rocket::post;
+use rocket::{post, serde::json::Json};
 use shared::{
-    connections::qdrant::connect::{namespace, not_namespace, QdrantConnection},
+    connections::{
+        db_name::get_db_name,
+        prompt_engine::connect::AugmentationRequest,
+        qdrant::connect::{namespace, not_namespace, QdrantConnection},
+    },
     openai::embed::request_embedding,
 };
 
 use super::augmentation::create_augmented_prompt;
 use super::error::PromptEngineError;
 
-#[post("/prompt", data = "<user_message>")]
+#[post("/prompt", format = "json", data = "<payload>")]
 pub async fn prompt_engine(
     qdrant: QdrantConnection,
-    user_message: &str,
+    payload: Json<AugmentationRequest>,
 ) -> Result<String, PromptEngineError> {
-    let array = request_embedding(user_message.to_string()).await?;
+    let request = payload.into_inner();
 
+    let array = request_embedding(&request.user_message).await?;
+
+    let db_name = get_db_name(&request.client_id);
     let kube_system = qdrant
-        .search_classes(array, namespace("kube-system"), 15)
+        .search_classes(&db_name, array, namespace("kube-system"), 15)
         .await?;
     let other_namespace = qdrant
-        .search_classes(array, not_namespace("kube-system"), 20)
+        .search_classes(&db_name, array, not_namespace("kube-system"), 20)
         .await?;
 
-    let augment_prompt = create_augmented_prompt(user_message, kube_system, other_namespace);
+    let augment_prompt =
+        create_augmented_prompt(&request.user_message, kube_system, other_namespace);
     Ok(augment_prompt)
 }
 
 #[cfg(test)]
 mod tests {
-    use rocket::routes;
+    use rocket::{http::ContentType, routes};
     use shared::{
-        connections::qdrant::connect::QdrantConnection, constant::QDRANT_COLLECTION_LOG,
-        mock::rocket::rocket_test_client, tracing::setup::setup_tracing,
+        connections::{
+            prompt_engine::connect::AugmentationRequest, qdrant::connect::QdrantConnection,
+        },
+        get_env_var,
+        mock::rocket::rocket_test_client,
+        tracing::setup::setup_tracing,
     };
     use tracing::info;
 
@@ -39,20 +51,27 @@ mod tests {
     #[tokio::test]
     async fn test_prompt() {
         setup_tracing();
-        let qdrant = QdrantConnection::new(QDRANT_COLLECTION_LOG.to_owned())
-            .await
-            .unwrap();
+        let qdrant = QdrantConnection::new().await.unwrap();
         let client = rocket_test_client(&vec![qdrant], routes![prompt_engine])
             .await
             .unwrap();
 
-        let user_message = "Test message";
-        let response = client.post("/prompt").body(user_message).dispatch().await;
+        let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let body: String = AugmentationRequest::new("Test message", &client_id)
+            .try_into()
+            .unwrap();
+
+        info!("Request body: {}", body);
+        let response = client
+            .post("/prompt")
+            .header(ContentType::JSON)
+            .body(body)
+            .dispatch()
+            .await;
 
         // Add assertions to check the response
         assert_eq!(response.status(), rocket::http::Status::Ok);
         let body = response.into_string().await.unwrap();
-        info!("Response body length: {}", body.len());
         assert!(body.len() > 500);
     }
 }
