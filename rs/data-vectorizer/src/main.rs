@@ -3,10 +3,11 @@ use std::str::Utf8Error;
 use futures_util::StreamExt;
 use shared::{
     connections::{
+        db_name::get_db_name,
         fluvio::{offset::commit_and_flush_offsets, util::get_record_key},
         qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
     },
-    constant::{OPENAI_EMBEDDING_TOKEN_LIMIT, QDRANT_COLLECTION_LOG},
+    constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
     fluvio::{FluvioConnection, FluvioConnectionError, OffsetError, TopicName},
     log_error,
     openai::embed::{request_embedding, RequestEmbeddingError},
@@ -63,13 +64,13 @@ async fn main() -> Result<(), DataVectorizationError> {
         rate_limiter.check_rate_limit(token_count).await;
 
         // get embedding
-        let array = request_embedding(representation.clone()).await?;
+        let array = request_embedding(&representation).await?;
 
         // create qdrant point
         let qdrant_point = to_qdrant_point(vectorized_class, array)?;
 
         // upsert to qdrant
-        let db_name = format!("{}-{}", QDRANT_COLLECTION_LOG, customer_id);
+        let db_name = get_db_name(&customer_id);
         qdrant.create_collection(&db_name).await?;
         qdrant.upsert_point(qdrant_point, &db_name).await?;
         info!(

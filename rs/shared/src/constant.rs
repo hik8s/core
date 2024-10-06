@@ -6,8 +6,8 @@ pub const OPENAI_CHAT_MODEL: &str = "gpt-4o-2024-08-06";
 pub const PROMPT_ENGINE_PORT: &str = "8081";
 pub const PROMPT_ENGINE_PATH: &str = "prompt";
 
-// qdrant
-pub const QDRANT_COLLECTION_LOG: &str = "logs";
+// logs
+pub const LOG_PREFIX: &str = "logs";
 
 // embedding
 pub const OPENAI_EMBEDDING_MODEL: &str = "text-embedding-3-large";

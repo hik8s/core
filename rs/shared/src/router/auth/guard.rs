@@ -1,6 +1,8 @@
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
 
+use crate::connections::db_name::get_db_name;
+
 use super::error::AuthenticationError;
 use super::validation::validate_token;
 
@@ -12,7 +14,7 @@ pub struct AuthenticatedUser {
 
 impl AuthenticatedUser {
     pub fn new(customer_id: String) -> Self {
-        let db_name = format!("logs_{}", customer_id);
+        let db_name = get_db_name(&customer_id);
         AuthenticatedUser {
             customer_id,
             db_name,

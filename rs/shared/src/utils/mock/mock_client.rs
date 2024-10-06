@@ -1,17 +1,15 @@
-use std::env::var;
-
 use rand::{distributions::Uniform, prelude::Distribution};
 use rocket::{
     http::{ContentType, Header, Status},
     local::asynchronous::Client,
 };
 
-use crate::types::metadata::Metadata;
+use crate::{get_env_var, types::metadata::Metadata};
 
 use super::mock_data::TestCase;
 
 pub async fn post_test_stream(client: &Client, route: &str, test_stream: String) -> Status {
-    let token = var("AUTH0_TOKEN").expect("AUTH0_TOKEN must be set");
+    let token = get_env_var("AUTH0_TOKEN").unwrap();
     let response = client
         .post(route)
         .header(
