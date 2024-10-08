@@ -4,7 +4,7 @@ use fluvio::spu::SpuSocketPool;
 use fluvio::TopicProducer;
 use shared::connections::fluvio::util::get_record_key;
 use shared::fluvio::{commit_and_flush_offsets, OffsetError};
-use shared::log_error;
+use shared::{log_error, log_error_continue};
 
 use std::str::Utf8Error;
 use std::sync::Arc;
@@ -56,7 +56,9 @@ pub async fn process_logs(
     let redis = RedisConnection::new()?;
     let mut classifier = Classifier::new(None, redis)?;
     let greptime = GreptimeConnection::new().await?;
-    while let Some(Ok(record)) = consumer.next().await {
+    while let Some(result) = consumer.next().await {
+        let record = log_error_continue!(result);
+
         let customer_id = get_record_key(&record).map_err(|e| log_error!(e))?;
         let log = LogRecord::try_from(record)?;
 

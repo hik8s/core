@@ -10,3 +10,16 @@ macro_rules! log_error {
         $e
     }};
 }
+
+#[macro_export]
+macro_rules! log_error_continue {
+    ($result:expr) => {
+        match $result {
+            Ok(value) => value,
+            Err(e) => {
+                log_error!(e);
+                continue;
+            }
+        }
+    };
+}
