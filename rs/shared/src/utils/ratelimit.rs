@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
+use tracing::info;
 
 const TOKEN_RESET_INTERVAL: Duration = Duration::from_secs(60);
 
@@ -31,6 +32,7 @@ impl RateLimiter {
 
         if *tokens_used + token_count > self.token_limit {
             let sleep_duration = TOKEN_RESET_INTERVAL - last_reset.elapsed();
+            info!("Rate limit reached, sleeping for {:?}", sleep_duration);
             sleep(sleep_duration).await;
             *tokens_used = 0;
             *last_reset = Instant::now();
