@@ -49,7 +49,7 @@ impl From<(&String, &Metadata)> for PreprocessedLogRecord {
 
 impl From<LogRecord> for PreprocessedLogRecord {
     fn from(log: LogRecord) -> Self {
-        let preprocessed_message = preprocess_message(&log.message);
+        let preprocessed_message = preprocess_message(&log);
         PreprocessedLogRecord {
             timestamp: log.timestamp,
             message: log.message,

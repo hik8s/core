@@ -7,7 +7,13 @@ use thiserror::Error;
 use tracing::warn;
 use uuid7::uuid7;
 
-use crate::types::metadata::Metadata;
+use crate::{
+    types::metadata::Metadata,
+    utils::mock::{
+        mock_client::{generate_podname, get_test_metadata},
+        mock_data::TestCase,
+    },
+};
 
 const DEFAULT_TS: &str = "1970-01-01T00:00:00Z";
 
@@ -80,4 +86,10 @@ pub fn dt_from_ts(ts: &str) -> Result<i64, ParseError> {
         Ok(dt) => Ok(Utc.from_utc_datetime(&dt).timestamp_millis()),
         Err(e) => Err(e),
     }
+}
+
+pub fn get_test_log_record(input: &str) -> LogRecord {
+    let case = TestCase::Simple;
+    let metadata = get_test_metadata(&generate_podname(case));
+    LogRecord::from((&input.to_owned(), &metadata))
 }

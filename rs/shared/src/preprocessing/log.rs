@@ -1,6 +1,9 @@
 use serde_json::Value;
 
-pub fn preprocess_message(message: &str) -> Vec<String> {
+use crate::types::record::log::LogRecord;
+
+pub fn preprocess_message(log: &LogRecord) -> Vec<String> {
+    let message = log.message.as_str();
     let mut result = Vec::new();
 
     // Check if the input string contains a JSON object
@@ -17,7 +20,12 @@ pub fn preprocess_message(message: &str) -> Vec<String> {
                 result.extend(flatten_json(&json));
             }
             Err(e) => {
-                tracing::error!("Failed to parse JSON object: {}", e);
+                tracing::debug!(
+                    "Could not parse as json, continue with split. Error: {}, {}, {}",
+                    e,
+                    log.key,
+                    log.record_id
+                );
                 result.extend(split_string(json_str));
             }
         };
@@ -74,7 +82,10 @@ fn flatten_json_recursive(json: &Value, result: &mut Vec<String>, prefix: String
 mod tests {
 
     use super::*;
-    use crate::{preprocessing::compare::compare, tracing::setup::setup_tracing};
+    use crate::{
+        preprocessing::compare::compare, tracing::setup::setup_tracing,
+        types::record::log::get_test_log_record,
+    };
     use rstest::rstest;
     use serde_json::json;
 
@@ -96,7 +107,7 @@ mod tests {
     #[case("stderr F I0315 10:44:54.473228       1 main.go:227] handling current node", vec!["stderr", "F", "I0315", "10:44:54.473228", "1", "main.go:227]", "handling", "current", "node"])]
     fn test_preprocess_log(#[case] input: &str, #[case] expected: Vec<&str>) {
         setup_tracing();
-        assert_eq!(preprocess_message(input), expected);
+        assert_eq!(preprocess_message(&get_test_log_record(input)), expected);
     }
 
     #[rstest]
@@ -158,8 +169,8 @@ mod tests {
     fn test_preprocess_compare_logs(#[case] inputs: (&str, &str), #[case] expected: Vec<bool>) {
         setup_tracing();
         let (input1, input2) = inputs;
-        let preprocessed_input1 = preprocess_message(input1);
-        let preprocessed_input2 = preprocess_message(input2);
+        let preprocessed_input1 = preprocess_message(&get_test_log_record(input1));
+        let preprocessed_input2 = preprocess_message(&get_test_log_record(input2));
 
         let comparison = compare(&preprocessed_input1, &preprocessed_input2);
         assert_eq!(comparison, expected, "All items should match");
