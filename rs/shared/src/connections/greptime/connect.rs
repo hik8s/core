@@ -67,7 +67,7 @@ impl GreptimeConnection {
             match e {
                 Error::Database(ref db_err) if db_err.code() == Some(Cow::Borrowed("22023")) => {
                     // this could happen if the database was created between the check and the create
-                    tracing::info!("Database {} already exists.", db_name);
+                    tracing::debug!("Database {} already exists.", db_name);
                 }
                 e => return Err(log_error!(e).into()),
             }
