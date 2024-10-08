@@ -44,7 +44,6 @@ mod tests {
         mock::rocket::rocket_test_client,
         tracing::setup::setup_tracing,
     };
-    use tracing::info;
 
     use crate::prompt::route::prompt_engine;
 
@@ -61,7 +60,6 @@ mod tests {
             .try_into()
             .unwrap();
 
-        info!("Request body: {}", body);
         let response = client
             .post("/prompt")
             .header(ContentType::JSON)

@@ -40,16 +40,17 @@ impl PreprocessedLogRecord {
     }
 }
 
-impl From<(&String, &Metadata)> for PreprocessedLogRecord {
-    fn from((raw_message, metadata): (&String, &Metadata)) -> Self {
+impl From<(&String, &String, &Metadata)> for PreprocessedLogRecord {
+    fn from((customer_id, raw_message, metadata): (&String, &String, &Metadata)) -> Self {
         let log = LogRecord::from((raw_message, metadata));
-        PreprocessedLogRecord::from(log)
+        let preprocessed_message =
+            preprocess_message(&log.message, customer_id, &log.key, &log.record_id);
+        PreprocessedLogRecord::from((log, preprocessed_message))
     }
 }
 
-impl From<LogRecord> for PreprocessedLogRecord {
-    fn from(log: LogRecord) -> Self {
-        let preprocessed_message = preprocess_message(&log);
+impl From<(LogRecord, Vec<String>)> for PreprocessedLogRecord {
+    fn from((log, preprocessed_message): (LogRecord, Vec<String>)) -> Self {
         PreprocessedLogRecord {
             timestamp: log.timestamp,
             message: log.message,

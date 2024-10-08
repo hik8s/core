@@ -130,7 +130,8 @@ mod tests {
         let mut classifier = Classifier::new(Some(0.6), redis)?;
 
         for (index, (key, raw_message, expected_class)) in test_data.into_iter().enumerate() {
-            let preprocessed_log = PreprocessedLogRecord::from((&raw_message, &key));
+            let preprocessed_log =
+                PreprocessedLogRecord::from((&"customer_id".to_owned(), &raw_message, &key));
             let class = classifier.classify(&preprocessed_log)?.0;
             if index == 1 {
                 assert_eq!(class.is_none(), false);

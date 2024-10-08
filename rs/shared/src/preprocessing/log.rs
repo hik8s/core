@@ -1,9 +1,11 @@
 use serde_json::Value;
 
-use crate::types::record::log::LogRecord;
-
-pub fn preprocess_message(log: &LogRecord) -> Vec<String> {
-    let message = log.message.as_str();
+pub fn preprocess_message(
+    message: &str,
+    customer_id: &str,
+    key: &str,
+    record_id: &str,
+) -> Vec<String> {
     let mut result = Vec::new();
 
     // Check if the input string contains a JSON object
@@ -21,10 +23,11 @@ pub fn preprocess_message(log: &LogRecord) -> Vec<String> {
             }
             Err(e) => {
                 tracing::debug!(
-                    "Could not parse as json, continue with split. Error: {}, {}, {}",
+                    "Could not parse as json, continue with split. Error: {}, id: {}, key: {}, record: {}",
                     e,
-                    log.key,
-                    log.record_id
+                    customer_id,
+                    key,
+                    record_id
                 );
                 result.extend(split_string(json_str));
             }
@@ -107,7 +110,10 @@ mod tests {
     #[case("stderr F I0315 10:44:54.473228       1 main.go:227] handling current node", vec!["stderr", "F", "I0315", "10:44:54.473228", "1", "main.go:227]", "handling", "current", "node"])]
     fn test_preprocess_log(#[case] input: &str, #[case] expected: Vec<&str>) {
         setup_tracing();
-        assert_eq!(preprocess_message(&get_test_log_record(input)), expected);
+        assert_eq!(
+            preprocess_message(&input, "customer_id", "key", "record_id"),
+            expected
+        );
     }
 
     #[rstest]
@@ -157,7 +163,7 @@ mod tests {
     )]
     #[case((
         "stderr F I0315 09:37:55.934101       1 main.go:250] Node kind-worker2 has CIDR [10.244.2.0/24]", 
-        "stderr F I0315 10:44:54.473228       1 main.go:227] handling current node"), 
+        "stderr F I0315 10:44:54.473228       1 main.go:227] handling current node"),
         vec![true, true, true, false, true, false, false, false, false, false, false]
     )]
     #[case((
@@ -169,8 +175,8 @@ mod tests {
     fn test_preprocess_compare_logs(#[case] inputs: (&str, &str), #[case] expected: Vec<bool>) {
         setup_tracing();
         let (input1, input2) = inputs;
-        let preprocessed_input1 = preprocess_message(&get_test_log_record(input1));
-        let preprocessed_input2 = preprocess_message(&get_test_log_record(input2));
+        let preprocessed_input1 = preprocess_message(&input1, "customer_id", "key", "record_id1");
+        let preprocessed_input2 = preprocess_message(&input2, "customer_id", "key", "record_id2");
 
         let comparison = compare(&preprocessed_input1, &preprocessed_input2);
         assert_eq!(comparison, expected, "All items should match");

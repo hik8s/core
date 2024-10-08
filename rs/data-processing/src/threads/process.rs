@@ -4,6 +4,7 @@ use fluvio::spu::SpuSocketPool;
 use fluvio::TopicProducer;
 use shared::connections::fluvio::util::get_record_key;
 use shared::fluvio::{commit_and_flush_offsets, OffsetError};
+use shared::preprocessing::log::preprocess_message;
 use shared::{log_error, log_error_continue};
 
 use std::str::Utf8Error;
@@ -64,7 +65,9 @@ pub async fn process_logs(
 
         // preprocess
         let record_id = log.record_id.to_owned();
-        let preprocessed_log = PreprocessedLogRecord::from(log);
+        let preprocessed_message =
+            preprocess_message(&log.message, &customer_id, &log.key, &log.record_id);
+        let preprocessed_log = PreprocessedLogRecord::from((log, preprocessed_message));
 
         // classify
         let (updated_class, classified_log) = classifier.classify(&preprocessed_log)?;
