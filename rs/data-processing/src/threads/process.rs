@@ -3,6 +3,7 @@ use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::spu::SpuSocketPool;
 use fluvio::TopicProducer;
 use shared::connections::fluvio::util::get_record_key;
+use shared::constant::FLUVIO_BYTES_PER_RECORD;
 use shared::fluvio::{commit_and_flush_offsets, OffsetError};
 use shared::preprocessing::log::preprocess_message;
 use shared::{log_error, log_error_continue};
@@ -26,7 +27,7 @@ use shared::{
     },
 };
 use thiserror::Error;
-use tracing::error;
+use tracing::{error, warn};
 
 use algorithm::classification::deterministic::classifier::Classifier;
 
@@ -80,10 +81,25 @@ pub async fn process_logs(
         // produce to fluvio
         if updated_class.is_some() {
             let class = updated_class.unwrap();
+            let key = class.key.clone();
+            let class_id = class.class_id.clone();
+            let serialized_record: String = class.try_into()?;
+            // TODO: add truncate for class.items
+            if serialized_record.len() > FLUVIO_BYTES_PER_RECORD {
+                warn!(
+                    "Data too large for record, will be skipped. customer_id: {}, key: {}, record_id: {}, len: {}",
+                    customer_id,
+                    key,
+                    class_id,
+                    serialized_record.len()
+                );
+                continue;
+            }
             producer
-                .send(customer_id.clone(), TryInto::<String>::try_into(class)?)
+                .send(customer_id.clone(), serialized_record)
                 .await
                 .map_err(|e| log_error!(e))?;
+            producer.flush().await.map_err(|e| log_error!(e))?;
         }
 
         // commit consumed offsets

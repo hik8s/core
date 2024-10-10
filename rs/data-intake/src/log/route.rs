@@ -6,7 +6,9 @@ use rocket::post;
 use rocket::Data;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
+use shared::constant::FLUVIO_BYTES_PER_RECORD;
 use shared::fluvio::FluvioConnection;
+use shared::log_error;
 use shared::router::auth::guard::AuthenticatedUser;
 use shared::types::metadata::Metadata;
 use std::ops::Deref;
@@ -41,7 +43,7 @@ pub async fn log_intake<'a>(
             "stream" => {
                 // process stream
                 let metadata = metadata.ok_or_else(|| LogIntakeError::MetadataNone)?;
-                let logs = process_stream(field.data, &metadata)?;
+                let mut logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
                 let stream_inserter = greptime.streaming_inserter(&user.db_name)?;
@@ -50,19 +52,32 @@ pub async fn log_intake<'a>(
                 stream_inserter.finish().await?;
 
                 // send to fluvio
-                if let Err(e) = fluvio.send_batch(&logs, &user.customer_id).await {
-                    let error = e.to_string();
-                    for log in &logs {
-                        let record_id = &log.record_id;
-                        let key = &log.key;
-                        let message_length = log.message.len();
+                for log in logs.iter_mut() {
+                    log.truncate_record(&user.customer_id);
+                    let serialized_record = serde_json::to_string(&log).unwrap();
+                    if serialized_record.len() > FLUVIO_BYTES_PER_RECORD {
                         warn!(
-                            "Error: {}, Client ID: {}, Key: {}, Record ID: {}, Message Length: {}",
-                            &user.customer_id, error, key, record_id, message_length
+                            "Data too large for record, will be skipped. customer_id: {}, key: {}, record_id: {}, len: {}",
+                            &user.customer_id,
+                            log.key,
+                            log.record_id,
+                            serialized_record.len()
                         );
+                        continue;
                     }
+                    fluvio
+                        .producer
+                        .send(user.customer_id.clone(), serialized_record)
+                        .await
+                        .map_err(|e| log_error!(e))
+                        .ok();
+                    fluvio
+                        .producer
+                        .flush()
+                        .await
+                        .map_err(|e| log_error!(e))
+                        .ok();
                 }
-
                 return Ok("Success".to_string());
             }
             field_name => {

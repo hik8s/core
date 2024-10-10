@@ -5,13 +5,11 @@ use fluvio::{
     Offset,
 };
 use fluvio::{spu::SpuSocketPool, Fluvio, TopicProducer};
-use fluvio::{Compression, RecordKey, TopicProducerConfigBuilder};
-use serde_json::to_string;
+use fluvio::{Compression, TopicProducerConfigBuilder};
 use std::sync::Arc;
 
-use crate::constant::FLUVIO_BATCH_SIZE;
+use crate::constant::FLUVIO_BYTES_PER_RECORD;
 use crate::log_error;
-use crate::types::record::log::LogRecord;
 
 use super::error::FluvioConnectionError;
 use super::topic::{create_topic, FluvioTopic, TopicName};
@@ -36,6 +34,7 @@ impl FluvioConnection {
 
         let topic_config = TopicProducerConfigBuilder::default()
             .compression(Compression::Zstd)
+            .batch_size(FLUVIO_BYTES_PER_RECORD)
             .build()
             .expect("Failed to create topic producer config");
 
@@ -78,40 +77,5 @@ impl FluvioConnection {
             .await
             .map_err(|e| FluvioConnectionError::ConsumerError(log_error!(e).into()))?;
         Ok(consumer)
-    }
-
-    pub async fn send_batch(
-        &self,
-        logs: &Vec<LogRecord>,
-        key: &str,
-    ) -> Result<(), FluvioConnectionError> {
-        let mut batch = Vec::with_capacity(FLUVIO_BATCH_SIZE);
-
-        for log in logs {
-            let serialized_record = to_string(&log).expect("Failed to serialize record");
-            batch.push((RecordKey::from(key), serialized_record));
-
-            if batch.len() == FLUVIO_BATCH_SIZE {
-                self.producer
-                    .send_all(batch.drain(..))
-                    .await
-                    .map_err(|e| FluvioConnectionError::ProducerSend(log_error!(e).into()))?;
-            }
-
-            // Send any remaining logs in the batch
-            if !batch.is_empty() {
-                self.producer
-                    .send_all(batch.drain(..))
-                    .await
-                    .map_err(|e| FluvioConnectionError::ProducerSend(log_error!(e).into()))?;
-            }
-
-            // Ensure the producer flushes the messages
-            self.producer
-                .flush()
-                .await
-                .map_err(|e| FluvioConnectionError::ProducerFlush(log_error!(e).into()))?;
-        }
-        Ok(())
     }
 }

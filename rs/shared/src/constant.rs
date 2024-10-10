@@ -16,7 +16,8 @@ pub const EMBEDDING_SIZE: u64 = 3072;
 pub const EMBEDDING_USIZE: usize = EMBEDDING_SIZE as usize;
 
 // fluvio
-pub const FLUVIO_BATCH_SIZE: usize = 100;
+pub const FLUVIO_BYTES_PER_RECORD: usize = 32768;
+pub const FLUVIO_BYTES_SAFTY_MARGIN: usize = 2048;
 
 pub const TOPIC_LOG_NAME: &str = "logs";
 pub const TOPIC_LOG_PARTITIONS: u32 = 2;

@@ -85,10 +85,7 @@ fn flatten_json_recursive(json: &Value, result: &mut Vec<String>, prefix: String
 mod tests {
 
     use super::*;
-    use crate::{
-        preprocessing::compare::compare, tracing::setup::setup_tracing,
-        types::record::log::get_test_log_record,
-    };
+    use crate::{preprocessing::compare::compare, tracing::setup::setup_tracing};
     use rstest::rstest;
     use serde_json::json;
 

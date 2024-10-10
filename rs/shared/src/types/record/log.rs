@@ -4,10 +4,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::from_str;
 use std::convert::TryFrom;
 use thiserror::Error;
-use tracing::warn;
+use tracing::{info, warn};
 use uuid7::uuid7;
 
 use crate::{
+    constant::{FLUVIO_BYTES_PER_RECORD, FLUVIO_BYTES_SAFTY_MARGIN},
     types::metadata::Metadata,
     utils::mock::{
         mock_client::{generate_podname, get_test_metadata},
@@ -46,6 +47,19 @@ impl LogRecord {
             namespace: metadata.namespace.to_owned(),
             pod_uid: metadata.pod_uid.to_owned(),
             container: metadata.container.to_owned(),
+        }
+    }
+    pub fn truncate_record(&mut self, customer_id: &str) {
+        let max_len = FLUVIO_BYTES_PER_RECORD - FLUVIO_BYTES_SAFTY_MARGIN;
+        if self.message.len() > max_len {
+            info!(
+                "Data too large for record, will be truncated. customer_id: {}, key: {}, record_id: {}, len: {}",
+                customer_id,
+                self.key,
+                self.record_id,
+                self.message.len()
+            );
+            self.message.truncate(max_len);
         }
     }
 }
