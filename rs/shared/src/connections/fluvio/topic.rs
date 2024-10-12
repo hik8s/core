@@ -3,8 +3,9 @@ use tracing::info;
 
 use crate::{
     constant::{
-        TOPIC_CLASS_NAME, TOPIC_CLASS_PARTITIONS, TOPIC_CLASS_REPLICAS, TOPIC_LOG_NAME,
-        TOPIC_LOG_PARTITIONS, TOPIC_LOG_REPLICAS,
+        TOPIC_CLASS_BYTES_PER_RECORD, TOPIC_CLASS_NAME, TOPIC_CLASS_PARTITIONS,
+        TOPIC_CLASS_REPLICAS, TOPIC_LOG_BYTES_PER_RECORD, TOPIC_LOG_NAME, TOPIC_LOG_PARTITIONS,
+        TOPIC_LOG_REPLICAS,
     },
     log_error,
 };
@@ -21,6 +22,7 @@ pub struct FluvioTopic {
     pub name: String,
     pub partitions: u32,
     pub replicas: u32,
+    pub max_bytes: usize,
 }
 
 impl FluvioTopic {
@@ -30,11 +32,13 @@ impl FluvioTopic {
                 name: TOPIC_LOG_NAME.to_owned(),
                 partitions: TOPIC_LOG_PARTITIONS,
                 replicas: TOPIC_LOG_REPLICAS,
+                max_bytes: TOPIC_LOG_BYTES_PER_RECORD,
             },
             TopicName::Class => FluvioTopic {
                 name: TOPIC_CLASS_NAME.to_owned(),
                 partitions: TOPIC_CLASS_PARTITIONS,
                 replicas: TOPIC_CLASS_REPLICAS,
+                max_bytes: TOPIC_CLASS_BYTES_PER_RECORD,
             },
         }
     }

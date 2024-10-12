@@ -3,7 +3,7 @@ use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::spu::SpuSocketPool;
 use fluvio::TopicProducer;
 use shared::connections::fluvio::util::get_record_key;
-use shared::constant::FLUVIO_BYTES_PER_RECORD;
+use shared::constant::TOPIC_CLASS_BYTES_PER_RECORD;
 use shared::fluvio::{commit_and_flush_offsets, OffsetError};
 use shared::preprocessing::log::preprocess_message;
 use shared::{log_error, log_error_continue};
@@ -83,9 +83,14 @@ pub async fn process_logs(
             let class = updated_class.unwrap();
             let key = class.key.clone();
             let class_id = class.class_id.clone();
+            tracing::info!("Sending record to fluvio: {}", &class.to_string().len());
+            tracing::info!(
+                "Sending record to fluvio: {}",
+                &format!("{:?}", class.items).len()
+            );
             let serialized_record: String = class.try_into()?;
             // TODO: add truncate for class.items
-            if serialized_record.len() > FLUVIO_BYTES_PER_RECORD {
+            if serialized_record.len() > TOPIC_CLASS_BYTES_PER_RECORD {
                 warn!(
                     "Data too large for record, will be skipped. customer_id: {}, key: {}, record_id: {}, len: {}",
                     customer_id,
@@ -95,6 +100,7 @@ pub async fn process_logs(
                 );
                 continue;
             }
+            // TODO: tolerate error and log with customer_id, key, record_id
             producer
                 .send(customer_id.clone(), serialized_record)
                 .await

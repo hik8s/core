@@ -16,13 +16,14 @@ pub const EMBEDDING_SIZE: u64 = 3072;
 pub const EMBEDDING_USIZE: usize = EMBEDDING_SIZE as usize;
 
 // fluvio
-pub const FLUVIO_BYTES_PER_RECORD: usize = 32768;
 pub const FLUVIO_BYTES_SAFTY_MARGIN: usize = 2048;
 
 pub const TOPIC_LOG_NAME: &str = "logs";
 pub const TOPIC_LOG_PARTITIONS: u32 = 2;
 pub const TOPIC_LOG_REPLICAS: u32 = 1;
+pub const TOPIC_LOG_BYTES_PER_RECORD: usize = 32768;
 
 pub const TOPIC_CLASS_NAME: &str = "classes";
 pub const TOPIC_CLASS_PARTITIONS: u32 = 1;
 pub const TOPIC_CLASS_REPLICAS: u32 = 1;
+pub const TOPIC_CLASS_BYTES_PER_RECORD: usize = TOPIC_LOG_BYTES_PER_RECORD * 4;

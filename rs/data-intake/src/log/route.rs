@@ -6,7 +6,6 @@ use rocket::post;
 use rocket::Data;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
-use shared::constant::FLUVIO_BYTES_PER_RECORD;
 use shared::fluvio::FluvioConnection;
 use shared::log_error;
 use shared::router::auth::guard::AuthenticatedUser;
@@ -53,9 +52,9 @@ pub async fn log_intake<'a>(
 
                 // send to fluvio
                 for log in logs.iter_mut() {
-                    log.truncate_record(&user.customer_id);
+                    log.truncate_record(&user.customer_id, fluvio.topic.max_bytes);
                     let serialized_record = serde_json::to_string(&log).unwrap();
-                    if serialized_record.len() > FLUVIO_BYTES_PER_RECORD {
+                    if serialized_record.len() > fluvio.topic.max_bytes {
                         warn!(
                             "Data too large for record, will be skipped. customer_id: {}, key: {}, record_id: {}, len: {}",
                             &user.customer_id,
@@ -65,6 +64,7 @@ pub async fn log_intake<'a>(
                         );
                         continue;
                     }
+                    tracing::info!("Sending record to fluvio: {}", &serialized_record.len());
                     fluvio
                         .producer
                         .send(user.customer_id.clone(), serialized_record)

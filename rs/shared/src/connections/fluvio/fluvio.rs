@@ -8,7 +8,6 @@ use fluvio::{spu::SpuSocketPool, Fluvio, TopicProducer};
 use fluvio::{Compression, TopicProducerConfigBuilder};
 use std::sync::Arc;
 
-use crate::constant::FLUVIO_BYTES_PER_RECORD;
 use crate::log_error;
 
 use super::error::FluvioConnectionError;
@@ -34,7 +33,7 @@ impl FluvioConnection {
 
         let topic_config = TopicProducerConfigBuilder::default()
             .compression(Compression::Zstd)
-            .batch_size(FLUVIO_BYTES_PER_RECORD)
+            .batch_size(topic.max_bytes)
             .build()
             .expect("Failed to create topic producer config");
 
