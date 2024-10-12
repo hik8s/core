@@ -9,7 +9,7 @@ use shared::{
     },
     constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
     fluvio::{FluvioConnection, FluvioConnectionError, OffsetError, TopicName},
-    log_error,
+    log_error, log_error_continue,
     openai::embed::{request_embedding, RequestEmbeddingError},
     tracing::setup::setup_tracing,
     types::{
@@ -64,7 +64,7 @@ async fn main() -> Result<(), DataVectorizationError> {
         rate_limiter.check_rate_limit(token_count).await;
 
         // get embedding
-        let array = request_embedding(&representation).await?;
+        let array = log_error_continue!(request_embedding(&representation).await);
 
         // create qdrant point
         let qdrant_point = to_qdrant_point(vectorized_class, array)?;

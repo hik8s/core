@@ -1,6 +1,6 @@
 use tiktoken_rs::{p50k_base, CoreBPE};
 
-const TOKEN_LIMIT: usize = 8192;
+const TOKEN_LIMIT: usize = 8192 - 1024;
 
 pub struct Tokenizer {
     bpe: CoreBPE,
@@ -21,7 +21,7 @@ impl Tokenizer {
 
         if token_count > TOKEN_LIMIT {
             let new_length = (s.len() as f64 * 0.9) as usize;
-            let new_s = s.chars().take(new_length).collect();
+            let new_s: String = s.chars().take(new_length).collect();
             self.clip_tail(new_s)
         } else {
             (s, token_count)
