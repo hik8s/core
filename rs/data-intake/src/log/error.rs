@@ -11,7 +11,9 @@ use crate::process::multipart::{MultipartMetadataError, MultipartStreamError};
 #[derive(Error, Debug)]
 pub enum LogIntakeError {
     #[error("Failed to stream data: {0}")]
-    PayloadTooLarge(#[source] std::io::Error),
+    MultipartIoError(#[source] std::io::Error),
+    #[error("Payload too large, limit is: {0}")]
+    PayloadTooLarge(String),
     #[error("Missing boundary in content type")]
     ContentTypeBoundaryMissing,
     #[error("Invalid multipart data: {0}")]
@@ -41,8 +43,9 @@ pub enum LogIntakeError {
 impl From<LogIntakeError> for Status {
     fn from(error: LogIntakeError) -> Self {
         match error {
+            LogIntakeError::MultipartIoError(_) => Status::InternalServerError,
             LogIntakeError::PayloadTooLarge(e) => {
-                error!("Payload too large: {:?}", e);
+                error!("Payload too large, limit: {:?}", e);
                 Status::PayloadTooLarge
             }
             LogIntakeError::ContentTypeBoundaryMissing => {

@@ -6,6 +6,7 @@ use rocket::data::ToByteUnit;
 use rocket::http::ContentType;
 use rocket::Data;
 use serde_json::Value;
+use shared::log_error;
 use shared::types::metadata::Metadata;
 use shared::types::record::log::LogRecord;
 use std::io::Cursor;
@@ -29,23 +30,20 @@ pub fn process_stream(
     mut data: MultipartData<&mut Multipart<Cursor<Vec<u8>>>>,
     metadata: &Metadata,
 ) -> Result<Vec<LogRecord>, MultipartStreamError> {
-    let key = metadata.pod_name.to_owned();
+    let key: String = metadata.pod_name.to_owned();
 
-    let mut buffer = [0; 262144];
+    let mut buffer = Vec::new();
     let mut remainder = String::new();
     let mut logs = Vec::new();
 
-    while let Ok(n) = data.read(&mut buffer) {
+    while let Ok(n) = data.read_to_end(&mut buffer) {
         if n == 0 {
             break;
         }
-        if n == buffer.len() {
-            return {
-                error!("Buffer full for key: {}", key);
-                Err(MultipartStreamError::BufferFull(key.to_owned()))
-            };
-        }
-        let chunk = from_utf8(&buffer[..n])?;
+        let chunk = from_utf8(&buffer[..n]).map_err(|e| {
+            error!("{e:?}, {key}");
+            e
+        })?;
         logs.extend(process_chunk(chunk, &mut remainder, metadata));
     }
 
@@ -97,10 +95,20 @@ pub async fn into_multipart<'a>(
     data: Data<'a>,
 ) -> Result<Multipart<Cursor<Vec<u8>>>, LogIntakeError> {
     let mut buffer = Vec::new();
-    data.open(100_u64.mebibytes())
-        .stream_to(&mut buffer)
-        .await
-        .map_err(|e| LogIntakeError::PayloadTooLarge(e))?;
+    let limit = 32.mebibytes();
+    let result = data.open(limit).stream_to(&mut buffer).await;
+    match result {
+        Ok(n) => {
+            if !n.complete {
+                return Err(log_error!(LogIntakeError::PayloadTooLarge(
+                    limit.to_string()
+                )));
+            }
+        }
+        Err(e) => {
+            return Err(LogIntakeError::MultipartIoError(log_error!(e)));
+        }
+    }
 
     let boundary = content_type
         .params()
