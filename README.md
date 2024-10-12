@@ -54,10 +54,12 @@ docker run -d -p 6333:6333 -p 6334:6334 \
 Test command for data-intake.
 
 ```bash
+# FILE=/tmp/records.txt
+FILE=/tmp/record_long.txt
 curl -X POST \
      -H "Authorization: Bearer $AUTH0_TOKEN" \
      -F 'metadata={"path": "/var/log/pods/ns_my-pod-'$RANDOM'_uid-123/container", "file": "file_name_value"};type=application/json' \
-     -F "stream=@$HOME/tmp/records.txt;type=application/octet-stream" \
+     -F "stream=@$FILE;type=application/octet-stream" \
      http://localhost:8000/logs -v
 ```
 
@@ -67,14 +69,22 @@ production environment
 curl -X POST \
      -H "Authorization: Bearer $AUTH0_TOKEN" \
      -F 'metadata={"path": "/var/log/pods/ns_my-pod-'$RANDOM'_uid-123/container", "file": "file_name_value"};type=application/json' \
-     -F "stream=@$HOME/tmp/records.txt;type=application/octet-stream" \
-     https://dev.api.hik8s.ai/logs -v
+     -F "stream=@/tmp/records.txt;type=application/octet-stream" \
+     https://dev.api.hik8s.ai/logs -i
+```
+
+```
+curl -X POST \
+     -H "Authorization: Bearer $AUTH0_TOKEN" \
+     -F 'metadata={"path": "/var/log/pods/ns_my-pod-'$RANDOM'_uid-123/container", "file": "file_name_value"};type=application/json' \
+     -F "stream=@/tmp/record_long.txt;type=application/octet-stream" \
+     https://dev.api.hik8s.ai/logs -i
 ```
 
 ```bash
 curl -X POST \
      -H "Authorization: Bearer $AUTH0_TOKEN" \
      -F 'metadata={"path": "/var/log/pods/ns_my-pod-'$RANDOM'_uid-123/container", "file": "file_name_value"};type=application/json' \
-     -F "stream=@$HOME/tmp/records.txt;type=application/octet-stream" \
+     -F "stream=@/tmp/records.txt;type=application/octet-stream" \
      https://stag.api.hik8s.ai/logs -v
 ```
