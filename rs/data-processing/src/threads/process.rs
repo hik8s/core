@@ -83,11 +83,6 @@ pub async fn process_logs(
             let class = updated_class.unwrap();
             let key = class.key.clone();
             let class_id = class.class_id.clone();
-            tracing::info!("Sending record to fluvio: {}", &class.to_string().len());
-            tracing::info!(
-                "Sending record to fluvio: {}",
-                &format!("{:?}", class.items).len()
-            );
             let serialized_record: String = class.try_into()?;
             // TODO: add truncate for class.items
             if serialized_record.len() > TOPIC_CLASS_BYTES_PER_RECORD {
