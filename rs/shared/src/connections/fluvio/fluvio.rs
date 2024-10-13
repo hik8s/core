@@ -32,7 +32,7 @@ impl FluvioConnection {
         create_topic(admin, &topic).await?;
 
         let topic_config = TopicProducerConfigBuilder::default()
-            .compression(Compression::Zstd)
+            // .compression(Compression::Zstd)
             .batch_size(topic.max_bytes)
             .build()
             .expect("Failed to create topic producer config");
