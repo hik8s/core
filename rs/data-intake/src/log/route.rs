@@ -64,7 +64,6 @@ pub async fn log_intake<'a>(
                         );
                         continue;
                     }
-                    tracing::info!("Sending record to fluvio: {}", &serialized_record.len());
                     fluvio
                         .producer
                         .send(user.customer_id.clone(), serialized_record)
@@ -91,6 +90,7 @@ pub async fn log_intake<'a>(
 
 #[cfg(test)]
 mod tests {
+    use super::log_intake;
     use rocket::routes;
     use shared::connections::greptime::connect::GreptimeConnection;
     use shared::fluvio::{FluvioConnection, TopicName};
@@ -99,10 +99,12 @@ mod tests {
     use shared::tracing::setup::setup_tracing;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
+    use test_case::test_case;
 
-    use super::log_intake;
-    #[rocket::async_test]
-    async fn test_log_intake_route() -> Result<(), TestClientError> {
+    #[tokio::test]
+    #[test_case(TestCase::Simple)]
+    #[test_case(TestCase::DataIntakeLimit)]
+    async fn test_log_intake_route(case: TestCase) -> Result<(), TestClientError> {
         setup_tracing();
         // connections
         let greptime = GreptimeConnection::new().await?;
@@ -113,7 +115,7 @@ mod tests {
         let client = rocket_test_client(&connections, routes![log_intake]).await?;
 
         // test data
-        let test_data = get_test_data(TestCase::Simple);
+        let test_data = get_test_data(case);
         let test_stream = get_multipart_stream(test_data);
 
         // test route

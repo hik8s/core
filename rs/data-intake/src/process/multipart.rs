@@ -6,6 +6,7 @@ use rocket::data::ToByteUnit;
 use rocket::http::ContentType;
 use rocket::Data;
 use serde_json::Value;
+use shared::constant::DATA_INTAKE_LIMIT_MEMIBYTES;
 use shared::log_error;
 use shared::types::metadata::Metadata;
 use shared::types::record::log::LogRecord;
@@ -95,7 +96,7 @@ pub async fn into_multipart<'a>(
     data: Data<'a>,
 ) -> Result<Multipart<Cursor<Vec<u8>>>, LogIntakeError> {
     let mut buffer = Vec::new();
-    let limit = 32.mebibytes();
+    let limit = DATA_INTAKE_LIMIT_MEMIBYTES.mebibytes();
     let result = data.open(limit).stream_to(&mut buffer).await;
     match result {
         Ok(n) => {
