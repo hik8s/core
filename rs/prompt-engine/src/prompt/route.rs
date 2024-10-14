@@ -35,25 +35,19 @@ pub async fn prompt_engine(
 
 #[cfg(test)]
 mod tests {
-    use rocket::{http::ContentType, routes};
+    use rocket::http::ContentType;
     use shared::{
-        connections::{
-            prompt_engine::connect::AugmentationRequest, qdrant::connect::QdrantConnection,
-        },
-        get_env_var,
-        mock::rocket::rocket_test_client,
-        tracing::setup::setup_tracing,
+        connections::prompt_engine::connect::AugmentationRequest, get_env_var,
+        mock::rocket::get_test_client, tracing::setup::setup_tracing,
     };
 
-    use crate::prompt::route::prompt_engine;
+    use crate::server::initialize_prompt_engine;
 
     #[tokio::test]
     async fn test_prompt() {
         setup_tracing();
-        let qdrant = QdrantConnection::new().await.unwrap();
-        let client = rocket_test_client(&vec![qdrant], routes![prompt_engine])
-            .await
-            .unwrap();
+        let server = initialize_prompt_engine().await.unwrap();
+        let client = get_test_client(server).await.unwrap();
 
         let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
         let body: String = AugmentationRequest::new("Test message", &client_id)

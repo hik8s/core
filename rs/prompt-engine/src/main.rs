@@ -1,21 +1,17 @@
-use prompt::route::prompt_engine;
-use rocket::{main, routes, Error};
-use shared::{
-    connections::qdrant::connect::QdrantConnection, constant::PROMPT_ENGINE_PORT,
-    router::rocket::build_rocket, tracing::setup::setup_tracing,
-};
+use error::PromptEngineServerError;
+use server::initialize_prompt_engine;
+use shared::tracing::setup::setup_tracing;
 
+pub mod error;
 pub mod prompt;
+pub mod server;
 
-#[main]
-async fn main() -> Result<(), Error> {
+#[rocket::main]
+async fn main() -> Result<(), PromptEngineServerError> {
     setup_tracing();
-    std::env::set_var("ROCKET_PORT", PROMPT_ENGINE_PORT);
 
-    let qdrant_connection = QdrantConnection::new().await.unwrap();
+    let server = initialize_prompt_engine().await?;
 
-    let rocket = build_rocket(&vec![qdrant_connection], routes![prompt_engine]);
-
-    rocket.launch().await?;
+    server.launch().await?;
     Ok(())
 }
