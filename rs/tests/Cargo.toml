@@ -1,0 +1,11 @@
+[package]
+edition.workspace = true
+name = "tests"
+version = "0.1.0"
+
+[dependencies]
+data-intake = {workspace = true}
+rocket = {workspace = true}
+shared = {workspace = true}
+test-case = {workspace = true}
+tokio = {workspace = true}
