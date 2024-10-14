@@ -1,10 +1,7 @@
-pub mod log;
-pub mod process;
-
 use rocket::{main, routes};
 use thiserror::Error;
 
-use log::route::log_intake;
+use data_intake::log::route::log_intake;
 use shared::{
     connections::greptime::connect::{GreptimeConnection, GreptimeConnectionError},
     fluvio::{FluvioConnection, FluvioConnectionError, TopicName},

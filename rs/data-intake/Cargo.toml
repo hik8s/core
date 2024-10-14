@@ -3,6 +3,10 @@ edition.workspace = true
 name = "data-intake"
 version = "0.2.3"
 
+[lib]
+name = "data_intake"
+path = "src/lib.rs"
+
 [dependencies]
 greptimedb-ingester = {workspace = true}
 multipart = {workspace = true}
