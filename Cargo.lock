@@ -4733,6 +4733,7 @@ version = "0.1.0"
 dependencies = [
  "data-intake",
  "data-processing",
+ "data-vectorizer",
  "rocket",
  "rstest",
  "shared",

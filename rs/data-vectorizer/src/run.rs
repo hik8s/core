@@ -20,7 +20,7 @@ use shared::{
 };
 use tracing::info;
 
-use crate::DataVectorizationError;
+use crate::error::DataVectorizationError;
 
 pub async fn run_data_vectorizer() -> Result<(), DataVectorizationError> {
     let fluvio = FluvioConnection::new(TopicName::Class).await?;

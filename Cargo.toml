@@ -25,6 +25,7 @@ async-openai = "0.23.4"
 chrono = {version = "0.4.35"}
 data-intake = {path = "rs/data-intake"}
 data-processing = {path = "rs/data-processing"}
+data-vectorizer = {path = "rs/data-vectorizer"}
 dotenv = "0.15.0"
 fluvio = {version = "0.23.1", default-features = false, features = ["compress"]}
 futures-util = "0.3.30"

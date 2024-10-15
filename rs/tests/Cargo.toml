@@ -6,6 +6,7 @@ version = "0.1.0"
 [dependencies]
 data-intake = {workspace = true}
 data-processing = {workspace = true}
+data-vectorizer = {workspace = true}
 rocket = {workspace = true}
 rstest = {workspace = true}
 shared = {workspace = true}
