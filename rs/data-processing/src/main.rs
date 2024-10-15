@@ -4,7 +4,7 @@ use shared::tracing::setup::setup_tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), DataProcessingError> {
-    setup_tracing();
+    setup_tracing(true);
     let threads = run_data_processing().await?;
 
     // Wait for all threads to complete

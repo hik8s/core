@@ -105,7 +105,7 @@ mod tests {
     #[case(TestCase::Simple)]
     #[case(TestCase::DataIntakeLimit)]
     async fn test_log_intake_route(#[case] case: TestCase) -> Result<(), DataIntakeError> {
-        setup_tracing();
+        setup_tracing(false);
 
         // rocket client
         let server = initialize_data_intake().await?;

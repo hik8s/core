@@ -45,7 +45,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_prompt() {
-        setup_tracing();
+        setup_tracing(false);
         let server = initialize_prompt_engine().await.unwrap();
         let client = get_test_client(server).await.unwrap();
 

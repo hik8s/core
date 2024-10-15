@@ -20,7 +20,7 @@ mod tests {
     async fn test_data_intake_data_processing(
         #[case] case: TestCase,
     ) -> Result<(), DataIntakeError> {
-        setup_tracing();
+        setup_tracing(true);
 
         // test data
         let test_data = get_test_data(case);

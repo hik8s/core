@@ -124,7 +124,7 @@ mod tests {
     #[tokio::test]
     #[case(get_test_data(TestCase::Simple))]
     async fn test_classify_json_nested(#[case] test_data: TestData) -> Result<(), ClassifierError> {
-        setup_tracing();
+        setup_tracing(false);
 
         let redis = RedisConnection::new()?;
         let mut classifier = Classifier::new(Some(0.6), redis)?;

@@ -3,7 +3,7 @@ use shared::tracing::setup::setup_tracing;
 
 #[rocket::main]
 async fn main() -> Result<(), DataIntakeError> {
-    setup_tracing();
+    setup_tracing(false);
 
     let server = initialize_data_intake().await?;
 

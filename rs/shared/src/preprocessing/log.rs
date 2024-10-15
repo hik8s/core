@@ -106,7 +106,7 @@ mod tests {
     #[case("stderr F I0315 09:37:55.934101       1 main.go:250] Node kind-worker2 has CIDR [10.244.2.0/24]", vec!["stderr", "F", "I0315", "09:37:55.934101", "1", "main.go:250]", "Node", "kind-worker2", "has", "CIDR", "[10.244.2.0/24]"])]
     #[case("stderr F I0315 10:44:54.473228       1 main.go:227] handling current node", vec!["stderr", "F", "I0315", "10:44:54.473228", "1", "main.go:227]", "handling", "current", "node"])]
     fn test_preprocess_log(#[case] input: &str, #[case] expected: Vec<&str>) {
-        setup_tracing();
+        setup_tracing(false);
         assert_eq!(
             preprocess_message(&input, "customer_id", "key", "record_id"),
             expected
@@ -148,7 +148,7 @@ mod tests {
         "compact-revision", "108342",
     ])]
     fn test_flatten_json(#[case] json: Value, #[case] expected: Vec<&str>) {
-        setup_tracing();
+        setup_tracing(false);
         assert_eq!(flatten_json(&json), expected);
     }
 
@@ -170,7 +170,7 @@ mod tests {
     )]
 
     fn test_preprocess_compare_logs(#[case] inputs: (&str, &str), #[case] expected: Vec<bool>) {
-        setup_tracing();
+        setup_tracing(false);
         let (input1, input2) = inputs;
         let preprocessed_input1 = preprocess_message(&input1, "customer_id", "key", "record_id1");
         let preprocessed_input2 = preprocess_message(&input2, "customer_id", "key", "record_id2");

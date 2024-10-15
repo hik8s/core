@@ -8,7 +8,7 @@ pub mod server;
 
 #[rocket::main]
 async fn main() -> Result<(), PromptEngineServerError> {
-    setup_tracing();
+    setup_tracing(false);
 
     let server = initialize_prompt_engine().await?;
 

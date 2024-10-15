@@ -44,7 +44,7 @@ pub enum DataVectorizationError {
 
 #[tokio::main]
 async fn main() -> Result<(), DataVectorizationError> {
-    setup_tracing();
+    setup_tracing(false);
     let fluvio = FluvioConnection::new(TopicName::Class).await?;
     let qdrant = QdrantConnection::new().await?;
     let mut consumer = fluvio.create_consumer(0).await?;
