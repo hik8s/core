@@ -7,7 +7,8 @@ version = "0.1.0"
 data-intake = {workspace = true}
 data-processing = {workspace = true}
 rocket = {workspace = true}
+rstest = {workspace = true}
 shared = {workspace = true}
-test-case = {workspace = true}
 thiserror = {workspace = true}
 tokio = {workspace = true}
+tracing = {workspace = true}

@@ -93,17 +93,18 @@ mod tests {
     use crate::error::DataIntakeError;
     use crate::server::initialize_data_intake;
 
+    use rstest::rstest;
     use shared::mock::rocket::get_test_client;
 
     use shared::tracing::setup::setup_tracing;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
-    use test_case::test_case;
 
     #[tokio::test]
-    #[test_case(TestCase::Simple)]
-    #[test_case(TestCase::DataIntakeLimit)]
-    async fn test_log_intake_route(case: TestCase) -> Result<(), DataIntakeError> {
+    #[rstest]
+    #[case(TestCase::Simple)]
+    #[case(TestCase::DataIntakeLimit)]
+    async fn test_log_intake_route(#[case] case: TestCase) -> Result<(), DataIntakeError> {
         setup_tracing();
 
         // rocket client
