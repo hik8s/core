@@ -4,7 +4,7 @@ use crate::utils::mock::mock_client::{generate_random_filename, get_test_path};
 
 use super::mock_data::TestData;
 
-pub fn get_multipart_stream(test_data: TestData) -> String {
+pub fn get_multipart_stream(test_data: &TestData) -> String {
     let boundary = "boundary";
     let metadata_obj = json!({
         "file": generate_random_filename(),

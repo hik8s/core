@@ -113,7 +113,7 @@ mod tests {
 
         // test data
         let test_data = get_test_data(case);
-        let test_stream = get_multipart_stream(test_data);
+        let test_stream = get_multipart_stream(&test_data);
 
         // test route
         let status = post_test_stream(&client, "/logs", test_stream).await;

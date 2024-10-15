@@ -1,11 +1,11 @@
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
+use fluvio::TopicProducerConfigBuilder;
 use fluvio::{
     consumer::{ConsumerConfigExtBuilder, OffsetManagementStrategy},
     Offset,
 };
 use fluvio::{spu::SpuSocketPool, Fluvio, TopicProducer};
-use fluvio::{Compression, TopicProducerConfigBuilder};
 use std::sync::Arc;
 
 use crate::log_error;
@@ -29,7 +29,9 @@ impl FluvioConnection {
             .map_err(|e| FluvioConnectionError::ClientConnection(log_error!(e).into()))?;
 
         let admin = fluvio.admin().await;
-        create_topic(admin, &topic).await?;
+        create_topic(admin, &topic)
+            .await
+            .map_err(|e| log_error!(e))?;
 
         let topic_config = TopicProducerConfigBuilder::default()
             // .compression(Compression::Zstd)

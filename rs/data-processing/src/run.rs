@@ -5,7 +5,8 @@ use shared::fluvio::FluvioConnection;
 use shared::fluvio::TopicName;
 use tokio::task::JoinHandle;
 
-pub async fn run_data_processing() -> Result<(), DataProcessingError> {
+pub async fn run_data_processing(
+) -> Result<Vec<JoinHandle<Result<(), DataProcessingError>>>, DataProcessingError> {
     let fluvio_logs = FluvioConnection::new(TopicName::Log).await?;
     let fluvio_class = FluvioConnection::new(TopicName::Class).await?;
 
@@ -21,11 +22,5 @@ pub async fn run_data_processing() -> Result<(), DataProcessingError> {
             Ok(())
         }));
     }
-
-    // Wait for all threads to complete
-    for thread in threads {
-        thread.await??;
-    }
-
-    Ok(())
+    Ok(threads)
 }
