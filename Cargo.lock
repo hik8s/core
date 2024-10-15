@@ -962,7 +962,7 @@ dependencies = [
 
 [[package]]
 name = "data-intake"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "greptimedb-ingester",
  "multipart",
@@ -978,7 +978,7 @@ dependencies = [
 
 [[package]]
 name = "data-processing"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "algorithm",
  "anyhow",
@@ -996,7 +996,7 @@ dependencies = [
 
 [[package]]
 name = "data-vectorizer"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "futures-util",
