@@ -29,7 +29,7 @@ mod tests {
     )]
 
     fn test_compare_strings(#[case] inputs: (&str, &str), #[case] expected: Vec<bool>) {
-        setup_tracing();
+        setup_tracing(false);
         let (input1, input2) = inputs;
         let input1: Vec<String> = input1.split_whitespace().map(|s| s.to_string()).collect();
         let input2: Vec<String> = input2.split_whitespace().map(|s| s.to_string()).collect();

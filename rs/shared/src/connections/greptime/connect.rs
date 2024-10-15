@@ -74,6 +74,17 @@ impl GreptimeConnection {
         }
         Ok(())
     }
+    pub async fn connect_db(
+        &self,
+        db_name: &str,
+    ) -> Result<Pool<Postgres>, GreptimeConnectionError> {
+        let psql_uri = self.config.get_psql_uri(db_name);
+        PgPoolOptions::new()
+            .max_connections(5)
+            .connect(&psql_uri)
+            .await
+            .map_err(|e| log_error!(e).into())
+    }
 }
 
 #[rocket::async_trait]

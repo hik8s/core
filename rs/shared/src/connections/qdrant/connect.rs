@@ -3,7 +3,7 @@ use std::sync::Arc;
 use qdrant_client::{
     qdrant::{
         Condition, CreateCollectionBuilder, Distance, Filter, PointStruct, PointsOperationResponse,
-        SearchPointsBuilder, UpsertPointsBuilder, VectorParamsBuilder,
+        QueryPointsBuilder, SearchPointsBuilder, UpsertPointsBuilder, VectorParamsBuilder,
     },
     Qdrant,
 };
@@ -73,6 +73,19 @@ impl QdrantConnection {
             .filter(filter)
             .with_payload(true);
         let response = self.client.search_points(request).await?;
+        let vectorized_classes = to_vectorized_class(response.result)?;
+        Ok(vectorized_classes)
+    }
+    pub async fn search_key(
+        &self,
+        db_name: &str,
+        key: &str,
+    ) -> Result<Vec<VectorizedClass>, QdrantConnectionError> {
+        let filter = Filter::must([Condition::matches("key", key.to_string())]);
+        let request = QueryPointsBuilder::new(db_name.to_owned())
+            .filter(filter)
+            .with_payload(true);
+        let response = self.client.query(request).await?;
         let vectorized_classes = to_vectorized_class(response.result)?;
         Ok(vectorized_classes)
     }

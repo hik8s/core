@@ -64,7 +64,6 @@ pub async fn log_intake<'a>(
                         );
                         continue;
                     }
-                    tracing::info!("Sending record to fluvio: {}", &serialized_record.len());
                     fluvio
                         .producer
                         .send(user.customer_id.clone(), serialized_record)
@@ -91,30 +90,30 @@ pub async fn log_intake<'a>(
 
 #[cfg(test)]
 mod tests {
-    use rocket::routes;
-    use shared::connections::greptime::connect::GreptimeConnection;
-    use shared::fluvio::{FluvioConnection, TopicName};
-    use shared::mock::rocket::{rocket_test_client, TestClientError};
-    use shared::router::rocket::Connection;
+    use crate::error::DataIntakeError;
+    use crate::server::initialize_data_intake;
+
+    use rstest::rstest;
+    use shared::mock::rocket::get_test_client;
+
     use shared::tracing::setup::setup_tracing;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
 
-    use super::log_intake;
-    #[rocket::async_test]
-    async fn test_log_intake_route() -> Result<(), TestClientError> {
-        setup_tracing();
-        // connections
-        let greptime = GreptimeConnection::new().await?;
-        let fluvio = FluvioConnection::new(TopicName::Log).await?;
-        let connections: Vec<Connection> = vec![greptime.into(), fluvio.into()];
+    #[tokio::test]
+    #[rstest]
+    #[case(TestCase::Simple)]
+    #[case(TestCase::DataIntakeLimit)]
+    async fn test_log_intake_route(#[case] case: TestCase) -> Result<(), DataIntakeError> {
+        setup_tracing(false);
 
         // rocket client
-        let client = rocket_test_client(&connections, routes![log_intake]).await?;
+        let server = initialize_data_intake().await?;
+        let client = get_test_client(server).await?;
 
         // test data
-        let test_data = get_test_data(TestCase::Simple);
-        let test_stream = get_multipart_stream(test_data);
+        let test_data = get_test_data(case);
+        let test_stream = get_multipart_stream(&test_data);
 
         // test route
         let status = post_test_stream(&client, "/logs", test_stream).await;

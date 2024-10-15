@@ -8,6 +8,7 @@ pub const PROMPT_ENGINE_PATH: &str = "prompt";
 
 // logs
 pub const LOG_PREFIX: &str = "logs";
+pub const DATA_INTAKE_LIMIT_MEMIBYTES: u64 = 32;
 
 // embedding
 pub const OPENAI_EMBEDDING_MODEL: &str = "text-embedding-3-large";
@@ -27,3 +28,6 @@ pub const TOPIC_CLASS_NAME: &str = "classes";
 pub const TOPIC_CLASS_PARTITIONS: u32 = 1;
 pub const TOPIC_CLASS_REPLICAS: u32 = 1;
 pub const TOPIC_CLASS_BYTES_PER_RECORD: usize = TOPIC_LOG_BYTES_PER_RECORD * 4;
+
+// #[cfg(test)]
+pub const CONVERSION_BYTE_TO_MEBIBYTE: usize = 1048576;

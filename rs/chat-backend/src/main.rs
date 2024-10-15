@@ -21,7 +21,7 @@ pub enum ChatBackendError {
 
 #[main]
 async fn main() -> Result<(), ChatBackendError> {
-    setup_tracing();
+    setup_tracing(false);
     std::env::set_var("ROCKET_PORT", CHAT_BACKEND_PORT);
 
     let prompt_engine = PromptEngineConnection::new()?;

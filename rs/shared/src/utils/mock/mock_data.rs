@@ -3,6 +3,7 @@ use std::vec::IntoIter;
 
 use uuid7::uuid7;
 
+use crate::constant::CONVERSION_BYTE_TO_MEBIBYTE;
 use crate::types::class::{item::Item, Class};
 use crate::types::metadata::Metadata;
 
@@ -11,14 +12,16 @@ use super::mock_client::{generate_podname, get_test_metadata};
 #[derive(Clone, Copy)]
 pub enum TestCase {
     Simple,
+    DataIntakeLimit,
 }
 
 impl Display for TestCase {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let name = match self {
             TestCase::Simple => "simple",
+            TestCase::DataIntakeLimit => "data-intake-limit",
         };
-        write!(f, "{}", name)
+        write!(f, "test-{}", name)
     }
 }
 
@@ -99,14 +102,51 @@ pub fn get_test_data(case: TestCase) -> TestData {
             );
             TestData {
                 raw_messages: vec![
-                    "2023-06-10T10:30:01Z INFO This is a test log line 1\r".to_string(),
-                    "2023-06-10T10:30:02Z INFO This is a test log line 2\r".to_string(),
-                    "2023-06-10T10:30:03Z INFO This is a test log line 3\r".to_string(),
-                    "2023-06-10T10:30:04Z INFO This is a test log line 4\r".to_string(),
+                    get_test_line(1),
+                    get_test_line(2),
+                    get_test_line(3),
+                    get_test_line(4),
                 ],
                 expected_classes: vec![class.clone(), class.clone(), class.clone(), class],
                 metadata,
             }
         }
+        TestCase::DataIntakeLimit => {
+            let expected_classes = vec![generate_null_class(&metadata)];
+            let raw_messages = vec![generate_repeated_message(CONVERSION_BYTE_TO_MEBIBYTE)];
+            TestData {
+                raw_messages,
+                expected_classes,
+                metadata,
+            }
+        }
     }
+}
+
+fn get_test_line(n: u8) -> String {
+    format!(
+        "{ts} {m}\r",
+        m = get_test_message(n),
+        ts = get_test_timestamp(n)
+    )
+}
+
+fn get_test_timestamp(n: u8) -> String {
+    format!("2023-06-10T10:30:0{n}Z", n = n)
+}
+
+fn get_test_message(n: u8) -> String {
+    // this message is 31 bytes long for n from [0,9]
+    format!("INFO This is a test log line {n} ")
+}
+
+fn generate_repeated_message(r: usize) -> String {
+    let timestamp = get_test_timestamp(1);
+    let test_message = get_test_message(1);
+    let repeated_message = test_message.repeat(r);
+    format!("{} {}", timestamp, repeated_message)
+}
+
+fn generate_null_class(metadata: &Metadata) -> Class {
+    class_from_items(vec![Item::Var], 0.0, metadata)
 }

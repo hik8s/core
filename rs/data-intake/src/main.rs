@@ -1,38 +1,12 @@
-pub mod log;
-pub mod process;
+use data_intake::{error::DataIntakeError, server::initialize_data_intake};
+use shared::tracing::setup::setup_tracing;
 
-use rocket::{main, routes};
-use thiserror::Error;
-
-use log::route::log_intake;
-use shared::{
-    connections::greptime::connect::{GreptimeConnection, GreptimeConnectionError},
-    fluvio::{FluvioConnection, FluvioConnectionError, TopicName},
-    router::rocket::{build_rocket, Connection},
-    tracing::setup::setup_tracing,
-};
-
-#[derive(Error, Debug)]
-pub enum DataIntakeError {
-    #[error("Greptime connection error: {0}")]
-    GreptimeConnectionError(#[from] GreptimeConnectionError),
-    #[error("Fluvio connection error: {0}")]
-    FluvioConnectionError(#[from] FluvioConnectionError),
-    #[error("Rocket error: {0}")]
-    RocketError(#[from] rocket::Error),
-}
-
-#[main]
+#[rocket::main]
 async fn main() -> Result<(), DataIntakeError> {
-    std::env::set_var("ROCKET_ADDRESS", "0.0.0.0");
-    setup_tracing();
+    setup_tracing(false);
 
-    let greptime = GreptimeConnection::new().await?;
-    let fluvio = FluvioConnection::new(TopicName::Log).await?;
+    let server = initialize_data_intake().await?;
 
-    let connections: Vec<Connection> = vec![greptime.into(), fluvio.into()];
-    let rocket = build_rocket(&connections, routes![log_intake]);
-
-    rocket.launch().await?;
+    server.launch().await?;
     Ok(())
 }

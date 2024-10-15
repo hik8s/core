@@ -1,5 +1,6 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::info;
 
@@ -22,8 +23,8 @@ impl RateLimiter {
     }
 
     pub async fn check_rate_limit(&self, token_count: usize) {
-        let mut tokens_used = self.tokens_used.lock().unwrap();
-        let mut last_reset = self.last_reset.lock().unwrap();
+        let mut tokens_used = self.tokens_used.lock().await;
+        let mut last_reset = self.last_reset.lock().await;
 
         if last_reset.elapsed() >= TOKEN_RESET_INTERVAL {
             *tokens_used = 0;
