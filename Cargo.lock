@@ -4885,9 +4885,11 @@ name = "tests"
 version = "0.1.0"
 dependencies = [
  "data-intake",
+ "data-processing",
  "rocket",
  "shared",
  "test-case",
+ "thiserror",
  "tokio",
 ]
 

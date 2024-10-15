@@ -2,6 +2,7 @@
 mod tests {
     use data_intake::error::DataIntakeError;
     use data_intake::server::initialize_data_intake;
+    use data_processing::run::run_data_processing;
     use shared::mock::rocket::get_test_client;
     use shared::tracing::setup::setup_tracing;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
@@ -13,6 +14,8 @@ mod tests {
     #[test_case(TestCase::DataIntakeLimit)]
     async fn test_data_intake_processing(case: TestCase) -> Result<(), DataIntakeError> {
         setup_tracing();
+
+        run_data_processing().await.unwrap();
 
         // rocket client
         let server = initialize_data_intake().await.unwrap();

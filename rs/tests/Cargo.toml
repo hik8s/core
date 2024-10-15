@@ -5,7 +5,9 @@ version = "0.1.0"
 
 [dependencies]
 data-intake = {workspace = true}
+data-processing = {workspace = true}
 rocket = {workspace = true}
 shared = {workspace = true}
 test-case = {workspace = true}
+thiserror = {workspace = true}
 tokio = {workspace = true}
