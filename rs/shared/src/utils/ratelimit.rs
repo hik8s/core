@@ -8,7 +8,7 @@ const TOKEN_RESET_INTERVAL: Duration = Duration::from_secs(60);
 
 #[derive(Clone)]
 pub struct RateLimiter {
-    tokens_used: Arc<Mutex<usize>>,
+    pub tokens_used: Arc<Mutex<usize>>,
     last_reset: Arc<Mutex<Instant>>,
     token_limit: usize,
 }

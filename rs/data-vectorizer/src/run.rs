@@ -1,4 +1,7 @@
+use std::{collections::HashMap, time::Duration};
+
 use futures_util::StreamExt;
+use qdrant_client::qdrant::PointStruct;
 use shared::{
     connections::{
         db_name::get_db_name,
@@ -18,7 +21,8 @@ use shared::{
     },
     utils::ratelimit::RateLimiter,
 };
-use tracing::info;
+use tokio::time::timeout;
+use tracing::debug;
 
 use crate::error::DataVectorizationError;
 
@@ -28,36 +32,81 @@ pub async fn run_data_vectorizer() -> Result<(), DataVectorizationError> {
     let mut consumer = fluvio.create_consumer(0).await?;
     let tokenizer = Tokenizer::new()?;
     let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
-    while let Some(Ok(record)) = consumer.next().await {
-        let customer_id = get_record_key(&record).map_err(|e| log_error!(e))?;
+    let polling_interval = Duration::from_millis(100);
+    loop {
+        let mut batch = HashMap::<String, Vec<Class>>::new();
+        let start_time = tokio::time::Instant::now();
 
-        let class: Class = record.try_into()?;
-        let class_id = class.class_id.clone();
+        // Accumulate batch
+        while start_time.elapsed() < polling_interval {
+            let result = match timeout(polling_interval, consumer.next()).await {
+                Ok(Some(Ok(record))) => Ok(record),
+                Ok(Some(Err(e))) => Err(e), // error receiving record
+                Ok(None) => continue,       // consumer stream ended (does not happen)
+                Err(_) => continue,         // no record received within the timeout
+            };
+            let record = log_error_continue!(result);
+            let customer_id = get_record_key(&record).map_err(|e| log_error!(e))?;
+            let class: Class = record.try_into()?;
 
-        // vectorize class
-        let (representation, token_count) = tokenizer.clip_tail(class.to_string());
-        let vectorized_class = VectorizedClass::new(class, token_count, representation.clone());
+            if let Some(classes) = batch.get_mut(&customer_id) {
+                classes.push(class);
+            } else {
+                let mut classes = Vec::new();
+                classes.push(class);
+                batch.insert(customer_id, classes);
+            }
+        }
 
-        // obey rate limit
-        rate_limiter.check_rate_limit(token_count).await;
+        // Process batch
+        for (customer_id, classes) in batch.drain() {
+            // vectorize class
+            let (vectorized_classes, total_token_count_cut): (Vec<VectorizedClass>, u32) = classes
+                .iter()
+                .map(|class| class.vectorize(&tokenizer))
+                .fold((Vec::new(), 0), |(mut vec, sum), vc| {
+                    let token_count_cut = vc.token_count_cut;
+                    vec.push(vc);
+                    (vec, sum + token_count_cut)
+                });
+            for vectorized_class in &vectorized_classes {
+                debug!(
+                    "Vectorized class: {} with {} tokens",
+                    vectorized_class.key, vectorized_class.token_count_cut
+                );
+            }
 
-        // get embedding
-        let array = log_error_continue!(request_embedding(&representation).await);
+            // obey rate limit
+            rate_limiter
+                .check_rate_limit(total_token_count_cut as usize)
+                .await;
+            let representations = vectorized_classes
+                .iter()
+                .map(|vc| vc.representation.clone())
+                .collect();
 
-        // create qdrant point
-        let qdrant_point = to_qdrant_point(vectorized_class, array)?;
+            // get embeddings
+            let arrays = log_error_continue!(request_embedding(&representations).await);
 
-        // upsert to qdrant
-        let db_name = get_db_name(&customer_id);
-        qdrant.create_collection(&db_name).await?;
-        qdrant.upsert_point(qdrant_point, &db_name).await?;
-        info!(
-            "Successfully vectorized class with key: {}, id: {}",
-            customer_id, class_id
-        );
+            // create qdrant points
+            let qdrant_points: Vec<PointStruct> = vectorized_classes
+                .iter()
+                .zip(arrays.iter())
+                .map(|(vectorized_class, array)| to_qdrant_point(vectorized_class, *array))
+                .collect::<Result<Vec<_>, _>>()?;
 
+            // upsert to qdrant
+            let db_name = get_db_name(&customer_id);
+            qdrant.create_collection(&db_name).await?;
+            qdrant.upsert_points(qdrant_points, &db_name).await?;
+            debug!(
+                "Vectorized {} classes with {total_token_count_cut} tokens. Total used tokens: {}, ID: {}",
+                vectorized_classes.len(),
+                rate_limiter.tokens_used.lock().await,
+                customer_id
+            );
+        }
         // commit fluvio offset
-        commit_and_flush_offsets(&mut consumer, customer_id, class_id).await?;
+        commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
     }
-    Ok(())
 }

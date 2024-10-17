@@ -49,12 +49,12 @@ impl TryFrom<ScoredPoint> for VectorizedClass {
 }
 
 pub fn to_qdrant_point(
-    class: VectorizedClass,
+    class: &VectorizedClass,
     array: [f32; EMBEDDING_USIZE],
 ) -> Result<PointStruct, JsonError> {
     let payload = serde_json::to_string(&class)?;
     let payload: HashMap<String, Value> = serde_json::from_str(&payload)?;
-    let point = PointStruct::new(class.class_id, array.to_vec(), payload);
+    let point = PointStruct::new(class.class_id.clone(), array.to_vec(), payload);
     Ok(point)
 }
 

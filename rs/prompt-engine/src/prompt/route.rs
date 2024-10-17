@@ -18,7 +18,7 @@ pub async fn prompt_engine(
 ) -> Result<String, PromptEngineError> {
     let request = payload.into_inner();
 
-    let array = request_embedding(&request.user_message).await?;
+    let array = request_embedding(&vec![request.user_message.clone()]).await?[0];
 
     let db_name = get_db_name(&request.client_id);
     let kube_system = qdrant

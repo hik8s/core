@@ -53,12 +53,12 @@ impl QdrantConnection {
         info!("Collection {} created", db_name);
         Ok(())
     }
-    pub async fn upsert_point(
+    pub async fn upsert_points(
         &self,
-        qdrant_point: PointStruct,
+        qdrant_point: Vec<PointStruct>,
         db_name: &str,
     ) -> Result<PointsOperationResponse, QdrantConnectionError> {
-        let request = UpsertPointsBuilder::new(db_name.to_owned(), vec![qdrant_point]).wait(false);
+        let request = UpsertPointsBuilder::new(db_name.to_owned(), qdrant_point).wait(false);
         let response = self.client.upsert_points(request).await?;
         Ok(response)
     }
