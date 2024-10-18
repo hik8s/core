@@ -4734,6 +4734,7 @@ dependencies = [
  "data-intake",
  "data-processing",
  "data-vectorizer",
+ "lazy_static",
  "rocket",
  "rstest",
  "shared",

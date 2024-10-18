@@ -1,9 +1,13 @@
 use std::fmt::{Display, Formatter, Result};
 use std::vec::IntoIter;
 
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use uuid7::uuid7;
 
-use crate::constant::CONVERSION_BYTE_TO_MEBIBYTE;
+use crate::constant::{
+    CONVERSION_BYTE_TO_MEBIBYTE, FLUVIO_BYTES_SAFTY_MARGIN, TOPIC_LOG_BYTES_PER_RECORD,
+};
 use crate::types::class::{item::Item, Class};
 use crate::types::metadata::Metadata;
 
@@ -13,6 +17,7 @@ use super::mock_client::{generate_podname, get_test_metadata};
 pub enum TestCase {
     Simple,
     DataIntakeLimit,
+    DataProcessingLimit,
 }
 
 impl Display for TestCase {
@@ -20,6 +25,7 @@ impl Display for TestCase {
         let name = match self {
             TestCase::Simple => "simple",
             TestCase::DataIntakeLimit => "data-intake-limit",
+            TestCase::DataProcessingLimit => "data-processing-limit",
         };
         write!(f, "test-{}", name)
     }
@@ -120,6 +126,17 @@ pub fn get_test_data(case: TestCase) -> TestData {
                 metadata,
             }
         }
+        TestCase::DataProcessingLimit => {
+            let expected_classes = vec![generate_null_class(&metadata)];
+            let mut message = generate_repeated_message_random(1024);
+            message.truncate(TOPIC_LOG_BYTES_PER_RECORD - FLUVIO_BYTES_SAFTY_MARGIN);
+            let raw_messages = vec![message];
+            TestData {
+                raw_messages,
+                expected_classes,
+                metadata,
+            }
+        }
     }
 }
 
@@ -140,10 +157,31 @@ fn get_test_message(n: u8) -> String {
     format!("INFO This is a test log line {n} ")
 }
 
+fn get_test_message_random(n: u8) -> String {
+    let num = &n.to_string();
+    let mut words = ["INFO", "This", "is", "a", "test", "log", "line", num];
+    let mut rng = thread_rng();
+    words.shuffle(&mut rng);
+    let message = words.join(" ");
+    format!("{message} ")
+}
+
 fn generate_repeated_message(r: usize) -> String {
     let timestamp = get_test_timestamp(1);
     let test_message = get_test_message(1);
     let repeated_message = test_message.repeat(r);
+    format!("{} {}", timestamp, repeated_message)
+}
+
+fn generate_repeated_message_random(r: usize) -> String {
+    let timestamp = get_test_timestamp(1);
+    let mut repeated_message = String::new();
+
+    for _ in 0..r {
+        let test_message = get_test_message_random(1);
+        repeated_message.push_str(&test_message);
+    }
+
     format!("{} {}", timestamp, repeated_message)
 }
 
