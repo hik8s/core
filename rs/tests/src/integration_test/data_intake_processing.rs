@@ -16,7 +16,6 @@ mod tests {
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
     use std::sync::Once;
     use std::time::Duration;
-    use tracing::info;
 
     use tokio::time::sleep;
 
@@ -25,8 +24,8 @@ mod tests {
 
     #[tokio::test]
     #[rstest]
-    #[case(get_test_data(TestCase::DataIntakeLimit), 1, 3)]
     #[case(get_test_data(TestCase::Simple), 1, 3)]
+    #[case(get_test_data(TestCase::DataIntakeLimit), 1, 3)]
     async fn test_data_integration(
         #[case] test_data: TestData,
         #[case] num: usize,
@@ -44,20 +43,16 @@ mod tests {
         let status = post_test_stream(&client, "/logs", test_stream).await;
         assert_eq!(status.code, 200);
 
-        let db_name = get_db_name(&get_env_var("AUTH0_CLIENT_ID_DEV").unwrap());
-        info!("db_name: {}", test_data.metadata.pod_name);
         // data processing
         THREAD_PROCESSING.call_once(|| {
             tokio::spawn(async move {
                 run_data_processing().await.unwrap();
-                tokio::time::sleep(Duration::from_secs(5)).await;
             });
         });
         // data vectorizer
         THREAD_VECTORIZER.call_once(|| {
             tokio::spawn(async move {
                 run_data_vectorizer().await.unwrap();
-                tokio::time::sleep(Duration::from_secs(5)).await;
             });
         });
 
@@ -67,6 +62,7 @@ mod tests {
         let qdrant = QdrantConnection::new().await.unwrap();
 
         let pod_name = test_data.metadata.pod_name.clone();
+        let db_name = get_db_name(&get_env_var("AUTH0_CLIENT_ID_DEV").unwrap());
 
         // check greptime
         let rows = read_records(greptime.clone(), &db_name, &pod_name)

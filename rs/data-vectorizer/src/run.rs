@@ -1,7 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
 use futures_util::StreamExt;
-use qdrant_client::qdrant::PointStruct;
 use shared::{
     connections::{
         db_name::get_db_name,
@@ -14,7 +13,7 @@ use shared::{
     openai::embed::request_embedding,
     types::{
         class::{
-            vectorized::{to_qdrant_point, VectorizedClass},
+            vectorized::{to_qdrant_points, to_representations, to_vectorized_classes},
             Class,
         },
         tokenizer::Tokenizer,
@@ -61,39 +60,18 @@ pub async fn run_data_vectorizer() -> Result<(), DataVectorizationError> {
         // Process batch
         for (customer_id, classes) in batch.drain() {
             // vectorize class
-            let (vectorized_classes, total_token_count_cut): (Vec<VectorizedClass>, u32) = classes
-                .iter()
-                .map(|class| class.vectorize(&tokenizer))
-                .fold((Vec::new(), 0), |(mut vec, sum), vc| {
-                    let token_count_cut = vc.token_count_cut;
-                    vec.push(vc);
-                    (vec, sum + token_count_cut)
-                });
-            for vectorized_class in &vectorized_classes {
-                debug!(
-                    "Vectorized class: {} with {} tokens",
-                    vectorized_class.key, vectorized_class.token_count_cut
-                );
-            }
+            let (vectorized_classes, total_token_count_cut) =
+                to_vectorized_classes(&classes, &tokenizer);
 
             // obey rate limit
-            rate_limiter
-                .check_rate_limit(total_token_count_cut as usize)
-                .await;
-            let representations = vectorized_classes
-                .iter()
-                .map(|vc| vc.representation.clone())
-                .collect();
+            rate_limiter.check_rate_limit(total_token_count_cut).await;
 
             // get embeddings
+            let representations = to_representations(&vectorized_classes);
             let arrays = log_error_continue!(request_embedding(&representations).await);
 
             // create qdrant points
-            let qdrant_points: Vec<PointStruct> = vectorized_classes
-                .iter()
-                .zip(arrays.iter())
-                .map(|(vectorized_class, array)| to_qdrant_point(vectorized_class, *array))
-                .collect::<Result<Vec<_>, _>>()?;
+            let qdrant_points = to_qdrant_points(&vectorized_classes, &arrays)?;
 
             // upsert to qdrant
             let db_name = get_db_name(&customer_id);

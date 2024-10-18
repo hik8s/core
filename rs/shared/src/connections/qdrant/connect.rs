@@ -12,7 +12,7 @@ use tracing::info;
 
 use crate::{
     constant::{EMBEDDING_SIZE, EMBEDDING_USIZE},
-    types::class::vectorized::{to_vectorized_class, VectorizedClass},
+    types::class::vectorized::{from_scored_point, VectorizedClass},
 };
 
 use super::{config::QdrantConfig, error::QdrantConnectionError};
@@ -73,7 +73,7 @@ impl QdrantConnection {
             .filter(filter)
             .with_payload(true);
         let response = self.client.search_points(request).await?;
-        let vectorized_classes = to_vectorized_class(response.result)?;
+        let vectorized_classes = from_scored_point(response.result)?;
         Ok(vectorized_classes)
     }
     pub async fn search_key(
@@ -86,7 +86,7 @@ impl QdrantConnection {
             .filter(filter)
             .with_payload(true);
         let response = self.client.query(request).await?;
-        let vectorized_classes = to_vectorized_class(response.result)?;
+        let vectorized_classes = from_scored_point(response.result)?;
         Ok(vectorized_classes)
     }
 }
