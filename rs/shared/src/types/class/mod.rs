@@ -8,6 +8,7 @@ use fluvio::dataplane::record::ConsumerRecord;
 use item::Item;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string};
+use tracing::debug;
 use uuid7::uuid7;
 use vectorized::VectorizedClass;
 
@@ -72,8 +73,14 @@ impl Class {
         Self::new(log, token_count)
     }
     pub fn vectorize(&self, tokenizer: &Tokenizer) -> VectorizedClass {
-        let (representation, token_count) = tokenizer.clip_tail(self.to_string());
-        VectorizedClass::new(self.clone(), token_count, representation)
+        let (representation, token_count_cut) = tokenizer.clip_tail(self.to_string());
+        if self.token_count > token_count_cut as u32 {
+            debug!(
+                "Token count cut from {} to {}. pod: {}, ID {}",
+                self.token_count, token_count_cut, self.key, self.class_id
+            );
+        }
+        VectorizedClass::new(self.clone(), token_count_cut, representation)
     }
 }
 impl TryInto<String> for Class {

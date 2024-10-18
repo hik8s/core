@@ -3,6 +3,7 @@ use crate::{connections::ConfigError, types::classifier::state::ClassifierState}
 use super::config::RedisConfig;
 use redis::{Client, Commands, Connection, RedisError};
 use thiserror::Error;
+use tracing::info;
 
 const DEFAULT_STATE_KEY: &str = "classifier_state";
 pub struct RedisConnection {
@@ -42,7 +43,7 @@ impl RedisConnection {
                 Ok(state)
             }
             false => {
-                tracing::info!("Creating new state for key: {}", key);
+                info!("Creating new state for key: {}", key);
                 Ok(ClassifierState { classes: vec![] })
             }
         }

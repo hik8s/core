@@ -12,7 +12,7 @@ mod tests {
     use shared::get_env_var;
     use shared::mock::rocket::get_test_client;
     use shared::tracing::setup::setup_tracing;
-    use shared::utils::mock::mock_data::{get_test_data, TestCase, TestData};
+    use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
     use std::collections::HashSet;
     use std::sync::{Mutex, Once};
@@ -30,12 +30,14 @@ mod tests {
 
     #[tokio::test]
     #[rstest]
-    #[case(get_test_data(TestCase::Simple))]
-    #[case(get_test_data(TestCase::DataIntakeLimit))]
-    #[case(get_test_data(TestCase::DataProcessingLimit))]
-    async fn test_data_integration(#[case] test_data: TestData) -> Result<(), DataIntakeError> {
+    #[case(TestCase::Simple)]
+    #[case(TestCase::DataIntakeLimit)]
+    #[case(TestCase::DataProcessingLimit)]
+    // #[case(TestCase::OpenAiRateLimit)]
+    async fn test_data_integration(#[case] case: TestCase) -> Result<(), DataIntakeError> {
         setup_tracing(true);
         let num_cases = 3;
+        let test_data = get_test_data(case);
         // data intake
         let server = initialize_data_intake().await.unwrap();
         let client = get_test_client(server).await?;
@@ -64,7 +66,7 @@ mod tests {
         let db_name = get_db_name(&get_env_var("AUTH0_CLIENT_ID_DEV").unwrap());
 
         let start_time = tokio::time::Instant::now();
-        let timeout = Duration::from_secs(30);
+        let timeout = Duration::from_secs(300);
         let mut rows = Vec::new();
         let mut classes = Vec::new();
 
@@ -75,13 +77,18 @@ mod tests {
                 .unwrap();
 
             // check qdrant
-            classes = qdrant.search_key(&db_name, &pod_name).await.unwrap();
+            classes = qdrant.search_key(&db_name, &pod_name, 1000).await.unwrap();
+            info!(
+                "Classes: {}/{} | Pod: {}",
+                classes.len(),
+                test_data.expected_classes.len(),
+                pod_name
+            );
             if rows.len() > 0 && classes.len() == test_data.expected_classes.len() {
                 // successfully received data
                 RECEIVED_DATA.lock().unwrap().insert(pod_name.clone());
                 break;
             }
-            info!("Waiting for: {}", pod_name);
             sleep(Duration::from_secs(1)).await;
         }
 
@@ -92,7 +99,7 @@ mod tests {
         }
 
         assert_eq!(rows.len(), test_data.raw_messages.len());
-        assert_eq!(classes.len(), 1);
+        assert_eq!(classes.len(), test_data.expected_classes.len());
         Ok(())
     }
 }

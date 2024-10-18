@@ -80,10 +80,12 @@ impl QdrantConnection {
         &self,
         db_name: &str,
         key: &str,
+        limit: u64,
     ) -> Result<Vec<VectorizedClass>, QdrantConnectionError> {
         let filter = Filter::must([Condition::matches("key", key.to_string())]);
         let request = QueryPointsBuilder::new(db_name.to_owned())
             .filter(filter)
+            .limit(limit)
             .with_payload(true);
         let response = self.client.query(request).await?;
         let vectorized_classes = from_scored_point(response.result)?;

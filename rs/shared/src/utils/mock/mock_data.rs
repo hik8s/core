@@ -1,3 +1,4 @@
+use core::num;
 use std::fmt::{Display, Formatter, Result};
 use std::vec::IntoIter;
 
@@ -6,7 +7,8 @@ use rand::thread_rng;
 use uuid7::uuid7;
 
 use crate::constant::{
-    CONVERSION_BYTE_TO_MEBIBYTE, FLUVIO_BYTES_SAFTY_MARGIN, TOPIC_LOG_BYTES_PER_RECORD,
+    CONVERSION_BYTE_TO_MEBIBYTE, FLUVIO_BYTES_SAFTY_MARGIN, OPENAI_EMBEDDING_TOKEN_LIMIT,
+    TOPIC_LOG_BYTES_PER_RECORD,
 };
 use crate::types::class::{item::Item, Class};
 use crate::types::metadata::Metadata;
@@ -18,6 +20,7 @@ pub enum TestCase {
     Simple,
     DataIntakeLimit,
     DataProcessingLimit,
+    OpenAiRateLimit,
 }
 
 impl Display for TestCase {
@@ -26,6 +29,7 @@ impl Display for TestCase {
             TestCase::Simple => "simple",
             TestCase::DataIntakeLimit => "data-intake-limit",
             TestCase::DataProcessingLimit => "data-processing-limit",
+            TestCase::OpenAiRateLimit => "openai-ratelimit",
         };
         write!(f, "test-{}", name)
     }
@@ -131,6 +135,25 @@ pub fn get_test_data(case: TestCase) -> TestData {
             let mut message = generate_repeated_message_random(1024);
             message.truncate(TOPIC_LOG_BYTES_PER_RECORD - FLUVIO_BYTES_SAFTY_MARGIN);
             let raw_messages = vec![message];
+            TestData {
+                raw_messages,
+                expected_classes,
+                metadata,
+            }
+        }
+        TestCase::OpenAiRateLimit => {
+            let mut raw_messages = Vec::new();
+            let mut expected_classes = Vec::new();
+
+            let max_token_count = 7000;
+            let num_messages = OPENAI_EMBEDDING_TOKEN_LIMIT / max_token_count;
+            for _ in 0..num_messages {
+                let mut message = generate_repeated_message_random(1024);
+                message.truncate(TOPIC_LOG_BYTES_PER_RECORD - FLUVIO_BYTES_SAFTY_MARGIN);
+                raw_messages.push(message);
+                expected_classes.push(generate_null_class(&metadata));
+            }
+
             TestData {
                 raw_messages,
                 expected_classes,

@@ -21,7 +21,7 @@ use shared::{
     utils::ratelimit::RateLimiter,
 };
 use tokio::time::timeout;
-use tracing::debug;
+use tracing::info;
 
 use crate::error::DataVectorizationError;
 
@@ -77,7 +77,7 @@ pub async fn run_data_vectorizer() -> Result<(), DataVectorizationError> {
             let db_name = get_db_name(&customer_id);
             qdrant.create_collection(&db_name).await?;
             qdrant.upsert_points(qdrant_points, &db_name).await?;
-            debug!(
+            info!(
                 "Vectorized {} classes with {total_token_count_cut} tokens. Total used tokens: {}, ID: {}",
                 vectorized_classes.len(),
                 rate_limiter.tokens_used.lock().await,
