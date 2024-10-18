@@ -113,7 +113,7 @@ pub fn get_test_data(case: TestCase) -> TestData {
                     get_test_line(3),
                     get_test_line(4),
                 ],
-                expected_classes: vec![class.clone(), class.clone(), class.clone(), class],
+                expected_classes: vec![class],
                 metadata,
             }
         }

@@ -76,7 +76,7 @@ mod tests {
 
             // check qdrant
             classes = qdrant.search_key(&db_name, &pod_name).await.unwrap();
-            if rows.len() > 0 && classes.len() > 0 {
+            if rows.len() > 0 && classes.len() == test_data.expected_classes.len() {
                 // successfully received data
                 RECEIVED_DATA.lock().unwrap().insert(pod_name.clone());
                 break;
