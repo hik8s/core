@@ -3,8 +3,8 @@ use std::{collections::HashMap, time::Duration};
 use futures_util::StreamExt;
 use shared::{
     connections::{
-        db_name::get_db_name,
         fluvio::{offset::commit_and_flush_offsets, util::get_record_key},
+        get_db_name,
         qdrant::connect::QdrantConnection,
     },
     constant::OPENAI_EMBEDDING_TOKEN_LIMIT,

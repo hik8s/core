@@ -5,7 +5,7 @@ mod tests {
     use data_processing::run::run_data_processing;
     use data_vectorizer::run::run_data_vectorizer;
     use rstest::rstest;
-    use shared::connections::db_name::get_db_name;
+    use shared::connections::get_db_name;
     use shared::connections::greptime::connect::GreptimeConnection;
     use shared::connections::greptime::middleware::query::read_records;
     use shared::connections::qdrant::connect::QdrantConnection;

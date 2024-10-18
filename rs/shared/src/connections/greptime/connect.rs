@@ -1,4 +1,4 @@
-use crate::connections::shared::error::ConfigError;
+use crate::connections::ConfigError;
 use crate::log_error;
 
 use super::config::GreptimeConfig;

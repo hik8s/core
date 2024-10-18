@@ -2,7 +2,7 @@ use std::num::ParseFloatError;
 
 use thiserror::Error;
 
-use crate::connections::{redis::connect::RedisConnectionError, shared::error::ConfigError};
+use crate::connections::{redis::connect::RedisConnectionError, ConfigError};
 
 #[derive(Error, Debug)]
 pub enum ClassifierError {

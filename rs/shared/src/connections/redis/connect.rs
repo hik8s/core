@@ -1,4 +1,4 @@
-use crate::{connections::shared::error::ConfigError, types::classifier::state::ClassifierState};
+use crate::{connections::ConfigError, types::classifier::state::ClassifierState};
 
 use super::config::RedisConfig;
 use redis::{Client, Commands, Connection, RedisError};

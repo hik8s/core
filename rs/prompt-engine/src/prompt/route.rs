@@ -1,7 +1,7 @@
 use rocket::{post, serde::json::Json};
 use shared::{
     connections::{
-        db_name::get_db_name,
+        get_db_name,
         prompt_engine::connect::AugmentationRequest,
         qdrant::connect::{namespace, not_namespace, QdrantConnection},
     },
