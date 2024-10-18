@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
-use crate::constant::EMBEDDING_USIZE;
+use crate::{constant::EMBEDDING_USIZE, types::tokenizer::Tokenizer};
 use qdrant_client::qdrant::{PointStruct, ScoredPoint, Value};
 use serde::{Deserialize, Serialize};
 use serde_json::Error as JsonError;
+use tracing::debug;
 
 use super::Class;
 
@@ -49,16 +50,27 @@ impl TryFrom<ScoredPoint> for VectorizedClass {
 }
 
 pub fn to_qdrant_point(
-    class: VectorizedClass,
+    class: &VectorizedClass,
     array: [f32; EMBEDDING_USIZE],
 ) -> Result<PointStruct, JsonError> {
     let payload = serde_json::to_string(&class)?;
     let payload: HashMap<String, Value> = serde_json::from_str(&payload)?;
-    let point = PointStruct::new(class.class_id, array.to_vec(), payload);
+    let point = PointStruct::new(class.class_id.clone(), array.to_vec(), payload);
     Ok(point)
 }
 
-pub fn to_vectorized_class(
+pub fn to_qdrant_points(
+    classes: &[VectorizedClass],
+    arrays: &[[f32; EMBEDDING_USIZE]],
+) -> Result<Vec<PointStruct>, JsonError> {
+    classes
+        .iter()
+        .zip(arrays.iter())
+        .map(|(vectorized_class, array)| to_qdrant_point(vectorized_class, *array))
+        .collect()
+}
+
+pub fn from_scored_point(
     points: Vec<ScoredPoint>,
 ) -> Result<Vec<VectorizedClass>, serde_json::Error> {
     points
@@ -69,5 +81,30 @@ pub fn to_vectorized_class(
             vc.score = point_struct.score;
             Ok(vc)
         })
+        .collect()
+}
+
+pub fn to_vectorized_classes(
+    classes: &[Class],
+    tokenizer: &Tokenizer,
+) -> (Vec<VectorizedClass>, usize) {
+    classes.iter().map(|class| class.vectorize(tokenizer)).fold(
+        (Vec::new(), 0),
+        |(mut vec, sum), vc| {
+            let token_count_cut = vc.token_count_cut;
+            debug!(
+                "Vectorized class: {} with {} tokens",
+                vc.key, vc.token_count_cut
+            );
+            vec.push(vc);
+            (vec, sum + token_count_cut as usize)
+        },
+    )
+}
+
+pub fn to_representations(vectorized_classes: &[VectorizedClass]) -> Vec<String> {
+    vectorized_classes
+        .iter()
+        .map(|vc| vc.representation.clone())
         .collect()
 }

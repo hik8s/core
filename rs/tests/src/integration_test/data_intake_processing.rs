@@ -5,7 +5,7 @@ mod tests {
     use data_processing::run::run_data_processing;
     use data_vectorizer::run::run_data_vectorizer;
     use rstest::rstest;
-    use shared::connections::db_name::get_db_name;
+    use shared::connections::get_db_name;
     use shared::connections::greptime::connect::GreptimeConnection;
     use shared::connections::greptime::middleware::query::read_records;
     use shared::connections::qdrant::connect::QdrantConnection;
@@ -14,49 +14,92 @@ mod tests {
     use shared::tracing::setup::setup_tracing;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
+    use std::collections::HashSet;
+    use std::sync::{Mutex, Once};
     use std::time::Duration;
+    use tracing::info;
+
     use tokio::time::sleep;
+
+    static THREAD_VECTORIZER: Once = Once::new();
+    static THREAD_PROCESSING: Once = Once::new();
+
+    lazy_static::lazy_static! {
+        static ref RECEIVED_DATA: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
+    }
 
     #[tokio::test]
     #[rstest]
     #[case(TestCase::Simple)]
-    // #[case(TestCase::DataIntakeLimit)]
+    #[case(TestCase::DataIntakeLimit)]
+    #[case(TestCase::DataProcessingLimit)]
+    // #[case(TestCase::OpenAiRateLimit)]
     async fn test_data_integration(#[case] case: TestCase) -> Result<(), DataIntakeError> {
         setup_tracing(true);
-
-        // test data
+        let num_cases = 3;
         let test_data = get_test_data(case);
-        let test_stream = get_multipart_stream(&test_data);
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
-        let db_name = get_db_name(&customer_id);
-        let table_name = test_data.metadata.pod_name;
-
-        // data processing
-        run_data_processing().await.unwrap();
-
-        // data vectorizer
-        tokio::spawn(async move {
-            run_data_vectorizer().await.unwrap();
-        });
-
         // data intake
         let server = initialize_data_intake().await.unwrap();
         let client = get_test_client(server).await?;
 
-        // send stream
+        // ingest data
+        let test_stream = get_multipart_stream(&test_data);
         let status = post_test_stream(&client, "/logs", test_stream).await;
         assert_eq!(status.code, 200);
-        sleep(Duration::from_secs(3)).await;
 
-        // check greptime
+        // data processing
+        THREAD_PROCESSING.call_once(|| {
+            tokio::spawn(async move {
+                run_data_processing().await.unwrap();
+            });
+        });
+        // data vectorizer
+        THREAD_VECTORIZER.call_once(|| {
+            tokio::spawn(async move {
+                run_data_vectorizer().await.unwrap();
+            });
+        });
+
         let greptime = GreptimeConnection::new().await?;
-        let rows = read_records(greptime, &db_name, &table_name).await.unwrap();
-        assert_eq!(rows.len(), test_data.raw_messages.len());
-
-        // check qdrant
         let qdrant = QdrantConnection::new().await.unwrap();
-        let classes = qdrant.search_key(&db_name, &table_name).await.unwrap();
-        assert_eq!(classes.len(), 1);
+        let pod_name = test_data.metadata.pod_name.clone();
+        let db_name = get_db_name(&get_env_var("AUTH0_CLIENT_ID_DEV").unwrap());
+
+        let start_time = tokio::time::Instant::now();
+        let timeout = Duration::from_secs(300);
+        let mut rows = Vec::new();
+        let mut classes = Vec::new();
+
+        while start_time.elapsed() < timeout {
+            // check greptime
+            rows = read_records(greptime.clone(), &db_name, &pod_name)
+                .await
+                .unwrap();
+
+            // check qdrant
+            classes = qdrant.search_key(&db_name, &pod_name, 1000).await.unwrap();
+            info!(
+                "Classes: {}/{} | Pod: {}",
+                classes.len(),
+                test_data.expected_classes.len(),
+                pod_name
+            );
+            if rows.len() > 0 && classes.len() == test_data.expected_classes.len() {
+                // successfully received data
+                RECEIVED_DATA.lock().unwrap().insert(pod_name.clone());
+                break;
+            }
+            sleep(Duration::from_secs(1)).await;
+        }
+
+        while RECEIVED_DATA.lock().unwrap().len() < num_cases && start_time.elapsed() < timeout {
+            let res = RECEIVED_DATA.lock().unwrap().clone();
+            info!("{}/{}: Received data from: {:?}", res.len(), num_cases, res);
+            sleep(Duration::from_secs(1)).await;
+        }
+
+        assert_eq!(rows.len(), test_data.raw_messages.len());
+        assert_eq!(classes.len(), test_data.expected_classes.len());
         Ok(())
     }
 }

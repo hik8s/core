@@ -1,7 +1,7 @@
 use qdrant_client::QdrantError;
 use thiserror::Error;
 
-use crate::connections::shared::error::ConfigError;
+use crate::connections::ConfigError;
 
 #[derive(Error, Debug)]
 pub enum QdrantConnectionError {

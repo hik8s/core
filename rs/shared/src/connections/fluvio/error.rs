@@ -24,8 +24,8 @@ pub enum FluvioConnectionError {
 
 #[derive(Error, Debug)]
 pub enum OffsetError {
-    #[error("Failed to commit offset for key {1}: {0}. ID: {2}")]
-    Commit(ErrorCode, String, String),
-    #[error("Failed to flush offset for key {1}: {0}. ID: {2}")]
-    Flush(ErrorCode, String, String),
+    #[error("Failed to commit offset for key {1}: {0}")]
+    Commit(ErrorCode, String),
+    #[error("Failed to flush offset for key {1}: {0}")]
+    Flush(ErrorCode, String),
 }

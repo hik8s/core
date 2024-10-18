@@ -12,7 +12,7 @@ use tracing::info;
 
 use crate::{
     constant::{EMBEDDING_SIZE, EMBEDDING_USIZE},
-    types::class::vectorized::{to_vectorized_class, VectorizedClass},
+    types::class::vectorized::{from_scored_point, VectorizedClass},
 };
 
 use super::{config::QdrantConfig, error::QdrantConnectionError};
@@ -53,12 +53,12 @@ impl QdrantConnection {
         info!("Collection {} created", db_name);
         Ok(())
     }
-    pub async fn upsert_point(
+    pub async fn upsert_points(
         &self,
-        qdrant_point: PointStruct,
+        qdrant_point: Vec<PointStruct>,
         db_name: &str,
     ) -> Result<PointsOperationResponse, QdrantConnectionError> {
-        let request = UpsertPointsBuilder::new(db_name.to_owned(), vec![qdrant_point]).wait(false);
+        let request = UpsertPointsBuilder::new(db_name.to_owned(), qdrant_point).wait(false);
         let response = self.client.upsert_points(request).await?;
         Ok(response)
     }
@@ -73,20 +73,22 @@ impl QdrantConnection {
             .filter(filter)
             .with_payload(true);
         let response = self.client.search_points(request).await?;
-        let vectorized_classes = to_vectorized_class(response.result)?;
+        let vectorized_classes = from_scored_point(response.result)?;
         Ok(vectorized_classes)
     }
     pub async fn search_key(
         &self,
         db_name: &str,
         key: &str,
+        limit: u64,
     ) -> Result<Vec<VectorizedClass>, QdrantConnectionError> {
         let filter = Filter::must([Condition::matches("key", key.to_string())]);
         let request = QueryPointsBuilder::new(db_name.to_owned())
             .filter(filter)
+            .limit(limit)
             .with_payload(true);
         let response = self.client.query(request).await?;
-        let vectorized_classes = to_vectorized_class(response.result)?;
+        let vectorized_classes = from_scored_point(response.result)?;
         Ok(vectorized_classes)
     }
 }

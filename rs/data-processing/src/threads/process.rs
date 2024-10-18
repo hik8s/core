@@ -2,8 +2,8 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::spu::SpuSocketPool;
 use fluvio::TopicProducer;
-use shared::connections::db_name::get_db_name;
 use shared::connections::fluvio::util::get_record_key;
+use shared::connections::get_db_name;
 use shared::constant::TOPIC_CLASS_BYTES_PER_RECORD;
 use shared::fluvio::{commit_and_flush_offsets, OffsetError};
 use shared::preprocessing::log::preprocess_message;
@@ -66,7 +66,6 @@ pub async fn process_logs(
         let log = LogRecord::try_from(record)?;
 
         // preprocess
-        let record_id = log.record_id.to_owned();
         let preprocessed_message =
             preprocess_message(&log.message, &customer_id, &log.key, &log.record_id);
         let preprocessed_log = PreprocessedLogRecord::from((log, preprocessed_message));
@@ -109,7 +108,7 @@ pub async fn process_logs(
         }
 
         // commit consumed offsets
-        commit_and_flush_offsets(&mut consumer, customer_id, record_id)
+        commit_and_flush_offsets(&mut consumer, customer_id)
             .await
             .map_err(|e| log_error!(e))?;
     }

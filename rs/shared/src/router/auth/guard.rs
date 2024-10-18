@@ -1,10 +1,9 @@
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
 
-use crate::connections::db_name::get_db_name;
-
 use super::error::AuthenticationError;
 use super::validation::validate_token;
+use crate::connections::get_db_name;
 
 #[derive(Debug)]
 pub struct AuthenticatedUser {
