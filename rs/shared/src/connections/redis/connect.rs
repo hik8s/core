@@ -58,7 +58,8 @@ impl RedisConnection {
         value: ClassifierState,
     ) -> Result<(), RedisConnectionError> {
         let serialized_value: String = serde_json::to_string(&value).unwrap();
-        self.connection
+        let _res: () = self
+            .connection
             .set(format!("{customer_id}:{key}"), serialized_value)
             .map_err(RedisConnectionError::SetError)?;
         Ok(())
