@@ -1,4 +1,3 @@
-use core::num;
 use std::fmt::{Display, Formatter, Result};
 use std::vec::IntoIter;
 
@@ -116,7 +115,7 @@ pub fn get_test_data(case: TestCase) -> TestData {
             }
         }
         TestCase::DataIntakeLimit => {
-            let mut expected_class = generate_null_class(&metadata);
+            let expected_class = generate_null_class(&metadata);
             let raw_messages = vec![generate_repeated_message(CONVERSION_BYTE_TO_MEBIBYTE)];
             TestData {
                 raw_messages,
@@ -138,7 +137,7 @@ pub fn get_test_data(case: TestCase) -> TestData {
         TestCase::OpenAiRateLimit => {
             let mut raw_messages = Vec::new();
             let mut expected_class = generate_null_class(&metadata);
-            expected_class.count = raw_messages.len() as u32;
+            expected_class.count = raw_messages.len() as u32; // this is a hack to avoid a vec of classes
             let max_token_count = 7000;
             let num_messages = OPENAI_EMBEDDING_TOKEN_LIMIT / max_token_count;
             for _ in 0..num_messages {

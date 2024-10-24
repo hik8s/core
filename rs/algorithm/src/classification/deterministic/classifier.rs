@@ -42,10 +42,11 @@ impl Classifier {
     pub fn classify(
         &mut self,
         log: &PreprocessedLogRecord,
+        customer_id: &str,
     ) -> Result<(Option<Class>, ClassifiedLogRecord), ClassifierError> {
         let mut best_match: Option<&mut Class> = None;
         let mut highest_similarity = 0 as f64;
-        let state = &mut self.redis.get(&log.key)?;
+        let state = &mut self.redis.get(&customer_id, &log.key)?;
 
         for class in state.classes.iter_mut() {
             if class.length != log.length as usize {
@@ -77,7 +78,7 @@ impl Classifier {
             }
             None => self.new_class(log, state),
         };
-        self.redis.set(&log.key, state.to_owned())?;
+        self.redis.set(customer_id, &log.key, state.to_owned())?;
         Ok(result)
     }
 
@@ -132,7 +133,7 @@ mod tests {
         for (index, (key, raw_message, expected_class)) in test_data.into_iter().enumerate() {
             let preprocessed_log =
                 PreprocessedLogRecord::from((&"customer_id".to_owned(), &raw_message, &key));
-            let class = classifier.classify(&preprocessed_log)?.0;
+            let class = classifier.classify(&preprocessed_log, "customer_id")?.0;
             if index == 1 {
                 assert_eq!(class.is_none(), false);
                 let class = class.unwrap();

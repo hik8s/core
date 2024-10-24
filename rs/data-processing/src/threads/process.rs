@@ -71,7 +71,8 @@ pub async fn process_logs(
         let preprocessed_log = PreprocessedLogRecord::from((log, preprocessed_message));
 
         // classify
-        let (updated_class, classified_log) = classifier.classify(&preprocessed_log)?;
+        let (updated_class, classified_log) =
+            classifier.classify(&preprocessed_log, &customer_id)?;
 
         // insert into greptimedb
         let insert_request = classified_log_to_insert_request(classified_log);

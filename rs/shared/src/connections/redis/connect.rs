@@ -5,7 +5,6 @@ use redis::{Client, Commands, Connection, RedisError};
 use thiserror::Error;
 use tracing::info;
 
-const DEFAULT_STATE_KEY: &str = "classifier_state";
 pub struct RedisConnection {
     pub connection: Connection,
 }
@@ -30,29 +29,37 @@ impl RedisConnection {
         Ok(redis_connection)
     }
 
-    pub fn get(&mut self, key: &str) -> Result<ClassifierState, RedisConnectionError> {
-        let exists: bool = self
-            .connection
-            .exists(format!("{DEFAULT_STATE_KEY}:{key}"))?;
+    pub fn get(
+        &mut self,
+        customer_id: &str,
+        key: &str,
+    ) -> Result<ClassifierState, RedisConnectionError> {
+        let identifier = format!("{customer_id}:{key}");
+        let exists: bool = self.connection.exists(&identifier)?;
         match exists {
             true => {
                 let state: ClassifierState = self
                     .connection
-                    .get(format!("{DEFAULT_STATE_KEY}:{key}"))
+                    .get(&identifier)
                     .map_err(RedisConnectionError::GetError)?;
                 Ok(state)
             }
             false => {
-                info!("Creating new state for key: {}", key);
+                info!("Creating new state for key: {}", identifier);
                 Ok(ClassifierState { classes: vec![] })
             }
         }
     }
 
-    pub fn set(&mut self, key: &str, value: ClassifierState) -> Result<(), RedisConnectionError> {
+    pub fn set(
+        &mut self,
+        customer_id: &str,
+        key: &str,
+        value: ClassifierState,
+    ) -> Result<(), RedisConnectionError> {
         let serialized_value: String = serde_json::to_string(&value).unwrap();
         self.connection
-            .set(format!("{DEFAULT_STATE_KEY}:{key}"), serialized_value)
+            .set(format!("{customer_id}:{key}"), serialized_value)
             .map_err(RedisConnectionError::SetError)?;
         Ok(())
     }
