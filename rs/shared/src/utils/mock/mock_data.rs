@@ -38,13 +38,13 @@ impl Display for TestCase {
 pub struct TestData {
     pub metadata: Metadata,
     pub raw_messages: Vec<String>,
-    pub expected_classes: Vec<Class>,
+    pub expected_class: Class,
 }
 
 pub struct TestDataIterator {
     metadata: Metadata,
     raw_iter: IntoIter<String>,
-    class_iter: IntoIter<Class>,
+    class: Class,
 }
 
 impl IntoIterator for TestData {
@@ -52,14 +52,10 @@ impl IntoIterator for TestData {
     type IntoIter = TestDataIterator;
 
     fn into_iter(self) -> Self::IntoIter {
-        if self.raw_messages.len() != self.expected_classes.len() {
-            panic!("Failed into_iter for TestData: self.raw_messages and self.expected_classes must have the same length");
-        }
-
         TestDataIterator {
             metadata: self.metadata,
             raw_iter: self.raw_messages.into_iter(),
-            class_iter: self.expected_classes.into_iter(),
+            class: self.expected_class,
         }
     }
 }
@@ -68,10 +64,8 @@ impl Iterator for TestDataIterator {
     type Item = (Metadata, String, Class); // (metadata, raw_message, expected_class)
 
     fn next(&mut self) -> Option<Self::Item> {
-        match (self.raw_iter.next(), self.class_iter.next()) {
-            (Some(raw_message), Some(expected_class)) => {
-                Some((self.metadata.clone(), raw_message, expected_class))
-            }
+        match (self.raw_iter.next(), self.class.clone()) {
+            (Some(raw_message), class) => Some((self.metadata.clone(), raw_message, class)),
             _ => None,
         }
     }
@@ -117,46 +111,45 @@ pub fn get_test_data(case: TestCase) -> TestData {
                     get_test_line(3),
                     get_test_line(4),
                 ],
-                expected_classes: vec![class],
+                expected_class: class,
                 metadata,
             }
         }
         TestCase::DataIntakeLimit => {
-            let expected_classes = vec![generate_null_class(&metadata)];
+            let mut expected_class = generate_null_class(&metadata);
             let raw_messages = vec![generate_repeated_message(CONVERSION_BYTE_TO_MEBIBYTE)];
             TestData {
                 raw_messages,
-                expected_classes,
+                expected_class,
                 metadata,
             }
         }
         TestCase::DataProcessingLimit => {
-            let expected_classes = vec![generate_null_class(&metadata)];
+            let expected_class = generate_null_class(&metadata);
             let mut message = generate_repeated_message_random(1024);
             message.truncate(TOPIC_LOG_BYTES_PER_RECORD - FLUVIO_BYTES_SAFTY_MARGIN);
             let raw_messages = vec![message];
             TestData {
                 raw_messages,
-                expected_classes,
+                expected_class,
                 metadata,
             }
         }
         TestCase::OpenAiRateLimit => {
             let mut raw_messages = Vec::new();
-            let mut expected_classes = Vec::new();
-
+            let mut expected_class = generate_null_class(&metadata);
+            expected_class.count = raw_messages.len() as u32;
             let max_token_count = 7000;
             let num_messages = OPENAI_EMBEDDING_TOKEN_LIMIT / max_token_count;
             for _ in 0..num_messages {
                 let mut message = generate_repeated_message_random(1024);
                 message.truncate(TOPIC_LOG_BYTES_PER_RECORD - FLUVIO_BYTES_SAFTY_MARGIN);
                 raw_messages.push(message);
-                expected_classes.push(generate_null_class(&metadata));
             }
 
             TestData {
                 raw_messages,
-                expected_classes,
+                expected_class,
                 metadata,
             }
         }
