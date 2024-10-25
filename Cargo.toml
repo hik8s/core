@@ -21,7 +21,7 @@ edition = "2021"
 [workspace.dependencies]
 algorithm = {path = "rs/algorithm"}
 anyhow = "1.0.80"
-async-openai = "0.23.4"
+async-openai = "0.25.0"
 chrono = {version = "0.4.35"}
 data-intake = {path = "rs/data-intake"}
 data-processing = {path = "rs/data-processing"}

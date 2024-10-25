@@ -1,6 +1,9 @@
 use crate::connections::prompt_engine::connect::{AugmentationRequest, PromptEngineConnection};
 use crate::log_error;
-use async_openai::types::ChatCompletionRequestMessage;
+use async_openai::types::{
+    ChatCompletionRequestAssistantMessageContent, ChatCompletionRequestMessage,
+    ChatCompletionRequestSystemMessageContent,
+};
 use async_openai::{types::CreateChatCompletionRequestArgs, Client};
 use futures_util::StreamExt;
 use rocket::FromForm;
@@ -57,7 +60,7 @@ where
         .map(|message| match message.role.as_str() {
             "system" => ChatCompletionRequestMessage::System(
                 async_openai::types::ChatCompletionRequestSystemMessage {
-                    content: "You are a site reliability engineer in a large company. You are in charge of troubleshooting a Kubernetes cluster.".to_string(),
+                    content: ChatCompletionRequestSystemMessageContent::Text("You are a site reliability engineer in a large company. You are in charge of troubleshooting a Kubernetes cluster.".to_string()),
                     name: Some("system".to_string()),
                 },
             ),
@@ -72,7 +75,8 @@ where
             #[allow(deprecated)]
             "assistant" => ChatCompletionRequestMessage::Assistant(
                 async_openai::types::ChatCompletionRequestAssistantMessage {
-                    content: Some(message.content),
+                    content: Some(ChatCompletionRequestAssistantMessageContent::Text(message.content)),
+                    refusal: None,
                     name: Some("assistant".to_string()),
                     tool_calls: None,
                     function_call: None,
