@@ -1,13 +1,14 @@
 use crate::connections::prompt_engine::connect::{AugmentationRequest, PromptEngineConnection};
 use crate::log_error;
-use async_openai::types::{
-    ChatCompletionRequestAssistantMessageContent, ChatCompletionRequestMessage,
-    ChatCompletionRequestSystemMessageContent,
-};
+use async_openai::types::ChatCompletionRequestMessage;
 use async_openai::{types::CreateChatCompletionRequestArgs, Client};
 use futures_util::StreamExt;
 use rocket::FromForm;
 use serde::Serialize;
+
+use super::chat_request_args::{
+    create_assistant_message, create_system_message, create_user_message,
+};
 pub type Result<F, E = anyhow::Error> = anyhow::Result<F, E>;
 
 #[derive(FromForm, Serialize, Debug)]
@@ -58,30 +59,9 @@ where
         .messages
         .into_iter()
         .map(|message| match message.role.as_str() {
-            "system" => ChatCompletionRequestMessage::System(
-                async_openai::types::ChatCompletionRequestSystemMessage {
-                    content: ChatCompletionRequestSystemMessageContent::Text("You are a site reliability engineer in a large company. You are in charge of troubleshooting a Kubernetes cluster.".to_string()),
-                    name: Some("system".to_string()),
-                },
-            ),
-            "user" => ChatCompletionRequestMessage::User(
-                async_openai::types::ChatCompletionRequestUserMessage {
-                    content: async_openai::types::ChatCompletionRequestUserMessageContent::Text(
-                        message.content,
-                    ),
-                    name: Some("username".to_string()),
-                },
-            ),
-            #[allow(deprecated)]
-            "assistant" => ChatCompletionRequestMessage::Assistant(
-                async_openai::types::ChatCompletionRequestAssistantMessage {
-                    content: Some(ChatCompletionRequestAssistantMessageContent::Text(message.content)),
-                    refusal: None,
-                    name: Some("assistant".to_string()),
-                    tool_calls: None,
-                    function_call: None,
-                },
-            ),
+            "system" => create_system_message(),
+            "user" => create_user_message(&message.content),
+            "assistant" => create_assistant_message(&message.content),
             _ => panic!("Unknown role"),
         })
         .collect();
