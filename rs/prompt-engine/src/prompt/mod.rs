@@ -1,5 +1,6 @@
-pub mod augmentation;
-pub mod error;
+mod augmentation;
+mod error;
 mod prompt;
+mod understanding;
 
 pub use prompt::prompt_engine;

@@ -3250,8 +3250,11 @@ dependencies = [
 name = "prompt-engine"
 version = "0.2.1"
 dependencies = [
+ "async-openai",
  "rocket",
  "rstest",
+ "serde",
+ "serde_json",
  "shared",
  "thiserror",
  "tokio",

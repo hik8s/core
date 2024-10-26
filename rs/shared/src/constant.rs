@@ -29,5 +29,9 @@ pub const TOPIC_CLASS_PARTITIONS: u32 = 1;
 pub const TOPIC_CLASS_REPLICAS: u32 = 1;
 pub const TOPIC_CLASS_BYTES_PER_RECORD: usize = TOPIC_LOG_BYTES_PER_RECORD * 4;
 
+// prompting
+pub const DEFAULT_SYSTEM_PROMPT: &str = "You are a site reliability engineer in a large company.\
+You get a request from a fellow engineer and you need to understand the key information";
+
 // #[cfg(test)]
 pub const CONVERSION_BYTE_TO_MEBIBYTE: usize = 1048576;
