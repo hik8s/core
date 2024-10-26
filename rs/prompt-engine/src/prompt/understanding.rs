@@ -101,24 +101,55 @@ pub async fn request_input_understanding(input: &str) -> Result<UnderstandingOut
 
 #[cfg(test)]
 mod tests {
-    use super::{send_request_to_openai, UnderstandingOutput};
-    use serde_json::from_str;
+    use crate::prompt::test_prompt::{get_expected_output, UserInputTestCase};
+
+    use super::request_input_understandings;
+    use rstest::rstest;
     use shared::tracing::setup::setup_tracing;
+    use tracing::debug;
 
     #[tokio::test]
-    async fn test_send_request_to_openai() {
+    #[rstest]
+    #[case(UserInputTestCase::WhatIsGoingOn)]
+    #[case(UserInputTestCase::WhatIsGoingOnWithApp)]
+    #[case(UserInputTestCase::WhatIsGoingOnWithNamespace)]
+    #[case(UserInputTestCase::WhatIsGoingOnWithAppWithNamespace)]
+    async fn test_send_request_to_openai(#[case] test_case: UserInputTestCase) {
         // Initialize tracing subscriber for logging
         setup_tracing(false);
+        let num_choices = 10;
         // let user_input = "What is going on I see lots of errors with logd in hik8s-stag?";
-        let user_input = "What is going on?";
-        for choice in send_request_to_openai(&user_input).await.unwrap().choices {
-            if let Some(content) = &choice.message.content {
-                let structured_output: UnderstandingOutput =
-                    from_str(content).expect("Failed to parse JSON");
-                tracing::info!("Parsed structured output: {:#?}", structured_output);
-            } else {
-                panic!("The response should not be empty");
-            }
+        let user_input = test_case.to_string();
+        let expected_output = get_expected_output(test_case);
+        let structured_outputs = request_input_understandings(&user_input, Some(num_choices))
+            .await
+            .unwrap();
+
+        let mut res_app = Vec::new();
+        let mut res_namespace = Vec::new();
+        for output in structured_outputs {
+            res_app.push((output.application == expected_output.application) as u32);
+            res_namespace.push((output.namespace == expected_output.namespace) as u32);
         }
+        let mean_res_app: f32 = res_app.iter().sum::<u32>() as f32 / res_app.len() as f32;
+        let mean_res_namespace: f32 =
+            res_namespace.iter().sum::<u32>() as f32 / res_namespace.len() as f32;
+
+        debug!(
+            "Mean res (app|ns): ({}|{})",
+            mean_res_app, mean_res_namespace
+        );
+        assert!(
+            mean_res_app >= 0.8,
+            "Mean of successful extracted app ({:?}) not met: violated {} >= 0.8",
+            expected_output.application,
+            mean_res_app
+        );
+        assert!(
+            mean_res_namespace >= 0.8,
+            "Mean of successful extracted app ({:?}) not met: violated {} >= 0.8",
+            expected_output.application,
+            mean_res_namespace
+        );
     }
 }
