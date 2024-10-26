@@ -1,24 +1,21 @@
 use async_openai::{
-    error::OpenAIError,
-    types::{
-        CreateChatCompletionRequestArgs, CreateChatCompletionResponse, ResponseFormat,
-        ResponseFormatJsonSchema,
-    },
+    error::{ApiError, OpenAIError},
+    types::{ResponseFormat, ResponseFormatJsonSchema},
     Client,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use shared::{
-    constant::OPENAI_CHAT_MODEL,
-    openai::chat_request_args::{create_system_message, create_user_message},
+use serde_json::{from_str, json};
+use shared::openai::{
+    chat_request_args::{create_system_message, create_user_message},
+    request_builder::create_chat_completion_request,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
-struct UnderstandingOutput {
-    application: Option<String>,
-    namespace: Option<String>,
-    keywords: Vec<String>,
-    intention: Option<String>,
+pub struct UnderstandingOutput {
+    pub application: Option<String>,
+    pub namespace: Option<String>,
+    pub keywords: Vec<String>,
+    pub intention: Option<String>,
 }
 impl UnderstandingOutput {
     fn get_schema() -> serde_json::Value {
@@ -38,9 +35,10 @@ impl UnderstandingOutput {
                     "items": {
                         "type": "string"
                     },
+                    "description": "Keywords extracted that describe the user's intention.",
                 },
                 "intention": {
-                    "type": ["string", "null"],
+                    "type": "string",
                     "description": "The intention of the user. What does the user want to achieve?"
                 }
             },
@@ -63,25 +61,42 @@ impl UnderstandingOutput {
     }
 }
 
-async fn send_request_to_openai(input: &str) -> Result<CreateChatCompletionResponse, OpenAIError> {
+async fn request_input_understandings(
+    input: &str,
+    num_choices: Option<u8>,
+) -> Result<Vec<UnderstandingOutput>, OpenAIError> {
     // Create a new OpenAI client
     let client = Client::new();
 
     let messages = vec![create_system_message(), create_user_message(input)];
 
     // Construct the request
-    let request = CreateChatCompletionRequestArgs::default()
-        .model(OPENAI_CHAT_MODEL)
-        .messages(messages)
-        .max_tokens(100_u32)
-        .n(1)
-        .response_format(UnderstandingOutput::response_format())
-        .build()
-        .unwrap();
+    let format = UnderstandingOutput::response_format();
+    let request = create_chat_completion_request(messages, 100, num_choices, Some(format));
 
     // Send the request to the OpenAI API
     let response = client.chat().create(request).await?;
-    Ok(response)
+    let mut output = Vec::new();
+    for choice in response.choices {
+        if let Some(content) = &choice.message.content {
+            let structured_output: UnderstandingOutput = from_str(content).unwrap();
+            output.push(structured_output);
+        }
+    }
+    if output.is_empty() {
+        return Err(OpenAIError::ApiError(ApiError {
+            message: "No structured output found".to_string(),
+            r#type: None,
+            param: None,
+            code: None,
+        }));
+    }
+    Ok(output)
+}
+
+pub async fn request_input_understanding(input: &str) -> Result<UnderstandingOutput, OpenAIError> {
+    let output = request_input_understandings(input, Some(1)).await?;
+    Ok(output.into_iter().next().unwrap())
 }
 
 #[cfg(test)]
