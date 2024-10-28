@@ -70,7 +70,7 @@ impl Iterator for TestDataIterator {
     }
 }
 
-fn class_from_items(items: Vec<Item>, similarity: f64, metadata: &Metadata) -> Class {
+pub fn class_from_items(items: Vec<Item>, similarity: f64, metadata: &Metadata) -> Class {
     Class {
         length: items.len(),
         items,

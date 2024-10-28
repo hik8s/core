@@ -24,7 +24,7 @@ impl UnderstandingOutput {
             "properties": {
                 "application": {
                     "type": ["string", "null"],
-                    "description": "Name of the application, service, or container. If no indication is provided do not return any value",
+                    "description": "Name of the application, service, or container",
                 },
                 "namespace": {
                     "type": ["string", "null"],
@@ -58,6 +58,16 @@ impl UnderstandingOutput {
                 strict: Some(true),
             },
         }
+    }
+    pub fn create_search_prompt(&self, input: &str) -> String {
+        let mut prompt = input.to_string();
+        if let Some(intention) = &self.intention {
+            prompt.push_str(format!("\nUser intention: {}", intention).as_str());
+        }
+        if !self.keywords.is_empty() {
+            prompt.push_str(&format!("\nKeywords: {}", self.keywords.join(",")));
+        }
+        prompt
     }
 }
 
@@ -114,16 +124,16 @@ mod tests {
     #[case(UserInputTestCase::WhatIsGoingOnWithApp)]
     #[case(UserInputTestCase::WhatIsGoingOnWithNamespace)]
     #[case(UserInputTestCase::WhatIsGoingOnWithAppWithNamespace)]
-    async fn test_send_request_to_openai(#[case] test_case: UserInputTestCase) {
+    async fn test_understanding_request_openai(#[case] test_case: UserInputTestCase) {
         // Initialize tracing subscriber for logging
         setup_tracing(false);
         let num_choices = 10;
-        // let user_input = "What is going on I see lots of errors with logd in hik8s-stag?";
         let user_input = test_case.to_string();
         let expected_output = get_expected_output(test_case);
         let structured_outputs = request_input_understandings(&user_input, Some(num_choices))
             .await
             .unwrap();
+        assert_eq!(num_choices as usize, structured_outputs.len());
 
         let mut res_app = Vec::new();
         let mut res_namespace = Vec::new();

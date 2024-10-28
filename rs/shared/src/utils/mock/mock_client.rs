@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use rand::{distributions::Uniform, prelude::Distribution};
 use rocket::{
     http::{ContentType, Header, Status},
@@ -5,8 +7,6 @@ use rocket::{
 };
 
 use crate::{get_env_var, types::metadata::Metadata};
-
-use super::mock_data::TestCase;
 
 pub async fn post_test_stream(client: &Client, route: &str, test_stream: String) -> Status {
     let token = get_env_var("AUTH0_TOKEN").unwrap();
@@ -37,7 +37,7 @@ pub fn generate_random_filename() -> String {
     format!("test-{}.txt", random_string)
 }
 
-pub fn generate_podname(case: TestCase) -> String {
+pub fn generate_podname(case: impl Display) -> String {
     let part1 = generate_random_string(9);
     let part2 = generate_random_string(5);
     format!("{case}-{part1}-{part2}")
@@ -46,7 +46,7 @@ pub fn generate_podname(case: TestCase) -> String {
 pub fn get_test_path(podname: &str) -> String {
     let base_path = "/var/log/pods";
     let pod_uid = "123-4123-53754";
-    let namespace = "test-ns";
+    let namespace = format!("test-ns-{}", generate_random_string(5));
     let container = "some-container";
     format!("{base_path}/{namespace}_{podname}_{pod_uid}/{container}")
 }
