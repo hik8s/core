@@ -23,7 +23,7 @@ use shared::{
 use tokio::time::timeout;
 use tracing::info;
 
-use crate::error::DataVectorizationError;
+use crate::{error::DataVectorizationError, vectorize::vectorize_classes};
 
 pub async fn run_data_vectorizer() -> Result<(), DataVectorizationError> {
     let fluvio = FluvioConnection::new(TopicName::Class).await?;
@@ -59,30 +59,16 @@ pub async fn run_data_vectorizer() -> Result<(), DataVectorizationError> {
 
         // Process batch
         for (customer_id, classes) in batch.drain() {
-            // vectorize class
-            let (vectorized_classes, total_token_count_cut) =
-                to_vectorized_classes(&classes, &tokenizer);
-
-            // obey rate limit
-            rate_limiter.check_rate_limit(total_token_count_cut).await;
-
-            // get embeddings
-            let representations = to_representations(&vectorized_classes);
-            let arrays = log_error_continue!(request_embedding(&representations).await);
-
-            // create qdrant points
-            let qdrant_points = to_qdrant_points(&vectorized_classes, &arrays)?;
-
-            // upsert to qdrant
-            let db_name = get_db_name(&customer_id);
-            qdrant.create_collection(&db_name).await?;
-            qdrant.upsert_points(qdrant_points, &db_name).await?;
+            let (points, total_token_count) =
+                vectorize_classes(&classes, &tokenizer, &rate_limiter).await?;
             info!(
-                "Vectorized {} classes with {total_token_count_cut} tokens. Total used tokens: {}, ID: {}",
-                vectorized_classes.len(),
+                "Vectorized {} classes with {total_token_count} tokens. Total used tokens: {}, ID: {}",
+                classes.len(),
                 rate_limiter.tokens_used.lock().await,
                 customer_id
             );
+            let db_name = get_db_name(&customer_id);
+            qdrant.upsert_points(points, &db_name).await?;
         }
         // commit fluvio offset
         commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
