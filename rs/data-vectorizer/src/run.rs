@@ -10,14 +10,7 @@ use shared::{
     constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
     fluvio::{FluvioConnection, TopicName},
     log_error, log_error_continue,
-    openai::embed::request_embedding,
-    types::{
-        class::{
-            vectorized::{to_qdrant_points, to_representations, to_vectorized_classes},
-            Class,
-        },
-        tokenizer::Tokenizer,
-    },
+    types::{class::Class, tokenizer::Tokenizer},
     utils::ratelimit::RateLimiter,
 };
 use tokio::time::timeout;

@@ -4738,6 +4738,7 @@ dependencies = [
  "data-processing",
  "data-vectorizer",
  "lazy_static",
+ "prompt-engine",
  "rocket",
  "rstest",
  "shared",

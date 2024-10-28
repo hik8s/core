@@ -63,7 +63,6 @@ mod tests {
         // Add assertions to check the response
         assert_eq!(response.status().code, 200);
         let body = response.into_string().await.unwrap();
-        info!("Response: {}", body);
         assert!(body.contains("OOMKilled Exit Code 137"));
     }
 }
