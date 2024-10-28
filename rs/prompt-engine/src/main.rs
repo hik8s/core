@@ -1,10 +1,5 @@
-use error::PromptEngineServerError;
-use server::initialize_prompt_engine;
+use prompt_engine::{error::PromptEngineServerError, server::initialize_prompt_engine};
 use shared::tracing::setup::setup_tracing;
-
-pub mod error;
-pub mod prompt;
-pub mod server;
 
 #[rocket::main]
 async fn main() -> Result<(), PromptEngineServerError> {

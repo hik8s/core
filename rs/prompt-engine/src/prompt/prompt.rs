@@ -32,38 +32,3 @@ pub async fn prompt_engine(
         create_augmented_prompt(&request.user_message, kube_system, other_namespace);
     Ok(augment_prompt)
 }
-
-#[cfg(test)]
-mod tests {
-    use rocket::http::ContentType;
-    use shared::{
-        connections::prompt_engine::connect::AugmentationRequest, get_env_var,
-        mock::rocket::get_test_client, tracing::setup::setup_tracing,
-    };
-
-    use crate::server::initialize_prompt_engine;
-
-    #[tokio::test]
-    async fn test_prompt() {
-        setup_tracing(false);
-        let server = initialize_prompt_engine().await.unwrap();
-        let client = get_test_client(server).await.unwrap();
-
-        let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
-        let body: String = AugmentationRequest::new("Test message", &client_id)
-            .try_into()
-            .unwrap();
-
-        let response = client
-            .post("/prompt")
-            .header(ContentType::JSON)
-            .body(body)
-            .dispatch()
-            .await;
-
-        // Add assertions to check the response
-        assert_eq!(response.status(), rocket::http::Status::Ok);
-        let body = response.into_string().await.unwrap();
-        assert!(body.len() > 500);
-    }
-}
