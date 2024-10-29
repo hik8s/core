@@ -1,6 +1,7 @@
 // chat-backend
 pub const CHAT_BACKEND_PORT: &str = "8080";
 pub const OPENAI_CHAT_MODEL: &str = "gpt-4o-2024-08-06";
+pub const OPENAI_CHAT_MODEL_MINI: &str = "gpt-4o-mini-2024-07-18";
 
 // prompt-engine
 pub const PROMPT_ENGINE_PORT: &str = "8081";
@@ -28,6 +29,10 @@ pub const TOPIC_CLASS_NAME: &str = "classes";
 pub const TOPIC_CLASS_PARTITIONS: u32 = 1;
 pub const TOPIC_CLASS_REPLICAS: u32 = 1;
 pub const TOPIC_CLASS_BYTES_PER_RECORD: usize = TOPIC_LOG_BYTES_PER_RECORD * 4;
+
+// prompting
+pub const DEFAULT_SYSTEM_PROMPT: &str = "You are a site reliability engineer in a large company.\
+You get a request from a fellow engineer and you need to understand the key information";
 
 // #[cfg(test)]
 pub const CONVERSION_BYTE_TO_MEBIBYTE: usize = 1048576;

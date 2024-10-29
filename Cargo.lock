@@ -192,9 +192,9 @@ dependencies = [
 
 [[package]]
 name = "async-openai"
-version = "0.23.4"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc0e5ff98f9e7c605df4c88783a0439d1dc667ce86bd79e99d4164f8b0c05ccc"
+checksum = "1b17e44510f88a904cb3102a020d7ea11929dcddadfaff756e71112cb2cb7bd0"
 dependencies = [
  "async-convert",
  "backoff",
@@ -3250,8 +3250,11 @@ dependencies = [
 name = "prompt-engine"
 version = "0.2.1"
 dependencies = [
+ "async-openai",
  "rocket",
  "rstest",
+ "serde",
+ "serde_json",
  "shared",
  "thiserror",
  "tokio",
@@ -4735,6 +4738,7 @@ dependencies = [
  "data-processing",
  "data-vectorizer",
  "lazy_static",
+ "prompt-engine",
  "rocket",
  "rstest",
  "shared",
