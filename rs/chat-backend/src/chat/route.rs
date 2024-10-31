@@ -20,11 +20,7 @@ pub fn chat_completion(
 
     // producer: openai api (tx)
     tokio::spawn(async move {
-        match process_user_message(prompt_engine, payload.into_inner(), move |chat_message| {
-            tx.send(chat_message).ok();
-        })
-        .await
-        {
+        match process_user_message(&prompt_engine, &payload.into_inner(), &tx, vec![]).await {
             Ok(()) => {
                 tracing::info!("Chat process done");
             }
@@ -36,9 +32,9 @@ pub fn chat_completion(
 
     // consumer: client (rx)
     EventStream! {
-        while let Some(chat_message) = rx.recv().await {
-            tracing::debug!("Yield: {:?}", chat_message);
-            let event = Event::json(&chat_message.delta).id(id.to_string());
+        while let Some(message_delta) = rx.recv().await {
+            tracing::debug!("Yield: {:?}", message_delta);
+            let event = Event::json(&message_delta).id(id.to_string());
             yield event;
         }
     }

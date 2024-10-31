@@ -36,17 +36,16 @@ pub fn get_tool_calls(
 
 #[cfg(test)]
 mod tests {
-    use async_openai::types::ChatCompletionMessageToolCallChunk;
+    use tokio::sync::mpsc;
     use tracing::info;
 
     use crate::{
         connections::{
             openai::tools::{collect_tool_call_chunks, Tool},
-            prompt_engine::connect::PromptEngineConnection,
             OpenAIConnection,
         },
         constant::OPENAI_CHAT_MODEL_MINI,
-        get_env_var, log_error, log_error_continue,
+        log_error,
         openai::chat_request_args::{
             create_assistant_message, create_system_message, create_tool_message,
             create_user_message,
@@ -60,8 +59,8 @@ mod tests {
     async fn test_completion_tools() {
         setup_tracing(false);
         let openai = OpenAIConnection::new();
-        let prompt_engine = PromptEngineConnection::new().unwrap();
-        let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        // let prompt_engine = PromptEngineConnection::new().unwrap();
+        // let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
 
         // base request
         let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
@@ -79,13 +78,7 @@ mod tests {
         ));
         for tool_call in tool_calls {
             let tool = Tool::try_from(&tool_call.function.name).unwrap();
-            messages.push(create_tool_message(
-                &tool
-                    .request(&prompt_engine, &prompt, client_id.as_str())
-                    .await
-                    .unwrap(),
-                &tool_call.id,
-            ));
+            messages.push(create_tool_message(&tool.test_request(), &tool_call.id));
         }
 
         // tool request
@@ -96,13 +89,14 @@ mod tests {
         info!("{:#?}", response);
     }
 
-    use futures_util::StreamExt;
     #[tokio::test]
     async fn test_completion_tools_stream() {
         setup_tracing(false);
         let openai = OpenAIConnection::new();
-        let prompt_engine = PromptEngineConnection::new().unwrap();
-        let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+
+        // let prompt_engine = PromptEngineConnection::new().unwrap();
+        // let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
 
         // base request
         let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
@@ -110,60 +104,56 @@ mod tests {
         let request = openai
             .complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)
             .unwrap();
-        let mut stream = openai.client.chat().create_stream(request).await.unwrap();
-        let mut tool_call_chunks = Vec::<ChatCompletionMessageToolCallChunk>::new();
+        let stream = openai.client.chat().create_stream(request).await.unwrap();
+
+        let (_, tool_call_chunks) = openai
+            .process_completion_stream(&tx, stream)
+            .await
+            .map_err(|e| log_error!(e))
+            .unwrap();
+        info!("{:#?}", tool_call_chunks);
+
         let mut answer = String::new();
-        while let Some(result) = stream.next().await {
-            let response = log_error_continue!(result);
-            let choice = response.choices.first().unwrap();
-            // info!("{:#?}", choice.delta.content);
-            if let Some(ref tool_call_chunk) = choice.delta.tool_calls {
-                tool_call_chunks.extend_from_slice(&tool_call_chunk);
-            }
-            if let Some(ref content) = choice.delta.content {
-                answer.push_str(content);
-            }
+        rx.close();
+        while let Some(message_delta) = rx.recv().await {
+            answer.push_str(&message_delta);
         }
+
         assert!(answer.is_empty());
         assert!(!tool_call_chunks.is_empty());
 
         // tool processing
         let tool_calls = collect_tool_call_chunks(tool_call_chunks);
+        info!("{:#?}", tool_calls);
         messages.push(create_assistant_message(
             "Assistent requested tool calls. Asses the tool calls and make another tool request to cluster overview",
             Some(tool_calls.clone()),
         ));
         for tool_call in tool_calls {
             let tool = Tool::try_from(&tool_call.function.name).unwrap();
-            messages.push(create_tool_message(
-                &tool
-                    .request(&prompt_engine, &prompt, client_id.as_str())
-                    .await
-                    .unwrap(),
-                &tool_call.id,
-            ));
+            messages.push(create_tool_message(&tool.test_request(), &tool_call.id));
         }
 
         // tool request
         let request = openai
             .complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)
             .unwrap();
-        let mut stream = openai.client.chat().create_stream(request).await.unwrap();
+        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let stream = openai.create_completion_stream(request).await.unwrap();
+        let (_, tool_call_chunks) = openai
+            .process_completion_stream(&tx, stream)
+            .await
+            .map_err(|e| log_error!(e))
+            .unwrap();
+
         let mut answer = String::new();
-        let mut tool_call_chunks_v2 = Vec::<ChatCompletionMessageToolCallChunk>::new();
-        while let Some(result) = stream.next().await {
-            let response = log_error_continue!(result);
-            let choice = response.choices.first().unwrap();
-            if let Some(ref tool_call_chunk) = choice.delta.tool_calls {
-                tool_call_chunks_v2.extend_from_slice(&tool_call_chunk);
-            }
-            if let Some(ref content) = choice.delta.content {
-                answer.push_str(content);
-            }
+        rx.close();
+        while let Some(message_delta) = rx.recv().await {
+            answer.push_str(&message_delta);
         }
         info!("{:#?}", answer);
-        info!("{:#?}", tool_call_chunks_v2);
+        info!("{:#?}", tool_call_chunks);
         assert!(!answer.is_empty());
-        assert!(tool_call_chunks_v2.is_empty());
+        assert!(tool_call_chunks.is_empty());
     }
 }

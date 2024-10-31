@@ -96,6 +96,12 @@ impl Tool {
             },
         }
     }
+    pub fn test_request(&self) -> String {
+        match self {
+            Tool::ClusterOverview => "We got a bunch of pods here and then theres this huge pile of containers in this corner of the cluster".to_string(),
+            Tool::LogRetrieval => "OOMKilled exit code 137".to_owned(),
+        }
+    }
 }
 
 impl Into<ChatCompletionTool> for Tool {
