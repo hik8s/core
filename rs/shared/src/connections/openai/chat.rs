@@ -36,6 +36,7 @@ pub fn get_tool_calls(
 
 #[cfg(test)]
 mod tests {
+    use async_openai::error::OpenAIError;
     use tokio::sync::mpsc;
     use tracing::info;
 
@@ -56,7 +57,7 @@ mod tests {
     use super::get_tool_calls;
 
     #[tokio::test]
-    async fn test_completion_tools() {
+    async fn test_completion_tools() -> Result<(), OpenAIError> {
         setup_tracing(false);
         let openai = OpenAIConnection::new();
         // let prompt_engine = PromptEngineConnection::new().unwrap();
@@ -65,10 +66,8 @@ mod tests {
         // base request
         let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
         let mut messages = vec![create_system_message(), create_user_message(prompt)];
-        let request = openai
-            .complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)
-            .unwrap();
-        let response = openai.client.chat().create(request).await.unwrap();
+        let request = openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)?;
+        let response = openai.client.chat().create(request).await?;
 
         // tool processing
         let tool_calls = get_tool_calls(&response).unwrap();
@@ -82,15 +81,14 @@ mod tests {
         }
 
         // tool request
-        let request = openai
-            .complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)
-            .unwrap();
+        let request = openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)?;
         let response = openai.client.chat().create(request).await.unwrap();
         info!("{:#?}", response);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_completion_tools_stream() {
+    async fn test_completion_tools_stream() -> Result<(), OpenAIError> {
         setup_tracing(false);
         let openai = OpenAIConnection::new();
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
@@ -101,16 +99,14 @@ mod tests {
         // base request
         let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
         let mut messages = vec![create_system_message(), create_user_message(prompt)];
-        let request = openai
-            .complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)
-            .unwrap();
-        let stream = openai.client.chat().create_stream(request).await.unwrap();
+        let request = openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)?;
+        let stream = openai.create_completion_stream(request).await?;
 
         let (_, tool_call_chunks) = openai
             .process_completion_stream(&tx, stream)
             .await
-            .map_err(|e| log_error!(e))
-            .unwrap();
+            .map_err(|e| log_error!(e))?;
+
         info!("{:#?}", tool_call_chunks);
 
         let mut answer = String::new();
@@ -135,16 +131,13 @@ mod tests {
         }
 
         // tool request
-        let request = openai
-            .complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)
-            .unwrap();
+        let request = openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)?;
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-        let stream = openai.create_completion_stream(request).await.unwrap();
+        let stream = openai.create_completion_stream(request).await?;
         let (_, tool_call_chunks) = openai
             .process_completion_stream(&tx, stream)
             .await
-            .map_err(|e| log_error!(e))
-            .unwrap();
+            .map_err(|e| log_error!(e))?;
 
         let mut answer = String::new();
         rx.close();
@@ -155,5 +148,6 @@ mod tests {
         info!("{:#?}", tool_call_chunks);
         assert!(!answer.is_empty());
         assert!(tool_call_chunks.is_empty());
+        Ok(())
     }
 }

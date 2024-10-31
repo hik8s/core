@@ -43,7 +43,7 @@ impl OpenAIConnection {
         let mut finish_reason = Option::<FinishReason>::None;
         let mut tool_call_chunks = Vec::<ChatCompletionMessageToolCallChunk>::new();
         while let Some(result) = stream.next().await {
-            let response = log_error_break!(result);
+            let response = result?;
             let choice = response.choices.first().unwrap();
             if let Some(ref tool_call_chunk) = choice.delta.tool_calls {
                 tool_call_chunks.extend_from_slice(&tool_call_chunk);
