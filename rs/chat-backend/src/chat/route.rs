@@ -20,7 +20,7 @@ pub fn chat_completion(
 
     // producer: openai api (tx)
     tokio::spawn(async move {
-        match process_user_message(&prompt_engine, &payload.into_inner(), &tx, vec![]).await {
+        match process_user_message(&prompt_engine, payload.into_inner(), &tx).await {
             Ok(()) => {
                 tracing::info!("Chat process done");
             }

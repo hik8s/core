@@ -7,7 +7,6 @@ use futures_util::StreamExt;
 use std::pin::Pin;
 use tokio::sync::mpsc;
 
-use crate::{log_error, log_error_break};
 pub struct OpenAIConnection {
     pub client: Client<OpenAIConfig>,
 }

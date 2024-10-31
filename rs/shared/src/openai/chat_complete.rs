@@ -1,31 +1,17 @@
-use std::future::Future;
-use std::pin::Pin;
-
 use crate::connections::openai::tools::{collect_tool_call_chunks, Tool};
 use crate::connections::prompt_engine::connect::PromptEngineConnection;
 use crate::connections::OpenAIConnection;
 use crate::log_error;
 use crate::openai::chat_request_args::create_tool_message;
-use async_openai::types::{
-    ChatCompletionMessageToolCall, ChatCompletionRequestMessage, FinishReason,
-};
+use async_openai::error::OpenAIError;
+use async_openai::types::{ChatCompletionRequestMessage, FinishReason};
 
-use rocket::FromForm;
-use serde::Serialize;
 use tokio::sync::mpsc;
 use tracing::info;
 
 use super::chat_request_args::{
     create_assistant_message, create_system_message, create_user_message,
 };
-
-#[derive(FromForm, Serialize, Debug)]
-// serialization is used to preserve spaces
-pub struct ChatMessage {
-    pub id: String,
-    pub delta: String,
-    text: String,
-}
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct RequestOptions {
@@ -43,15 +29,11 @@ struct Message {
 
 pub async fn process_user_message(
     prompt_engine: &PromptEngineConnection,
-    payload: &RequestOptions,
+    payload: RequestOptions,
     tx: &mpsc::UnboundedSender<String>,
-    tool_calls: Vec<ChatCompletionMessageToolCall>,
 ) -> Result<(), anyhow::Error> {
-    info!("Messages: {:#?}", payload.messages);
-
     let mut last_user_content = String::new();
     let mut messages: Vec<ChatCompletionRequestMessage> = payload
-        .clone()
         .messages
         .into_iter()
         .map(|message| match message.role.as_str() {
@@ -64,55 +46,165 @@ pub async fn process_user_message(
             _ => panic!("Unknown role"),
         })
         .collect();
-    info!("Last user message content: {:?}", last_user_content);
-
-    for tool_call in tool_calls {
-        let tool = Tool::try_from(&tool_call.function.name).unwrap();
-        let tool_output = tool
-            .request(prompt_engine, &last_user_content, &payload.client_id)
-            .await?;
-        let tool = create_tool_message(&tool_output, &tool_call.id);
-        messages.push(tool);
-    }
-    info!("Messages: {:#?}", messages);
 
     let openai = OpenAIConnection::new();
 
-    let request = openai
-        .complete_request(messages, &payload.model)
-        .map_err(|e| log_error!(e))?;
-
-    let stream = openai
-        .create_completion_stream(request)
-        .await
-        .map_err(|e| log_error!(e))?;
-
-    // info!("{stream:#?}");
-    let (finish_reason, tool_call_chunks) = openai
-        .process_completion_stream(tx, stream)
-        .await
-        .map_err(|e| log_error!(e))?;
-    let tool_calls = collect_tool_call_chunks(tool_call_chunks);
-
-    info!("Tool calls: {:#?}", tool_calls);
-    if finish_reason == Some(FinishReason::Stop) {
-        return Ok(());
-    }
-    process_user_message_recursive(prompt_engine, payload, tx, tool_calls)
-        .await
-        .unwrap();
+    request_completion(
+        prompt_engine,
+        &openai,
+        &mut messages,
+        last_user_content,
+        payload.client_id.clone(),
+        &payload.model,
+        tx,
+    )
+    .await?;
     Ok(())
 }
 
-fn process_user_message_recursive<'a>(
-    prompt_engine: &'a PromptEngineConnection,
-    payload: &'a RequestOptions,
-    tx: &'a mpsc::UnboundedSender<String>,
-    tool_calls: Vec<ChatCompletionMessageToolCall>,
-) -> Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + Send + 'a>> {
-    Box::pin(async move {
-        // Your recursive logic here
-        // For example, you can call process_user_message again
-        process_user_message(prompt_engine, payload, tx, tool_calls).await
-    })
+async fn request_completion(
+    prompt_engine: &PromptEngineConnection,
+    openai: &OpenAIConnection,
+    messages: &mut Vec<ChatCompletionRequestMessage>,
+    last_user_content: String,
+    customer_id: String,
+    model: &str,
+    tx: &mpsc::UnboundedSender<String>,
+) -> Result<(), OpenAIError> {
+    loop {
+        let request = openai
+            .complete_request(messages.clone(), model)
+            .map_err(|e| log_error!(e))?;
+        let stream = openai
+            .create_completion_stream(request)
+            .await
+            .map_err(|e| log_error!(e))?;
+        let (finish_reason, tool_call_chunks) = openai
+            .process_completion_stream(tx, stream)
+            .await
+            .map_err(|e| log_error!(e))?;
+
+        if finish_reason == Some(FinishReason::Stop) {
+            break;
+        }
+
+        let tool_calls = collect_tool_call_chunks(tool_call_chunks);
+        if tool_calls.is_empty() {
+            break;
+        }
+
+        messages.push(create_assistant_message(
+            "Assistant requested tool calls.",
+            Some(tool_calls.clone()),
+        ));
+        for tool_call in tool_calls {
+            let tool = Tool::try_from(&tool_call.function.name).unwrap();
+            let tool_output = tool
+                .request(prompt_engine, &last_user_content, &customer_id)
+                .await
+                .unwrap();
+            let tool_message = create_tool_message(&tool_output, &tool_call.id);
+            messages.push(tool_message);
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use async_openai::{error::OpenAIError, types::ChatCompletionRequestMessage};
+    use tokio::sync::mpsc;
+    use tracing::info;
+
+    use super::{process_user_message, request_completion, Message, RequestOptions};
+    use crate::{
+        connections::{prompt_engine::connect::PromptEngineConnection, OpenAIConnection},
+        constant::OPENAI_CHAT_MODEL_MINI,
+        get_env_var,
+        openai::chat_request_args::{create_system_message, create_user_message},
+        tracing::setup::setup_tracing,
+    };
+
+    #[tokio::test]
+    async fn test_process_user_message() -> Result<(), OpenAIError> {
+        setup_tracing(false);
+        let prompt_engine = PromptEngineConnection::new().unwrap();
+        // let openai = OpenAIConnection::new();
+        let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+
+        let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
+        let request_option = RequestOptions {
+            messages: vec![
+                Message {
+                    role: "system".to_string(),
+                    content: "not used".to_string(),
+                },
+                Message {
+                    role: "user".to_string(),
+                    content: prompt.to_string(),
+                },
+            ],
+            model: OPENAI_CHAT_MODEL_MINI.to_string(),
+            client_id,
+            temperature: None,
+            top_p: None,
+        };
+        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        process_user_message(&prompt_engine, request_option, &tx)
+            .await
+            .unwrap();
+
+        let mut answer = String::new();
+        rx.close();
+        while let Some(message_delta) = rx.recv().await {
+            answer.push_str(&message_delta);
+        }
+        info!("Answer: {:#?}", answer);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_completion_request() -> Result<(), OpenAIError> {
+        setup_tracing(false);
+        let prompt_engine = PromptEngineConnection::new().unwrap();
+        let openai = OpenAIConnection::new();
+        let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+
+        let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
+        let mut messages = vec![create_system_message(), create_user_message(prompt)];
+        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        request_completion(
+            &prompt_engine,
+            &openai,
+            &mut messages,
+            prompt.to_string(),
+            client_id,
+            OPENAI_CHAT_MODEL_MINI,
+            &tx,
+        )
+        .await
+        .unwrap();
+
+        let mut answer = String::new();
+        rx.close();
+        while let Some(message_delta) = rx.recv().await {
+            answer.push_str(&message_delta);
+        }
+
+        assert_eq!(messages.len(), 5);
+        assert!(matches!(
+            messages[0],
+            ChatCompletionRequestMessage::System(_)
+        ));
+        assert!(matches!(messages[1], ChatCompletionRequestMessage::User(_)));
+        assert!(matches!(
+            messages[2],
+            ChatCompletionRequestMessage::Assistant(_)
+        ));
+        assert!(matches!(messages[3], ChatCompletionRequestMessage::Tool(_)));
+        assert!(matches!(messages[4], ChatCompletionRequestMessage::Tool(_)));
+        assert!(!answer.is_empty());
+        Ok(())
+    }
 }

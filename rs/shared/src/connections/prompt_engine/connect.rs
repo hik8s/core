@@ -45,6 +45,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 pub struct AugmentationRequest {
     pub user_message: String,
+    // pub namespace: Option<String>,
+    // pub application: Option<String>,
     pub client_id: String,
 }
 
