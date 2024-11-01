@@ -2,8 +2,8 @@ use rocket::post;
 
 use rocket::response::stream::{Event, EventStream};
 use rocket::serde::json::Json;
+use shared::connections::openai::chat_complete::{process_user_message, RequestOptions};
 use shared::connections::prompt_engine::connect::PromptEngineConnection;
-use shared::openai::chat_complete::{process_user_message, RequestOptions};
 use tokio;
 use tokio::sync::mpsc;
 

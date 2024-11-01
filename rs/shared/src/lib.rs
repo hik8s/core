@@ -1,7 +1,6 @@
 pub mod connections;
 pub mod constant;
 pub mod mock;
-pub mod openai;
 pub mod preprocessing;
 pub mod router;
 pub mod tracing;

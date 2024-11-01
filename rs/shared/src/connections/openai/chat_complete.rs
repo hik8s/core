@@ -2,14 +2,14 @@ use crate::connections::openai::tools::{collect_tool_call_chunks, Tool};
 use crate::connections::prompt_engine::connect::PromptEngineConnection;
 use crate::connections::OpenAIConnection;
 use crate::log_error;
-use crate::openai::chat_request_args::create_tool_message;
+
 use async_openai::error::OpenAIError;
 use async_openai::types::{ChatCompletionRequestMessage, FinishReason};
 
 use tokio::sync::mpsc;
 
-use super::chat_request_args::{
-    create_assistant_message, create_system_message, create_user_message,
+use super::messages::{
+    create_assistant_message, create_system_message, create_tool_message, create_user_message,
 };
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -114,10 +114,13 @@ mod tests {
 
     use super::{process_user_message, request_completion, Message, RequestOptions};
     use crate::{
-        connections::{prompt_engine::connect::PromptEngineConnection, OpenAIConnection},
+        connections::{
+            openai::messages::{create_system_message, create_user_message},
+            prompt_engine::connect::PromptEngineConnection,
+            OpenAIConnection,
+        },
         constant::OPENAI_CHAT_MODEL_MINI,
         get_env_var,
-        openai::chat_request_args::{create_system_message, create_user_message},
         tracing::setup::setup_tracing,
     };
 

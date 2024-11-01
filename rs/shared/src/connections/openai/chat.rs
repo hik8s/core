@@ -44,15 +44,15 @@ mod tests {
 
     use crate::{
         connections::{
+            openai::messages::{
+                create_assistant_message, create_system_message, create_tool_message,
+                create_user_message,
+            },
             openai::tools::{collect_tool_call_chunks, Tool},
             OpenAIConnection,
         },
         constant::OPENAI_CHAT_MODEL_MINI,
         log_error,
-        openai::chat_request_args::{
-            create_assistant_message, create_system_message, create_tool_message,
-            create_user_message,
-        },
         tracing::setup::setup_tracing,
     };
 

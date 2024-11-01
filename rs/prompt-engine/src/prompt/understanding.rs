@@ -5,9 +5,9 @@ use async_openai::{
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
 use shared::{
+    connections::openai::messages::{create_system_message, create_user_message},
     connections::OpenAIConnection,
     constant::OPENAI_CHAT_MODEL_MINI,
-    openai::chat_request_args::{create_system_message, create_user_message},
 };
 
 #[derive(Debug, Serialize, Deserialize)]

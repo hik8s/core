@@ -1,11 +1,11 @@
 use rocket::{post, serde::json::Json};
 use shared::{
+    connections::openai::embeddings::request_embedding,
     connections::{
         get_db_name,
         prompt_engine::connect::AugmentationRequest,
         qdrant::connect::{namespace, not_namespace, QdrantConnection},
     },
-    openai::embed::request_embedding,
 };
 
 use super::error::PromptEngineError;
