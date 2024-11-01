@@ -38,7 +38,6 @@ pub fn get_tool_calls(
 mod tests {
     use async_openai::error::OpenAIError;
     use tokio::sync::mpsc;
-    use tracing::info;
 
     use crate::{
         connections::{
@@ -83,7 +82,9 @@ mod tests {
         // tool request
         let request = openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)?;
         let response = openai.client.chat().create(request).await.unwrap();
-        info!("{:#?}", response);
+        let choice = response.choices.first().unwrap();
+        let answer = choice.message.content.as_ref().unwrap();
+        assert!(!answer.is_empty());
         Ok(())
     }
 
@@ -107,8 +108,6 @@ mod tests {
             .await
             .map_err(|e| log_error!(e))?;
 
-        info!("{:#?}", tool_call_chunks);
-
         let mut answer = String::new();
         rx.close();
         while let Some(message_delta) = rx.recv().await {
@@ -120,7 +119,6 @@ mod tests {
 
         // tool processing
         let tool_calls = collect_tool_call_chunks(tool_call_chunks);
-        info!("{:#?}", tool_calls);
         messages.push(create_assistant_message(
             "Assistent requested tool calls. Asses the tool calls and make another tool request to cluster overview",
             Some(tool_calls.clone()),
@@ -144,8 +142,6 @@ mod tests {
         while let Some(message_delta) = rx.recv().await {
             answer.push_str(&message_delta);
         }
-        info!("{:#?}", answer);
-        info!("{:#?}", tool_call_chunks);
         assert!(!answer.is_empty());
         assert!(tool_call_chunks.is_empty());
         Ok(())

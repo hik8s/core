@@ -7,7 +7,6 @@ use async_openai::error::OpenAIError;
 use async_openai::types::{ChatCompletionRequestMessage, FinishReason};
 
 use tokio::sync::mpsc;
-use tracing::info;
 
 use super::chat_request_args::{
     create_assistant_message, create_system_message, create_user_message,
@@ -114,7 +113,6 @@ async fn request_completion(
 mod tests {
     use async_openai::{error::OpenAIError, types::ChatCompletionRequestMessage};
     use tokio::sync::mpsc;
-    use tracing::info;
 
     use super::{process_user_message, request_completion, Message, RequestOptions};
     use crate::{
@@ -159,8 +157,7 @@ mod tests {
         while let Some(message_delta) = rx.recv().await {
             answer.push_str(&message_delta);
         }
-        info!("Answer: {:#?}", answer);
-
+        assert!(!answer.is_empty());
         Ok(())
     }
 
