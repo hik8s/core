@@ -71,9 +71,7 @@ async fn request_completion(
     tx: &mpsc::UnboundedSender<String>,
 ) -> Result<(), OpenAIError> {
     loop {
-        let request = openai
-            .complete_request(messages.clone(), model)
-            .map_err(|e| log_error!(e))?;
+        let request = openai.complete_request(messages.clone(), model, 1024, None, None);
         let stream = openai
             .create_completion_stream(request)
             .await

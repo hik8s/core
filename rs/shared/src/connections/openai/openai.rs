@@ -1,4 +1,6 @@
-use async_openai::types::{ChatCompletionMessageToolCallChunk, FinishReason};
+use async_openai::types::{
+    ChatCompletionMessageToolCallChunk, CreateChatCompletionResponse, FinishReason,
+};
 use async_openai::{
     config::OpenAIConfig, error::OpenAIError, types::CreateChatCompletionStreamResponse, Client,
 };
@@ -16,6 +18,13 @@ impl OpenAIConnection {
         Self {
             client: Client::new(),
         }
+    }
+
+    pub async fn create_completion(
+        &self,
+        request: async_openai::types::CreateChatCompletionRequest,
+    ) -> Result<CreateChatCompletionResponse, OpenAIError> {
+        self.client.chat().create(request).await
     }
     pub async fn create_completion_stream(
         &self,

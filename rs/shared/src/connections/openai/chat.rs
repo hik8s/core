@@ -1,9 +1,6 @@
-use async_openai::{
-    error::OpenAIError,
-    types::{
-        ChatCompletionMessageToolCall, ChatCompletionRequestMessage, CreateChatCompletionRequest,
-        CreateChatCompletionRequestArgs, CreateChatCompletionResponse,
-    },
+use async_openai::types::{
+    ChatCompletionMessageToolCall, ChatCompletionRequestMessage, CreateChatCompletionRequest,
+    CreateChatCompletionResponse, ResponseFormat,
 };
 
 use super::{openai::OpenAIConnection, tools::Tool};
@@ -13,15 +10,21 @@ impl OpenAIConnection {
         &self,
         messages: Vec<ChatCompletionRequestMessage>,
         model: &str,
-    ) -> Result<CreateChatCompletionRequest, OpenAIError> {
+        max_tokens: u32,
+        num_choices: Option<u8>,
+        response_format: Option<ResponseFormat>,
+    ) -> CreateChatCompletionRequest {
         let tools = vec![Tool::LogRetrieval.into(), Tool::ClusterOverview.into()];
 
-        CreateChatCompletionRequestArgs::default()
-            .model(model)
-            .max_tokens(1024u16)
-            .messages(messages)
-            .tools(tools)
-            .build()
+        CreateChatCompletionRequest {
+            model: model.to_string(),
+            messages,
+            max_tokens: Some(max_tokens),
+            n: num_choices,
+            response_format,
+            tools: Some(tools),
+            ..Default::default()
+        }
     }
 }
 
@@ -65,8 +68,9 @@ mod tests {
         // base request
         let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
         let mut messages = vec![create_system_message(), create_user_message(prompt)];
-        let request = openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)?;
-        let response = openai.client.chat().create(request).await?;
+        let request =
+            openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, 1024, None, None);
+        let response = openai.create_completion(request).await?;
 
         // tool processing
         let tool_calls = get_tool_calls(&response).unwrap();
@@ -80,8 +84,9 @@ mod tests {
         }
 
         // tool request
-        let request = openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)?;
-        let response = openai.client.chat().create(request).await.unwrap();
+        let request =
+            openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, 1024, None, None);
+        let response = openai.create_completion(request).await.unwrap();
         let choice = response.choices.first().unwrap();
         let answer = choice.message.content.as_ref().unwrap();
         assert!(!answer.is_empty());
@@ -100,7 +105,8 @@ mod tests {
         // base request
         let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
         let mut messages = vec![create_system_message(), create_user_message(prompt)];
-        let request = openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)?;
+        let request =
+            openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, 1024, None, None);
         let stream = openai.create_completion_stream(request).await?;
 
         let (_, tool_call_chunks) = openai
@@ -129,7 +135,8 @@ mod tests {
         }
 
         // tool request
-        let request = openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI)?;
+        let request =
+            openai.complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, 1024, None, None);
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
         let stream = openai.create_completion_stream(request).await?;
         let (_, tool_call_chunks) = openai
