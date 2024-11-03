@@ -83,7 +83,7 @@ async fn request_input_understandings(
     // Construct the request
     let model = OPENAI_CHAT_MODEL_MINI;
     let format = UnderstandingOutput::response_format();
-    let request = openai.complete_request(messages, model, 100, num_choices, Some(format));
+    let request = openai.request_builder(messages, model, 100, num_choices, Some(format), None);
 
     // Send the request to the OpenAI API
     let response = openai.create_completion(request).await?;

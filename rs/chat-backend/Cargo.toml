@@ -4,8 +4,10 @@ name = "chat-backend"
 version = "0.2.1"
 
 [dependencies]
+anyhow = {workspace = true}
 rocket = {workspace = true}
 rstest = {workspace = true}
+serde = {workspace = true}
 shared = {workspace = true}
 thiserror = {workspace = true}
 tokio = {workspace = true}

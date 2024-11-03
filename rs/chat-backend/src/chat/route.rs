@@ -2,12 +2,14 @@ use rocket::post;
 
 use rocket::response::stream::{Event, EventStream};
 use rocket::serde::json::Json;
-use shared::connections::openai::chat_complete::{process_user_message, RequestOptions};
+
 use shared::connections::prompt_engine::connect::PromptEngineConnection;
 use tokio;
 use tokio::sync::mpsc;
 
 use super::header::LastEventId;
+use super::process::process_user_message;
+use super::process::RequestOptions;
 
 #[post("/chat/completions", format = "json", data = "<payload>")]
 pub fn chat_completion(
