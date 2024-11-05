@@ -6,6 +6,7 @@ use async_openai::types::{
     ChatCompletionRequestToolMessageContent, ChatCompletionRequestUserMessage,
     ChatCompletionRequestUserMessageContent,
 };
+use tracing::warn;
 
 use crate::constant::DEFAULT_SYSTEM_PROMPT;
 
@@ -47,4 +48,24 @@ pub fn create_assistant_message(
         tool_calls,
         function_call: None,
     })
+}
+
+pub fn extract_last_user_text_message(messages: &[ChatCompletionRequestMessage]) -> String {
+    messages
+        .iter()
+        .rev()
+        .find_map(|msg| {
+            if let ChatCompletionRequestMessage::User(user_msg) = msg {
+                if let ChatCompletionRequestUserMessageContent::Text(content) = &user_msg.content {
+                    Some(content.clone())
+                } else {
+                    warn!("User message with non text content. Using empty string");
+                    None
+                }
+            } else {
+                warn!("User message without content. Using empty string");
+                None
+            }
+        })
+        .unwrap_or_default()
 }

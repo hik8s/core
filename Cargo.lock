@@ -728,6 +728,7 @@ name = "chat-backend"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "async-openai",
  "rocket",
  "rstest",
  "serde",

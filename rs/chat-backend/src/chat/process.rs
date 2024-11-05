@@ -1,3 +1,4 @@
+use async_openai::types::ChatCompletionRequestMessage;
 use shared::{
     connections::{
         openai::{
@@ -39,6 +40,20 @@ impl RequestOptions {
         }
     }
 }
+impl Into<Vec<ChatCompletionRequestMessage>> for RequestOptions {
+    fn into(self) -> Vec<ChatCompletionRequestMessage> {
+        self.messages
+            .into_iter()
+            .map(|message| match message.role.as_str() {
+                "system" => create_system_message(),
+                "user" => create_user_message(&message.content),
+                "assistant" => create_assistant_message(&message.content, None),
+                _ => panic!("Unknown role"),
+            })
+            .collect()
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct Message {
     pub role: String,
@@ -47,30 +62,16 @@ pub struct Message {
 
 pub async fn process_user_message(
     prompt_engine: &PromptEngineConnection,
-    payload: RequestOptions,
+    mut messages: &mut Vec<ChatCompletionRequestMessage>,
     tx: &mpsc::UnboundedSender<String>,
+    payload: RequestOptions,
 ) -> Result<(), anyhow::Error> {
-    let mut last_user_content = String::new();
-    let mut messages = payload
-        .messages
-        .into_iter()
-        .map(|message| match message.role.as_str() {
-            "system" => create_system_message(),
-            "user" => {
-                last_user_content = message.content.clone();
-                create_user_message(&message.content)
-            }
-            "assistant" => create_assistant_message(&message.content, None),
-            _ => panic!("Unknown role"),
-        })
-        .collect();
-
     let openai = OpenAIConnection::new();
+
     request_completion(
         prompt_engine,
         &openai,
         &mut messages,
-        last_user_content,
         payload.client_id.clone(),
         &payload.model,
         tx,

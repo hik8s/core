@@ -1,3 +1,4 @@
+use async_openai::types::ChatCompletionRequestMessage;
 use rocket::post;
 
 use rocket::response::stream::{Event, EventStream};
@@ -21,8 +22,11 @@ pub fn chat_completion(
     let (tx, mut rx) = mpsc::unbounded_channel();
 
     // producer: openai api (tx)
+    let request_options = payload.into_inner();
+    let mut messages: Vec<ChatCompletionRequestMessage> = request_options.clone().into();
+
     tokio::spawn(async move {
-        match process_user_message(&prompt_engine, payload.into_inner(), &tx).await {
+        match process_user_message(&prompt_engine, &mut messages, &tx, request_options).await {
             Ok(()) => {
                 tracing::info!("Chat process done");
             }

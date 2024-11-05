@@ -45,8 +45,9 @@ mod tests {
 
         let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
         let request_option = RequestOptions::new(&prompt, &client_id);
+        let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-        process_user_message(&prompt_engine, request_option, &tx)
+        process_user_message(&prompt_engine, &mut messages, &tx, request_option)
             .await
             .unwrap();
 
@@ -56,6 +57,19 @@ mod tests {
         while let Some(message_delta) = rx.recv().await {
             answer.push_str(&message_delta);
         }
+        assert!(!answer.is_empty());
+        assert_eq!(messages.len(), 5);
+        assert!(matches!(
+            messages[0],
+            ChatCompletionRequestMessage::System(_)
+        ));
+        assert!(matches!(messages[1], ChatCompletionRequestMessage::User(_)));
+        assert!(matches!(
+            messages[2],
+            ChatCompletionRequestMessage::Assistant(_)
+        ));
+        assert!(matches!(messages[3], ChatCompletionRequestMessage::Tool(_)));
+        assert!(matches!(messages[4], ChatCompletionRequestMessage::Tool(_)));
         assert!(!answer.is_empty());
         Ok(())
     }
@@ -79,7 +93,6 @@ mod tests {
             &prompt_engine,
             &openai,
             &mut messages,
-            prompt.to_string(),
             client_id,
             OPENAI_CHAT_MODEL_MINI,
             &tx,
