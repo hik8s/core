@@ -23,3 +23,16 @@ macro_rules! log_error_continue {
         }
     };
 }
+
+#[macro_export]
+macro_rules! log_error_break {
+    ($result:expr) => {
+        match $result {
+            Ok(value) => value,
+            Err(e) => {
+                log_error!(e);
+                break;
+            }
+        }
+    };
+}

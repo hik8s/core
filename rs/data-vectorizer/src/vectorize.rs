@@ -1,6 +1,6 @@
 use qdrant_client::qdrant::PointStruct;
 use shared::{
-    openai::embed::request_embedding,
+    connections::openai::embeddings::request_embedding,
     types::{
         class::{
             vectorized::{to_qdrant_points, to_representations, to_vectorized_classes},

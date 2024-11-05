@@ -1,4 +1,4 @@
-use chat::route::chat_completion;
+use chat_backend::chat::route::chat_completion;
 use rocket::{main, routes};
 use shared::{
     connections::prompt_engine::connect::{PromptEngineConnection, PromptEngineError},
@@ -6,8 +6,6 @@ use shared::{
     router::rocket::build_rocket,
     tracing::setup::setup_tracing,
 };
-
-pub mod chat;
 
 use thiserror::Error;
 

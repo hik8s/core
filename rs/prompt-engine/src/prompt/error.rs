@@ -1,7 +1,8 @@
 use async_openai::error::OpenAIError;
 use rocket::{http::Status, response::Responder, Request, Response};
 use shared::{
-    connections::qdrant::error::QdrantConnectionError, openai::embed::RequestEmbeddingError,
+    connections::openai::embeddings::RequestEmbeddingError,
+    connections::qdrant::error::QdrantConnectionError,
 };
 use std::io::Cursor;
 use thiserror::Error;

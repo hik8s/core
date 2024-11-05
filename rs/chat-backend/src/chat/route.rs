@@ -1,13 +1,17 @@
+use async_openai::types::ChatCompletionRequestMessage;
 use rocket::post;
 
 use rocket::response::stream::{Event, EventStream};
 use rocket::serde::json::Json;
+
 use shared::connections::prompt_engine::connect::PromptEngineConnection;
-use shared::openai::chat_complete::{process_user_message, RequestOptions};
 use tokio;
 use tokio::sync::mpsc;
+use tracing::error;
 
 use super::header::LastEventId;
+use super::process::process_user_message;
+use super::process::RequestOptions;
 
 #[post("/chat/completions", format = "json", data = "<payload>")]
 pub fn chat_completion(
@@ -19,26 +23,21 @@ pub fn chat_completion(
     let (tx, mut rx) = mpsc::unbounded_channel();
 
     // producer: openai api (tx)
+    let request_options = payload.into_inner();
+    let mut messages: Vec<ChatCompletionRequestMessage> = request_options.clone().into();
+
     tokio::spawn(async move {
-        match process_user_message(prompt_engine, payload.into_inner(), move |chat_message| {
-            tx.send(chat_message).ok();
-        })
-        .await
-        {
-            Ok(()) => {
-                tracing::info!("Chat process done");
-            }
-            Err(err) => {
-                tracing::error!("Chat process error: {:?}", err);
-            }
-        }
+        process_user_message(&prompt_engine, &mut messages, &tx, request_options)
+            .await
+            .map_err(|e| error!("{e}"))
+            .ok()
     });
 
     // consumer: client (rx)
     EventStream! {
-        while let Some(chat_message) = rx.recv().await {
-            tracing::debug!("Yield: {:?}", chat_message);
-            let event = Event::json(&chat_message.delta).id(id.to_string());
+        while let Some(message_delta) = rx.recv().await {
+            tracing::debug!("Yield: {:?}", message_delta);
+            let event = Event::json(&message_delta).id(id.to_string());
             yield event;
         }
     }

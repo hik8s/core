@@ -1,13 +1,13 @@
 use async_openai::{
     error::{ApiError, OpenAIError},
     types::{ResponseFormat, ResponseFormatJsonSchema},
-    Client,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
-use shared::openai::{
-    chat_request_args::{create_system_message, create_user_message},
-    request_builder::create_chat_completion_request,
+use shared::{
+    connections::openai::messages::{create_system_message, create_user_message},
+    connections::OpenAIConnection,
+    constant::OPENAI_CHAT_MODEL_MINI,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -76,17 +76,18 @@ async fn request_input_understandings(
     num_choices: Option<u8>,
 ) -> Result<Vec<UnderstandingOutput>, OpenAIError> {
     // Create a new OpenAI client
-    let client = Client::new();
+    let openai = OpenAIConnection::new();
 
     let messages = vec![create_system_message(), create_user_message(input)];
 
     // Construct the request
+    let model = OPENAI_CHAT_MODEL_MINI;
     let format = UnderstandingOutput::response_format();
-    let request = create_chat_completion_request(messages, 100, num_choices, Some(format));
+    let request = openai.request_builder(messages, model, 100, num_choices, Some(format), None);
 
     // Send the request to the OpenAI API
-    let response = client.chat().create(request).await?;
-    let mut output = Vec::new();
+    let response = openai.create_completion(request).await?;
+    let mut output: Vec<UnderstandingOutput> = Vec::new();
     for choice in response.choices {
         if let Some(content) = &choice.message.content {
             let structured_output: UnderstandingOutput = from_str(content).unwrap();

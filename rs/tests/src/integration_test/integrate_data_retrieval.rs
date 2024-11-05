@@ -18,7 +18,6 @@ mod tests {
         types::tokenizer::Tokenizer,
         utils::ratelimit::RateLimiter,
     };
-    use tracing::info;
 
     #[tokio::test]
     #[rstest]
