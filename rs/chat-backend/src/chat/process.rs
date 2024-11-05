@@ -1,10 +1,13 @@
-use shared::connections::{
-    openai::{
-        chat_complete::request_completion,
-        messages::{create_assistant_message, create_system_message, create_user_message},
+use shared::{
+    connections::{
+        openai::{
+            chat_complete::request_completion,
+            messages::{create_assistant_message, create_system_message, create_user_message},
+        },
+        prompt_engine::connect::PromptEngineConnection,
+        OpenAIConnection,
     },
-    prompt_engine::connect::PromptEngineConnection,
-    OpenAIConnection,
+    constant::OPENAI_CHAT_MODEL_MINI,
 };
 use tokio::sync::mpsc;
 
@@ -15,6 +18,26 @@ pub struct RequestOptions {
     pub client_id: String,
     pub temperature: Option<f32>,
     pub top_p: Option<f32>,
+}
+impl RequestOptions {
+    pub fn new(input: &str, client_id: &str) -> Self {
+        RequestOptions {
+            messages: vec![
+                Message {
+                    role: "system".to_string(),
+                    content: "not used".to_string(),
+                },
+                Message {
+                    role: "user".to_string(),
+                    content: input.to_string(),
+                },
+            ],
+            model: OPENAI_CHAT_MODEL_MINI.to_string(),
+            client_id: client_id.to_owned(),
+            temperature: None,
+            top_p: None,
+        }
+    }
 }
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct Message {
@@ -43,7 +66,6 @@ pub async fn process_user_message(
         .collect();
 
     let openai = OpenAIConnection::new();
-
     request_completion(
         prompt_engine,
         &openai,
