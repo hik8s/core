@@ -12,10 +12,7 @@ mod tests {
 
     use shared::{
         connections::{
-            openai::{
-                chat_complete::request_completion,
-                messages::{create_system_message, create_user_message},
-            },
+            openai::messages::{create_system_message, create_user_message},
             prompt_engine::connect::PromptEngineConnection,
             qdrant::connect::QdrantConnection,
             OpenAIConnection,
@@ -26,6 +23,7 @@ mod tests {
         types::tokenizer::Tokenizer,
         utils::ratelimit::RateLimiter,
     };
+    use tracing::info;
 
     #[tokio::test]
     #[rstest]
@@ -58,54 +56,6 @@ mod tests {
             answer.push_str(&message_delta);
         }
         assert!(!answer.is_empty());
-        assert_eq!(messages.len(), 5);
-        assert!(matches!(
-            messages[0],
-            ChatCompletionRequestMessage::System(_)
-        ));
-        assert!(matches!(messages[1], ChatCompletionRequestMessage::User(_)));
-        assert!(matches!(
-            messages[2],
-            ChatCompletionRequestMessage::Assistant(_)
-        ));
-        assert!(matches!(messages[3], ChatCompletionRequestMessage::Tool(_)));
-        assert!(matches!(messages[4], ChatCompletionRequestMessage::Tool(_)));
-        assert!(!answer.is_empty());
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_completion_request() -> Result<(), OpenAIError> {
-        setup_tracing(false);
-        // launch prompt-engine
-        tokio::spawn(async move {
-            let rocket = initialize_prompt_engine().await.unwrap();
-            rocket.launch().await.unwrap()
-        });
-        let prompt_engine = PromptEngineConnection::new().unwrap();
-        let openai = OpenAIConnection::new();
-        let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
-
-        let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
-        let mut messages = vec![create_system_message(), create_user_message(prompt)];
-        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-        request_completion(
-            &prompt_engine,
-            &openai,
-            &mut messages,
-            client_id,
-            OPENAI_CHAT_MODEL_MINI,
-            &tx,
-        )
-        .await
-        .unwrap();
-
-        let mut answer = String::new();
-        rx.close();
-        while let Some(message_delta) = rx.recv().await {
-            answer.push_str(&message_delta);
-        }
-
         assert_eq!(messages.len(), 5);
         assert!(matches!(
             messages[0],

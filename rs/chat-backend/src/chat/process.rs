@@ -1,14 +1,18 @@
-use async_openai::types::ChatCompletionRequestMessage;
+use async_openai::types::{ChatCompletionRequestMessage, FinishReason};
 use shared::{
     connections::{
         openai::{
-            chat_complete::request_completion,
-            messages::{create_assistant_message, create_system_message, create_user_message},
+            messages::{
+                create_assistant_message, create_system_message, create_tool_message,
+                create_user_message, extract_last_user_text_message,
+            },
+            tools::{collect_tool_call_chunks, Tool},
         },
         prompt_engine::connect::PromptEngineConnection,
         OpenAIConnection,
     },
     constant::OPENAI_CHAT_MODEL_MINI,
+    log_error,
 };
 use tokio::sync::mpsc;
 
@@ -62,20 +66,45 @@ pub struct Message {
 
 pub async fn process_user_message(
     prompt_engine: &PromptEngineConnection,
-    mut messages: &mut Vec<ChatCompletionRequestMessage>,
+    messages: &mut Vec<ChatCompletionRequestMessage>,
     tx: &mpsc::UnboundedSender<String>,
-    payload: RequestOptions,
+    options: RequestOptions,
 ) -> Result<(), anyhow::Error> {
     let openai = OpenAIConnection::new();
 
-    request_completion(
-        prompt_engine,
-        &openai,
-        &mut messages,
-        payload.client_id.clone(),
-        &payload.model,
-        tx,
-    )
-    .await?;
+    let user_message = extract_last_user_text_message(messages);
+    loop {
+        let request = openai.chat_complete_request(messages.clone(), &options.model);
+        let stream = openai
+            .create_completion_stream(request)
+            .await
+            .map_err(|e| log_error!(e))?;
+        let (finish_reason, tool_call_chunks) = openai
+            .process_completion_stream(tx, stream)
+            .await
+            .map_err(|e| log_error!(e))?;
+
+        if finish_reason == Some(FinishReason::Stop) {
+            break;
+        }
+
+        let tool_calls = collect_tool_call_chunks(tool_call_chunks);
+        if tool_calls.is_empty() {
+            break;
+        }
+
+        let assistant_tool_request =
+            create_assistant_message("Tool request", Some(tool_calls.clone()));
+        messages.push(assistant_tool_request);
+        for tool_call in tool_calls {
+            let tool = Tool::try_from(&tool_call.function.name).unwrap();
+            let tool_output = tool
+                .request(prompt_engine, &user_message, &options.client_id)
+                .await
+                .unwrap();
+            let tool_submission = create_tool_message(&tool_output, &tool_call.id);
+            messages.push(tool_submission);
+        }
+    }
     Ok(())
 }

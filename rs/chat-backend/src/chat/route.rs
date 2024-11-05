@@ -7,6 +7,7 @@ use rocket::serde::json::Json;
 use shared::connections::prompt_engine::connect::PromptEngineConnection;
 use tokio;
 use tokio::sync::mpsc;
+use tracing::error;
 
 use super::header::LastEventId;
 use super::process::process_user_message;
@@ -26,14 +27,10 @@ pub fn chat_completion(
     let mut messages: Vec<ChatCompletionRequestMessage> = request_options.clone().into();
 
     tokio::spawn(async move {
-        match process_user_message(&prompt_engine, &mut messages, &tx, request_options).await {
-            Ok(()) => {
-                tracing::info!("Chat process done");
-            }
-            Err(err) => {
-                tracing::error!("Chat process error: {:?}", err);
-            }
-        }
+        process_user_message(&prompt_engine, &mut messages, &tx, request_options)
+            .await
+            .map_err(|e| error!("{e}"))
+            .ok()
     });
 
     // consumer: client (rx)
