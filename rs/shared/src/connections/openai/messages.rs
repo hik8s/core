@@ -55,17 +55,52 @@ pub fn extract_last_user_text_message(messages: &[ChatCompletionRequestMessage])
         .iter()
         .rev()
         .find_map(|msg| {
-            if let ChatCompletionRequestMessage::User(user_msg) = msg {
-                if let ChatCompletionRequestUserMessageContent::Text(content) = &user_msg.content {
-                    Some(content.clone())
-                } else {
-                    warn!("User message with non text content. Using empty string");
-                    None
-                }
+            if let ChatCompletionRequestMessage::User(_) = msg {
+                extract_message_content(msg)
             } else {
                 warn!("User message without content. Using empty string");
                 None
             }
         })
         .unwrap_or_default()
+}
+
+pub fn extract_message_content(msg: &ChatCompletionRequestMessage) -> Option<String> {
+    match msg {
+        ChatCompletionRequestMessage::User(user_msg) => {
+            if let ChatCompletionRequestUserMessageContent::Text(content) = &user_msg.content {
+                Some(content.clone())
+            } else {
+                warn!("User message with non text content");
+                None
+            }
+        }
+        ChatCompletionRequestMessage::System(system_msg) => {
+            if let ChatCompletionRequestSystemMessageContent::Text(content) = &system_msg.content {
+                Some(content.clone())
+            } else {
+                warn!("System message with non text content");
+                None
+            }
+        }
+        ChatCompletionRequestMessage::Assistant(assistant_msg) => {
+            assistant_msg.content.as_ref().and_then(|content| {
+                if let ChatCompletionRequestAssistantMessageContent::Text(text) = content {
+                    Some(text.clone())
+                } else {
+                    warn!("Assistant message with non text content");
+                    None
+                }
+            })
+        }
+        ChatCompletionRequestMessage::Tool(tool_msg) => {
+            if let ChatCompletionRequestToolMessageContent::Text(content) = &tool_msg.content {
+                Some(content.clone())
+            } else {
+                warn!("Tool message with non text content");
+                None
+            }
+        }
+        ChatCompletionRequestMessage::Function(function_msg) => function_msg.content.clone(),
+    }
 }
