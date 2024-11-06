@@ -1,5 +1,6 @@
 use async_openai::types::{
-    ChatCompletionMessageToolCallChunk, CreateChatCompletionResponse, FinishReason,
+    ChatCompletionMessageToolCallChunk, ChatCompletionRequestMessage, ChatCompletionTool,
+    CreateChatCompletionRequest, CreateChatCompletionResponse, FinishReason, ResponseFormat,
 };
 use async_openai::{
     config::OpenAIConfig, error::OpenAIError, types::CreateChatCompletionStreamResponse, Client,
@@ -8,6 +9,8 @@ use futures_util::Stream;
 use futures_util::StreamExt;
 use std::pin::Pin;
 use tokio::sync::mpsc;
+
+use super::tools::{LogRetrievalArgs, Tool};
 
 pub struct OpenAIConnection {
     pub client: Client<OpenAIConfig>,
@@ -19,7 +22,39 @@ impl OpenAIConnection {
             client: Client::new(),
         }
     }
-
+    // COMPETION REQUEST
+    pub fn request_builder(
+        &self,
+        messages: Vec<ChatCompletionRequestMessage>,
+        model: &str,
+        max_tokens: u32,
+        num_choices: Option<u8>,
+        response_format: Option<ResponseFormat>,
+        tools: Option<Vec<ChatCompletionTool>>,
+    ) -> CreateChatCompletionRequest {
+        CreateChatCompletionRequest {
+            model: model.to_string(),
+            messages,
+            max_tokens: Some(max_tokens),
+            n: num_choices,
+            response_format,
+            tools,
+            ..Default::default()
+        }
+    }
+    pub fn chat_complete_request(
+        &self,
+        messages: Vec<ChatCompletionRequestMessage>,
+        model: &str,
+        num_choices: u8,
+    ) -> CreateChatCompletionRequest {
+        // the args are not required for ChatCompletionTool
+        let log_retrieval: ChatCompletionTool =
+            Tool::LogRetrieval(LogRetrievalArgs::default()).into();
+        let tools = vec![log_retrieval, Tool::ClusterOverview.into()];
+        self.request_builder(messages, model, 1024, Some(num_choices), None, Some(tools))
+    }
+    // CHAT COMPLETION
     pub async fn create_completion(
         &self,
         request: async_openai::types::CreateChatCompletionRequest,
