@@ -1,9 +1,11 @@
 use async_openai::types::{
-    ChatCompletionMessageToolCall, ChatCompletionRequestMessage, ChatCompletionTool,
-    CreateChatCompletionRequest, CreateChatCompletionResponse, ResponseFormat,
+    ChatCompletionRequestMessage, ChatCompletionTool, CreateChatCompletionRequest, ResponseFormat,
 };
 
-use super::{openai::OpenAIConnection, tools::Tool};
+use super::{
+    openai::OpenAIConnection,
+    tools::{LogRetrievalArgs, Tool},
+};
 
 impl OpenAIConnection {
     pub fn request_builder(
@@ -29,24 +31,20 @@ impl OpenAIConnection {
         &self,
         messages: Vec<ChatCompletionRequestMessage>,
         model: &str,
+        num_choices: u8,
     ) -> CreateChatCompletionRequest {
-        let tools = vec![Tool::LogRetrieval.into(), Tool::ClusterOverview.into()];
-        self.request_builder(messages, model, 1024, None, None, Some(tools))
+        // the args are not required for ChatCompletionTool
+        let log_retrieval: ChatCompletionTool =
+            Tool::LogRetrieval(LogRetrievalArgs::default()).into();
+        let tools = vec![log_retrieval, Tool::ClusterOverview.into()];
+        self.request_builder(messages, model, 1024, Some(num_choices), None, Some(tools))
     }
-}
-
-pub fn get_tool_calls(
-    response: &CreateChatCompletionResponse,
-) -> Option<Vec<ChatCompletionMessageToolCall>> {
-    if let Some(choice) = response.choices.first() {
-        return choice.message.tool_calls.clone();
-    }
-    None
 }
 
 #[cfg(test)]
 mod tests {
     use async_openai::error::OpenAIError;
+    use rstest::rstest;
     use tokio::sync::mpsc;
 
     use crate::{
@@ -63,54 +61,71 @@ mod tests {
         tracing::setup::setup_tracing,
     };
 
-    use super::get_tool_calls;
-
     #[tokio::test]
-    async fn test_completion_tools() -> Result<(), OpenAIError> {
+    #[rstest]
+    #[case("logs".to_owned(), None, None, 1.0)]
+    #[case("Get logs".to_owned(), None, None, 1.0)]
+    #[case("Get logs!".to_owned(), None, None, 1.0)]
+    #[case("Could you retrieve logs?".to_owned(), None, None, 1.0)]
+    #[case("Could you retrieve logs for me?".to_owned(), None, None, 1.0)]
+    #[case("Could you retrieve logs for the cluster for me?".to_owned(), None, None, 1.0)]
+    #[case("Could you investigate the logs from logd in hik8s-system?".to_owned(), Some("logd".to_string()), Some("hik8s-system".to_string()), 1.0)]
+    #[case("logd logs in hik8s-system?".to_owned(), Some("logd".to_string()), Some("hik8s-system".to_string()), 1.0)]
+    #[case("logd logs in hik8s-system for me".to_owned(), Some("logd".to_string()), Some("hik8s-system".to_string()), 1.0)]
+    async fn test_completion_log_retrieval(
+        #[case] prompt: String,
+        #[case] application: Option<String>,
+        #[case] namespace: Option<String>,
+        #[case] success_rate: f32,
+    ) -> Result<(), OpenAIError> {
         setup_tracing(false);
         let openai = OpenAIConnection::new();
-        // let prompt_engine = PromptEngineConnection::new().unwrap();
-        // let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let num_choices = 20;
 
         // base request
-        let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
-        let mut messages = vec![create_system_message(), create_user_message(prompt)];
-        let request = openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI);
+        let messages = vec![create_system_message(), create_user_message(&prompt)];
+        let request =
+            openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, num_choices);
         let response = openai.create_completion(request).await?;
 
         // tool processing
-        let tool_calls = get_tool_calls(&response).unwrap();
-        messages.push(create_assistant_message(
-            "this should be empty",
-            Some(tool_calls.clone()),
-        ));
-        for tool_call in tool_calls {
-            let tool = Tool::try_from(&tool_call.function.name).unwrap();
-            messages.push(create_tool_message(&tool.test_request(), &tool_call.id));
+        let mut success_counter: f32 = 0.0;
+        for choice in response.choices {
+            let tool_calls = choice.message.tool_calls.unwrap_or(Vec::new());
+            assert!(tool_calls.len() <= 1, "Expected no more then on tool call.");
+            for tool_call in tool_calls {
+                let tool = Tool::try_from(tool_call.function).unwrap();
+                assert!(matches!(tool, Tool::LogRetrieval(_)));
+                if let Tool::LogRetrieval(args) = &tool {
+                    assert_eq!(args.application, application);
+                    assert_eq!(args.namespace, namespace);
+                    assert!(!args.intention.is_empty());
+                    success_counter += 1.0;
+                }
+            }
         }
-
-        // tool request
-        let request = openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI);
-        let response = openai.create_completion(request).await.unwrap();
-        let choice = response.choices.first().unwrap();
-        let answer = choice.message.content.as_ref().unwrap();
-        assert!(!answer.is_empty());
+        let res = success_counter / num_choices as f32;
+        assert!(
+            res >= success_rate,
+            "Average of successful tool call not met: got {res} expected >= {success_rate} | case: {prompt}",
+        );
+        // let usage = response.usage.unwrap();
+        // tracing::info!("completion tokens: {}", usage.completion_tokens);
+        // tracing::info!("prompt tokens: {}", usage.prompt_tokens);
+        // tracing::info!("total tokens: {}", usage.total_tokens);
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_completion_tools_stream() -> Result<(), OpenAIError> {
+    async fn test_stream_completion_tools() -> Result<(), OpenAIError> {
         setup_tracing(false);
         let openai = OpenAIConnection::new();
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
 
-        // let prompt_engine = PromptEngineConnection::new().unwrap();
-        // let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
-
         // base request
         let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
         let mut messages = vec![create_system_message(), create_user_message(prompt)];
-        let request = openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI);
+        let request = openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, 1);
         let stream = openai.create_completion_stream(request).await?;
 
         let (_, tool_call_chunks) = openai
@@ -134,12 +149,12 @@ mod tests {
             Some(tool_calls.clone()),
         ));
         for tool_call in tool_calls {
-            let tool = Tool::try_from(&tool_call.function.name).unwrap();
+            let tool = Tool::try_from(tool_call.function).unwrap();
             messages.push(create_tool_message(&tool.test_request(), &tool_call.id));
         }
 
         // tool request
-        let request = openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI);
+        let request = openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, 1);
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
         let stream = openai.create_completion_stream(request).await?;
         let (_, tool_call_chunks) = openai

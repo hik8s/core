@@ -69,7 +69,7 @@ pub enum ClusterTestScenario {
 impl Display for ClusterTestScenario {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let name = match self {
-            ClusterTestScenario::PodKillOutOffMemory => "oom-kill",
+            ClusterTestScenario::PodKillOutOffMemory => "case1",
         };
         write!(f, "scenario-{}", name)
     }

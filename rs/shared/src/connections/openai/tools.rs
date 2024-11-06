@@ -2,6 +2,8 @@ use async_openai::types::{
     ChatCompletionMessageToolCall, ChatCompletionMessageToolCallChunk, ChatCompletionTool,
     ChatCompletionToolType, FunctionCall, FunctionObject,
 };
+
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use std::fmt;
@@ -10,27 +12,42 @@ use crate::connections::prompt_engine::connect::{
     AugmentationRequest, PromptEngineConnection, PromptEngineError,
 };
 
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct LogRetrievalArgs {
+    pub namespace: Option<String>,
+    pub application: Option<String>,
+    pub intention: String,
+}
+impl TryFrom<String> for LogRetrievalArgs {
+    type Error = serde_json::Error;
+
+    fn try_from(json_string: String) -> Result<Self, Self::Error> {
+        serde_json::from_str(&json_string)
+    }
+}
+#[derive(Debug)]
 pub enum Tool {
     ClusterOverview,
-    LogRetrieval,
+    LogRetrieval(LogRetrievalArgs),
 }
 
 impl fmt::Display for Tool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let tool_name = match self {
             Tool::ClusterOverview => "cluster-overview",
-            Tool::LogRetrieval => "log-retrieval",
+            Tool::LogRetrieval(_) => "log-retrieval",
         };
         write!(f, "{}", tool_name)
     }
 }
-impl TryFrom<&String> for Tool {
+impl TryFrom<FunctionCall> for Tool {
     type Error = String;
 
-    fn try_from(name: &String) -> Result<Self, Self::Error> {
+    fn try_from(call: FunctionCall) -> Result<Self, Self::Error> {
+        let FunctionCall { name, arguments } = call;
         match name.as_str() {
             "cluster-overview" => Ok(Tool::ClusterOverview),
-            "log-retrieval" => Ok(Tool::LogRetrieval),
+            "log-retrieval" => Ok(Tool::LogRetrieval(arguments.try_into().unwrap())),
             _ => Err(format!("Could not parse tool name: {}", name)),
         }
     }
@@ -39,7 +56,7 @@ impl Tool {
     pub fn get_function(&self) -> FunctionObject {
         match self {
             Tool::ClusterOverview => FunctionObject {
-                name: Tool::ClusterOverview.to_string(),
+                name: self.to_string(),
                 description: Some(
                     "Retrieve an overview of the cluster and its applications".to_string(),
                 ),
@@ -60,7 +77,7 @@ impl Tool {
                 })),
                 strict: Some(true),
             },
-            Tool::LogRetrieval => FunctionObject {
+            Tool::LogRetrieval(_) => FunctionObject {
                 name: self.to_string(),
                 description: Some("Retrieve logs from the kubernetes cluster".to_string()),
                 parameters: Some(json!({
@@ -74,9 +91,13 @@ impl Tool {
                             "type": ["string", "null"],
                             "description": "Name of the namespace"
                         },
+                        "intention": {
+                            "type": "string",
+                            "description": "The users intention. What does the user want to achieve with their question?"
+                        }
                     },
                     "additionalProperties": false,
-                    "required": ["application", "namespace"]
+                    "required": ["application", "namespace", "intention"]
                 })),
                 strict: Some(true),
             },
@@ -90,7 +111,7 @@ impl Tool {
     ) -> Result<String, PromptEngineError> {
         match self {
             Tool::ClusterOverview => Ok("We got a bunch of pods here and then theres this huge pile of containers in this corner of the cluster".to_string()),
-            Tool::LogRetrieval => {
+            Tool::LogRetrieval(_) => {
                 let request = AugmentationRequest::new(&user_message, &customer_id);
                 prompt_engine.request_augmentation(request).await
             },
@@ -99,7 +120,7 @@ impl Tool {
     pub fn test_request(&self) -> String {
         match self {
             Tool::ClusterOverview => "We got a bunch of pods here and then theres this huge pile of containers in this corner of the cluster".to_string(),
-            Tool::LogRetrieval => "OOMKilled exit code 137".to_owned(),
+            Tool::LogRetrieval(_) => "OOMKilled exit code 137".to_owned(),
         }
     }
 }

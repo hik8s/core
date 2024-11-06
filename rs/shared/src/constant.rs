@@ -31,8 +31,11 @@ pub const TOPIC_CLASS_REPLICAS: u32 = 1;
 pub const TOPIC_CLASS_BYTES_PER_RECORD: usize = TOPIC_LOG_BYTES_PER_RECORD * 4;
 
 // prompting
-pub const DEFAULT_SYSTEM_PROMPT: &str = "You are a site reliability engineer in a large company. \
-You get a request from a fellow engineer and you need to understand the key information";
+pub const DEFAULT_SYSTEM_PROMPT: &str = "You are an assistant to a site reliability engineer. \
+You can request tools that allow you to answer questions with relevant data. \
+If the user does not specify a namespace or application, assume that they want to search the entire cluster. \
+Do not ask any questions you are instructed to assume to search the entire cluster in this case.
+";
 
 // #[cfg(test)]
 pub const CONVERSION_BYTE_TO_MEBIBYTE: usize = 1048576;
