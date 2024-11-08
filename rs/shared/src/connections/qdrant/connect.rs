@@ -94,6 +94,18 @@ impl QdrantConnection {
     }
 }
 
+pub fn create_filter(namespace: Option<&String>, application: Option<&String>) -> Filter {
+    let mut conditions = Vec::new();
+    if let Some(val) = namespace {
+        conditions.push(Condition::matches("namespace", val.to_owned()));
+    }
+    if let Some(val) = application {
+        conditions.push(Condition::matches("key", val.to_owned()));
+    }
+
+    Filter::must(conditions)
+}
+
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for QdrantConnection {
     type Error = ();

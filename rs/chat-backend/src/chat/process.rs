@@ -8,7 +8,7 @@ use shared::{
             },
             tools::{collect_tool_call_chunks, Tool},
         },
-        prompt_engine::connect::PromptEngineConnection,
+        qdrant::connect::QdrantConnection,
         OpenAIConnection,
     },
     constant::OPENAI_CHAT_MODEL_MINI,
@@ -65,7 +65,7 @@ pub struct Message {
 }
 
 pub async fn process_user_message(
-    prompt_engine: &PromptEngineConnection,
+    qdrant: &QdrantConnection,
     messages: &mut Vec<ChatCompletionRequestMessage>,
     tx: &mpsc::UnboundedSender<String>,
     options: RequestOptions,
@@ -99,7 +99,7 @@ pub async fn process_user_message(
         for tool_call in tool_calls {
             let tool = Tool::try_from(tool_call.function).unwrap();
             let tool_output = tool
-                .request(prompt_engine, &user_message, &options.client_id)
+                .request(qdrant, &user_message, &options.client_id)
                 .await
                 .unwrap();
             let tool_submission = create_tool_message(&tool_output, &tool_call.id);

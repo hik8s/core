@@ -8,9 +8,16 @@ use serde_json::json;
 
 use std::fmt;
 
-use crate::connections::prompt_engine::connect::{
-    AugmentationRequest, PromptEngineConnection, PromptEngineError,
+use crate::{
+    connections::{
+        prompt_engine::connect::PromptEngineError,
+        qdrant::connect::{create_filter, QdrantConnection},
+    },
+    get_db_name,
+    types::class::vectorized::VectorizedClass,
 };
+
+use super::embeddings::request_embedding;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct LogRetrievalArgs {
@@ -104,16 +111,24 @@ impl Tool {
         }
     }
     pub async fn request(
-        &self,
-        prompt_engine: &PromptEngineConnection,
+        self,
+        qdrant: &QdrantConnection,
         user_message: &str,
         customer_id: &str,
     ) -> Result<String, PromptEngineError> {
         match self {
             Tool::ClusterOverview => Ok("We got a bunch of pods here and then theres this huge pile of containers in this corner of the cluster".to_string()),
-            Tool::LogRetrieval(_) => {
-                let request = AugmentationRequest::new(&user_message, &customer_id);
-                prompt_engine.request_augmentation(request).await
+            Tool::LogRetrieval(args) => {
+                let search_prompt = create_search_prompt(user_message, &args);
+                let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
+                let db_name = get_db_name(customer_id);
+                let filter = create_filter(args.namespace.as_ref(), args.application.as_ref());
+                let classes = qdrant.search_classes(&db_name, array, filter, 30).await.unwrap();
+                let result = classes
+                    .into_iter()
+                    .map(|vc| format_log_entry(&vc))
+                    .collect::<String>();
+                Ok(result)
             },
         }
     }
@@ -166,6 +181,23 @@ pub fn collect_tool_call_chunks(
         }
     }
     tool_calls
+}
+
+pub fn create_search_prompt(user_message: &str, args: &LogRetrievalArgs) -> String {
+    let mut prompt = user_message.to_string();
+    prompt.push_str(format!("\nUser intention: {}", args.intention).as_str());
+
+    // if !args.keywords.is_empty() {
+    //     prompt.push_str(&format!("\nKeywords: {}", self.keywords.join(",")));
+    // }
+    prompt
+}
+
+pub fn format_log_entry(vc: &VectorizedClass) -> String {
+    format!(
+        "\n{}/{}, Score {}: {}",
+        vc.namespace, vc.key, vc.score, vc.representation
+    )
 }
 
 #[cfg(test)]

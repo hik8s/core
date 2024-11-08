@@ -5,6 +5,7 @@ version = "0.1.0"
 
 [dependencies]
 async-openai = {workspace = true}
+bm25 = {workspace = true}
 chat-backend = {workspace = true}
 data-intake = {workspace = true}
 data-processing = {workspace = true}

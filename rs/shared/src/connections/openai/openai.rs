@@ -1,15 +1,20 @@
 use async_openai::types::{
     ChatCompletionMessageToolCallChunk, ChatCompletionRequestMessage, ChatCompletionTool,
     CreateChatCompletionRequest, CreateChatCompletionResponse, FinishReason, ResponseFormat,
+    ResponseFormatJsonSchema,
 };
 use async_openai::{
     config::OpenAIConfig, error::OpenAIError, types::CreateChatCompletionStreamResponse, Client,
 };
 use futures_util::Stream;
 use futures_util::StreamExt;
+use serde_json::json;
 use std::pin::Pin;
 use tokio::sync::mpsc;
 
+use crate::constant::OPENAI_CHAT_MODEL_MINI;
+
+use super::messages::create_simple_system_message;
 use super::tools::{LogRetrievalArgs, Tool};
 
 pub struct OpenAIConnection {
@@ -97,5 +102,66 @@ impl OpenAIConnection {
             finish_reason = choice.finish_reason.clone();
         }
         Ok((finish_reason, tool_call_chunks))
+    }
+
+    pub async fn ask_atomic_question(&self, question: &str) -> Result<bool, OpenAIError> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "type": "boolean",
+                    "description": "Does the question apply true for yes, false for no.",
+                },
+            },
+            "additionalProperties": false,
+            "required": ["answer"]
+        });
+        let response_format = self.response_format(question, schema);
+        let messages = vec![create_simple_system_message()];
+
+        let request = self.request_builder(
+            messages,
+            OPENAI_CHAT_MODEL_MINI,
+            100,
+            Some(1),
+            Some(response_format),
+            None,
+        );
+
+        let mut response = self.create_completion(request).await?;
+        let json = response.choices.pop().unwrap().message.content.unwrap();
+        let json_parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        Ok(json_parsed["answer"].as_bool().unwrap())
+    }
+    pub fn response_format(&self, description: &str, schema: serde_json::Value) -> ResponseFormat {
+        ResponseFormat::JsonSchema {
+            json_schema: ResponseFormatJsonSchema {
+                name: "question".to_string(),
+                description: Some(description.to_owned()),
+                schema: Some(schema),
+                strict: Some(true),
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tracing::setup::setup_tracing;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_ask_atomic_question() -> Result<(), OpenAIError> {
+        setup_tracing(false);
+        let openai = OpenAIConnection::new();
+
+        // Test with a simple true/false question
+        let question = "Is Rust a programming language?";
+        let result = openai.ask_atomic_question(question).await?;
+
+        assert!(result, "Expected true for a factual question");
+
+        Ok(())
     }
 }

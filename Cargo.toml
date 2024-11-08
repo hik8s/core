@@ -22,6 +22,7 @@ edition = "2021"
 algorithm = {path = "rs/algorithm"}
 anyhow = "1.0.80"
 async-openai = "0.25.0"
+bm25 = "0.3.1"
 chat-backend = {path = "rs/chat-backend"}
 chrono = {version = "0.4.35"}
 data-intake = {path = "rs/data-intake"}

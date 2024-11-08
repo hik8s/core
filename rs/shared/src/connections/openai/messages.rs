@@ -16,6 +16,14 @@ pub fn create_system_message() -> ChatCompletionRequestMessage {
         name: Some("System".to_string()),
     })
 }
+pub fn create_simple_system_message() -> ChatCompletionRequestMessage {
+    ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage {
+        content: ChatCompletionRequestSystemMessageContent::Text(
+            "You are a helpful assistant".to_string(),
+        ),
+        name: Some("System".to_string()),
+    })
+}
 pub fn create_user_message(input: &str) -> ChatCompletionRequestMessage {
     ChatCompletionRequestMessage::User(ChatCompletionRequestUserMessage {
         content: ChatCompletionRequestUserMessageContent::Text(input.to_string()),

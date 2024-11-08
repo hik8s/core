@@ -1,19 +1,19 @@
 #[cfg(test)]
 mod tests {
+    use std::time::Instant;
+
     use async_openai::{error::OpenAIError, types::ChatCompletionRequestMessage};
+    use bm25::{Language, SearchEngineBuilder};
     use chat_backend::chat::process::{process_user_message, RequestOptions};
     use data_vectorizer::vectorize::vectorize_classes;
-    use prompt_engine::{
-        prompt::test_prompt::{get_scenario_data, ClusterTestScenario},
-        server::initialize_prompt_engine,
-    };
+    use prompt_engine::prompt::test_prompt::{get_scenario_data, ClusterTestScenario};
     use rstest::rstest;
     use tokio::sync::mpsc;
 
     use shared::{
         connections::{
-            openai::messages::extract_message_content,
-            prompt_engine::connect::PromptEngineConnection, qdrant::connect::QdrantConnection,
+            openai::messages::extract_message_content, qdrant::connect::QdrantConnection,
+            OpenAIConnection,
         },
         constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
         get_db_name, get_env_var,
@@ -29,10 +29,6 @@ mod tests {
         #[case] test_scenario: ClusterTestScenario,
     ) -> Result<(), OpenAIError> {
         setup_tracing(false);
-        tokio::spawn(async move {
-            let rocket = initialize_prompt_engine().await.unwrap();
-            rocket.launch().await.unwrap()
-        });
         let qdrant = QdrantConnection::new().await.unwrap();
         let tokenizer = Tokenizer::new().unwrap();
         let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
@@ -52,14 +48,14 @@ mod tests {
         qdrant.upsert_points(points, &db_name).await.unwrap();
 
         // Prompt processing
-        let prompt_engine = PromptEngineConnection::new().unwrap();
+        let qdrant = QdrantConnection::new().await.unwrap();
         let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
 
         let prompt = format!("I have a problem with my application called {application} in namespace {namespace}? Could you investigate the logs and also provide an overview of the cluster?");
         let request_option = RequestOptions::new(&prompt, &client_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-        process_user_message(&prompt_engine, &mut messages, &tx, request_option)
+        process_user_message(&qdrant, &mut messages, &tx, request_option)
             .await
             .unwrap();
 
@@ -85,11 +81,41 @@ mod tests {
 
         // log-retrieval evaluation
         let tool_content = extract_message_content(&messages[3]).unwrap_or_default();
-        assert!(tool_content.contains(&format!("{representation}")));
         assert!(!answer.is_empty());
-        // tracing::info!("Messages: {:#?}", messages);
-        // tracing::info!("Answer: {:#?}", answer);
-        assert!(answer.contains(&representation)); // this could fail
+
+        // LLM check
+        let start = Instant::now();
+        let openai = OpenAIConnection::new();
+        let match_str = "OOM killed exit code 137";
+        let question = format!(
+            "Does the following answer definitely conclude that the pod was {match_str}? {answer}"
+        );
+        let evaluation = openai.ask_atomic_question(&question).await.unwrap();
+        tracing::info!("Atomic question took: {:?}", start.elapsed());
+
+        // bm25 match
+        let start = Instant::now();
+        tracing::info!("Search and evaluation took: {:?}", start.elapsed());
+        let control_string1 = "I've retrieved the logs for the application in the namespace, but it appears that the logs are empty.".to_owned();
+        let control_string2 = format!("I've retrieved the logs for the application in the namespace, but it appears that there is not problem found.");
+        let target_string = format!("I've retrieved the logs for the application in the namespace, and it appears that it was {match_str}");
+        let corpus = vec![target_string, control_string1, control_string2];
+        let search_engine =
+            SearchEngineBuilder::<u32>::with_corpus(Language::English, corpus).build();
+        let search_results = search_engine.search(&answer, 3);
+
+        for result in search_results {
+            tracing::info!(
+                "Document ID: {}, Score: {}",
+                result.document.id,
+                result.score
+            );
+            tracing::info!("Document Content: {}", result.document.contents);
+            tracing::info!("---");
+        }
+        assert!(evaluation, "evaluation: {evaluation} question: {question}");
+        assert!(tool_content.contains(&format!("{representation}")));
+        tracing::info!("Search and evaluation took: {:?}", start.elapsed());
         Ok(())
     }
 }
