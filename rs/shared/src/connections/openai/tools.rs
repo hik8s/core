@@ -9,11 +9,12 @@ use serde_json::json;
 use std::fmt;
 
 use crate::{
-    connections::{
-        prompt_engine::connect::PromptEngineError,
-        qdrant::connect::{create_filter, QdrantConnection},
+    connections::qdrant::{
+        connect::{create_filter, QdrantConnection},
+        error::QdrantConnectionError,
     },
     get_db_name,
+    testdata::UserTestData,
     types::class::vectorized::VectorizedClass,
 };
 
@@ -24,6 +25,15 @@ pub struct LogRetrievalArgs {
     pub namespace: Option<String>,
     pub application: Option<String>,
     pub intention: String,
+}
+impl LogRetrievalArgs {
+    pub fn new(testdata: &UserTestData) -> Self {
+        LogRetrievalArgs {
+            namespace: testdata.namespace.to_owned(),
+            application: testdata.application.to_owned(),
+            intention: "".to_owned(),
+        }
+    }
 }
 impl TryFrom<String> for LogRetrievalArgs {
     type Error = serde_json::Error;
@@ -115,7 +125,7 @@ impl Tool {
         qdrant: &QdrantConnection,
         user_message: &str,
         customer_id: &str,
-    ) -> Result<String, PromptEngineError> {
+    ) -> Result<String, QdrantConnectionError> {
         match self {
             Tool::ClusterOverview => Ok("We got a bunch of pods here and then theres this huge pile of containers in this corner of the cluster".to_string()),
             Tool::LogRetrieval(args) => {
@@ -123,7 +133,7 @@ impl Tool {
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let db_name = get_db_name(customer_id);
                 let filter = create_filter(args.namespace.as_ref(), args.application.as_ref());
-                let classes = qdrant.search_classes(&db_name, array, filter, 30).await.unwrap();
+                let classes = qdrant.search_classes(&db_name, array, filter, 30).await?;
                 let result = classes
                     .into_iter()
                     .map(|vc| format_log_entry(&vc))
@@ -208,33 +218,32 @@ mod tests {
 
     use crate::{
         connections::{
-            openai::messages::{
-                create_assistant_message, create_system_message, create_tool_message,
-                create_user_message,
+            openai::{
+                messages::{
+                    create_assistant_message, create_system_message, create_tool_message,
+                    create_user_message,
+                },
+                tools::{collect_tool_call_chunks, Tool},
             },
-            openai::tools::{collect_tool_call_chunks, Tool},
             OpenAIConnection,
         },
         constant::OPENAI_CHAT_MODEL_MINI,
         log_error,
+        testdata::{UserTest, UserTestData},
         tracing::setup::setup_tracing,
     };
 
     #[tokio::test]
     #[rstest]
-    #[case("logs".to_owned(), None, None, 1.0)]
-    #[case("Get logs".to_owned(), None, None, 1.0)]
-    #[case("Get logs!".to_owned(), None, None, 1.0)]
-    #[case("Could you retrieve logs?".to_owned(), None, None, 1.0)]
-    #[case("Could you retrieve logs for me?".to_owned(), None, None, 1.0)]
-    #[case("Could you retrieve logs for the cluster for me?".to_owned(), None, None, 1.0)]
-    #[case("Could you investigate the logs from logd in hik8s-system?".to_owned(), Some("logd".to_string()), Some("hik8s-system".to_string()), 1.0)]
-    #[case("logd logs in hik8s-system?".to_owned(), Some("logd".to_string()), Some("hik8s-system".to_string()), 1.0)]
-    #[case("logd logs in hik8s-system for me".to_owned(), Some("logd".to_string()), Some("hik8s-system".to_string()), 1.0)]
+    #[case(UserTestData::new(UserTest::Logs), 1.0)]
+    #[case(UserTestData::new(UserTest::RetrieveLogs), 1.0)]
+    #[case(UserTestData::new(UserTest::RetrieveLogsForMe), 1.0)]
+    #[case(UserTestData::new(UserTest::RetrieveLogsForClusterForMe), 1.0)]
+    #[case(UserTestData::new(UserTest::RetrieveLogsAppNamespace), 1.0)]
+    #[case(UserTestData::new(UserTest::LogsAppNamespace), 1.0)]
+    #[case(UserTestData::new(UserTest::LogsAppNamespaceForMe), 1.0)]
     async fn test_completion_log_retrieval(
-        #[case] prompt: String,
-        #[case] application: Option<String>,
-        #[case] namespace: Option<String>,
+        #[case] testdata: UserTestData,
         #[case] success_rate: f32,
     ) -> Result<(), OpenAIError> {
         setup_tracing(false);
@@ -242,7 +251,10 @@ mod tests {
         let num_choices = 20;
 
         // base request
-        let messages = vec![create_system_message(), create_user_message(&prompt)];
+        let messages = vec![
+            create_system_message(),
+            create_user_message(&testdata.prompt),
+        ];
         let request =
             openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, num_choices);
         let response = openai.create_completion(request).await?;
@@ -256,8 +268,8 @@ mod tests {
                 let tool = Tool::try_from(tool_call.function).unwrap();
                 assert!(matches!(tool, Tool::LogRetrieval(_)));
                 if let Tool::LogRetrieval(args) = &tool {
-                    assert_eq!(args.application, application);
-                    assert_eq!(args.namespace, namespace);
+                    assert_eq!(args.application, testdata.application);
+                    assert_eq!(args.namespace, testdata.namespace);
                     assert!(!args.intention.is_empty());
                     success_counter += 1.0;
                 }
@@ -266,7 +278,8 @@ mod tests {
         let res = success_counter / num_choices as f32;
         assert!(
             res >= success_rate,
-            "Average of successful tool call not met: got {res} expected >= {success_rate} | case: {prompt}",
+            "Average of successful tool call not met: got {res} expected >= {success_rate} | prompt: {}",
+            testdata.prompt
         );
         // let usage = response.usage.unwrap();
         // tracing::info!("completion tokens: {}", usage.completion_tokens);
@@ -276,14 +289,20 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_stream_completion_tools() -> Result<(), OpenAIError> {
+    #[rstest]
+    #[case(UserTestData::new(UserTest::PodKillOutOffMemory))]
+    async fn test_stream_completion_tools(
+        #[case] testdata: UserTestData,
+    ) -> Result<(), OpenAIError> {
         setup_tracing(false);
         let openai = OpenAIConnection::new();
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
 
         // base request
-        let prompt = "I have a problem with my application called logd in namespace hik8s-stag? Could you investigate the logs and also provide an overview of the cluster?";
-        let mut messages = vec![create_system_message(), create_user_message(prompt)];
+        let mut messages = vec![
+            create_system_message(),
+            create_user_message(&testdata.prompt),
+        ];
         let request = openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, 1);
         let stream = openai.create_completion_stream(request).await?;
 
