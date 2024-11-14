@@ -12,6 +12,9 @@ use crate::{
 
 use super::error::FluvioConnectionError;
 
+use strum::EnumIter;
+
+#[derive(Debug, Clone, Copy, EnumIter, Hash, Eq, PartialEq)]
 pub enum TopicName {
     Log,
     Class,

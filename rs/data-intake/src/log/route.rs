@@ -7,6 +7,7 @@ use rocket::Data;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
 use shared::fluvio::FluvioConnection;
+use shared::fluvio::TopicName;
 use shared::log_error;
 use shared::router::auth::guard::AuthenticatedUser;
 use shared::types::metadata::Metadata;
@@ -52,9 +53,10 @@ pub async fn log_intake<'a>(
 
                 // send to fluvio
                 for log in logs.iter_mut() {
-                    log.truncate_record(&user.customer_id, fluvio.topic.max_bytes);
+                    let max_bytes = fluvio.get_topic(TopicName::Log).max_bytes;
+                    log.truncate_record(&user.customer_id, max_bytes);
                     let serialized_record = serde_json::to_string(&log).unwrap();
-                    if serialized_record.len() > fluvio.topic.max_bytes {
+                    if serialized_record.len() > max_bytes {
                         warn!(
                             "Data too large for record, will be skipped. customer_id: {}, key: {}, record_id: {}, len: {}",
                             &user.customer_id,
@@ -65,13 +67,13 @@ pub async fn log_intake<'a>(
                         continue;
                     }
                     fluvio
-                        .producer
+                        .get_producer(TopicName::Log)
                         .send(user.customer_id.clone(), serialized_record)
                         .await
                         .map_err(|e| log_error!(e))
                         .ok();
                     fluvio
-                        .producer
+                        .get_producer(TopicName::Log)
                         .flush()
                         .await
                         .map_err(|e| log_error!(e))
