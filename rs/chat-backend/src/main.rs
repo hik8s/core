@@ -1,7 +1,7 @@
 use chat_backend::chat::route::chat_completion;
 use rocket::{main, routes};
 use shared::{
-    connections::prompt_engine::connect::{PromptEngineConnection, PromptEngineError},
+    connections::qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
     constant::CHAT_BACKEND_PORT,
     router::rocket::build_rocket,
     tracing::setup::setup_tracing,
@@ -11,8 +11,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ChatBackendError {
-    #[error("Reqwest error: {0}")]
-    ReqwestError(#[from] PromptEngineError),
+    #[error("Qdrant error: {0}")]
+    QdrantError(#[from] QdrantConnectionError),
     #[error("Rocket error: {0}")]
     RocketError(#[from] rocket::Error),
 }
@@ -22,9 +22,9 @@ async fn main() -> Result<(), ChatBackendError> {
     setup_tracing(false);
     std::env::set_var("ROCKET_PORT", CHAT_BACKEND_PORT);
 
-    let prompt_engine = PromptEngineConnection::new()?;
+    let qdrant = QdrantConnection::new().await?;
 
-    let rocket = build_rocket(&vec![prompt_engine], routes![chat_completion]);
+    let rocket = build_rocket(&vec![qdrant], routes![chat_completion]);
 
     rocket.launch().await?;
     Ok(())

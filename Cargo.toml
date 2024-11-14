@@ -21,6 +21,7 @@ edition = "2021"
 algorithm = {path = "rs/algorithm"}
 anyhow = "1.0.80"
 async-openai = "0.25.0"
+bm25 = "0.3.1"
 chat-backend = {path = "rs/chat-backend"}
 chrono = {version = "0.4.35"}
 data-intake = {path = "rs/data-intake"}
@@ -51,6 +52,7 @@ sqlx = {version = "0.8.2", features = [
     "runtime-tokio",
     "tls-rustls",
 ]}
+strum = {version = "0.26.3", features = ["derive"]}
 thiserror = "1.0.63"
 tiktoken-rs = "0.5.9"
 tokio = "1.36.0"
