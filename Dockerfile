@@ -25,12 +25,6 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certifi
 COPY --from=builder /target/release/data-vectorizer /data-vectorizer
 CMD ["/data-vectorizer"]
 
-# prompt-engine
-FROM debian:bookworm-slim as prompt-engine
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=builder /target/release/prompt-engine /prompt-engine
-CMD ["/prompt-engine"]
-
 # chat-backend
 FROM debian:bookworm-slim as chat-backend
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt

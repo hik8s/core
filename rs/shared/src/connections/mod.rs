@@ -2,7 +2,6 @@ mod error;
 pub mod fluvio;
 pub mod greptime;
 pub mod openai;
-pub mod prompt_engine;
 pub mod qdrant;
 pub mod redis;
 mod util;

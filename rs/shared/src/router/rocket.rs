@@ -1,8 +1,5 @@
 use crate::{
-    connections::{
-        greptime::connect::GreptimeConnection, prompt_engine::connect::PromptEngineConnection,
-        qdrant::connect::QdrantConnection,
-    },
+    connections::{greptime::connect::GreptimeConnection, qdrant::connect::QdrantConnection},
     fluvio::FluvioConnection,
 };
 use rocket::{catch, catchers, Build, Rocket, Route};
@@ -29,12 +26,6 @@ impl Attach for QdrantConnection {
     }
 }
 
-impl Attach for PromptEngineConnection {
-    fn attach(self, rocket: Rocket<Build>) -> Rocket<Build> {
-        rocket.attach(self)
-    }
-}
-
 #[derive(Clone)]
 pub enum Connection {
     // we need this enum to provide a vec of connections to the build_rocket function
@@ -42,7 +33,6 @@ pub enum Connection {
     Greptime(GreptimeConnection),
     Fluvio(FluvioConnection),
     Qdrant(QdrantConnection),
-    PromptEngine(PromptEngineConnection),
 }
 
 impl Attach for Connection {
@@ -51,7 +41,6 @@ impl Attach for Connection {
             Connection::Greptime(conn) => conn.attach(rocket),
             Connection::Fluvio(conn) => conn.attach(rocket),
             Connection::Qdrant(conn) => conn.attach(rocket),
-            Connection::PromptEngine(conn) => conn.attach(rocket),
         }
     }
 }
@@ -71,12 +60,6 @@ impl From<FluvioConnection> for Connection {
 impl From<QdrantConnection> for Connection {
     fn from(conn: QdrantConnection) -> Self {
         Connection::Qdrant(conn)
-    }
-}
-
-impl From<PromptEngineConnection> for Connection {
-    fn from(conn: PromptEngineConnection) -> Self {
-        Connection::PromptEngine(conn)
     }
 }
 
