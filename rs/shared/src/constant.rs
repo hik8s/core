@@ -26,6 +26,11 @@ pub const TOPIC_CLASS_PARTITIONS: u32 = 1;
 pub const TOPIC_CLASS_REPLICAS: u32 = 1;
 pub const TOPIC_CLASS_BYTES_PER_RECORD: usize = TOPIC_LOG_BYTES_PER_RECORD * 4;
 
+pub const TOPIC_EVENT_NAME: &str = "event";
+pub const TOPIC_EVENT_PARTITIONS: u32 = 1;
+pub const TOPIC_EVENT_REPLICAS: u32 = 1;
+pub const TOPIC_EVENT_BYTES_PER_RECORD: usize = 131072;
+
 // prompting
 pub const DEFAULT_SYSTEM_PROMPT: &str = "You are an assistant to a site reliability engineer. \
 You can request tools that allow you to answer questions with relevant data. \
