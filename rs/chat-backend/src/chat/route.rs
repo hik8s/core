@@ -4,7 +4,7 @@ use rocket::post;
 use rocket::response::stream::{Event, EventStream};
 use rocket::serde::json::Json;
 
-use shared::connections::prompt_engine::connect::PromptEngineConnection;
+use shared::connections::qdrant::connect::QdrantConnection;
 use tokio;
 use tokio::sync::mpsc;
 use tracing::error;
@@ -16,7 +16,7 @@ use super::process::RequestOptions;
 #[post("/chat/completions", format = "json", data = "<payload>")]
 pub fn chat_completion(
     id: LastEventId,
-    prompt_engine: PromptEngineConnection,
+    qdrant: QdrantConnection,
     payload: Json<RequestOptions>,
 ) -> EventStream![] {
     let id = id.0;
@@ -27,7 +27,7 @@ pub fn chat_completion(
     let mut messages: Vec<ChatCompletionRequestMessage> = request_options.clone().into();
 
     tokio::spawn(async move {
-        process_user_message(&prompt_engine, &mut messages, &tx, request_options)
+        process_user_message(&qdrant, &mut messages, &tx, request_options)
             .await
             .map_err(|e| error!("{e}"))
             .ok()
