@@ -3250,21 +3250,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prompt-engine"
-version = "0.2.1"
-dependencies = [
- "async-openai",
- "rocket",
- "rstest",
- "serde",
- "serde_json",
- "shared",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "prost"
 version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4743,7 +4728,6 @@ dependencies = [
  "data-processing",
  "data-vectorizer",
  "lazy_static",
- "prompt-engine",
  "rocket",
  "rstest",
  "shared",

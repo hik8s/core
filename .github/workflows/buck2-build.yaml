@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      IMAGES: "data-intake data-processing data-vectorizer prompt-engine chat-backend"
+      IMAGES: "data-intake data-processing data-vectorizer chat-backend"
       REGISTRY: "ghcr.io/hik8s"
       BUCK_TAG: "2024-09-02"
 

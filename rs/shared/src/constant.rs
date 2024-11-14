@@ -3,10 +3,6 @@ pub const CHAT_BACKEND_PORT: &str = "8080";
 pub const OPENAI_CHAT_MODEL: &str = "gpt-4o-2024-08-06";
 pub const OPENAI_CHAT_MODEL_MINI: &str = "gpt-4o-mini-2024-07-18";
 
-// prompt-engine
-pub const PROMPT_ENGINE_PORT: &str = "8081";
-pub const PROMPT_ENGINE_PATH: &str = "prompt";
-
 // logs
 pub const LOG_PREFIX: &str = "logs";
 pub const DATA_INTAKE_LIMIT_MEMIBYTES: u64 = 32;
