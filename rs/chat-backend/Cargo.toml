@@ -6,7 +6,6 @@ version = "0.2.1"
 [dependencies]
 anyhow = {workspace = true}
 async-openai = {workspace = true}
-prompt-engine = {workspace = true}
 rocket = {workspace = true}
 rstest = {workspace = true}
 serde = {workspace = true}
