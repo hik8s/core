@@ -19,33 +19,33 @@ edition = "2021"
 
 [workspace.dependencies]
 algorithm = {path = "rs/algorithm"}
-anyhow = "1.0.80"
+anyhow = "1.0.93"
 async-openai = "0.26.0"
 bm25 = "2.0.1"
 chat-backend = {path = "rs/chat-backend"}
-chrono = {version = "0.4.35"}
+chrono = {version = "0.4.38"}
 data-intake = {path = "rs/data-intake"}
 data-processing = {path = "rs/data-processing"}
 data-vectorizer = {path = "rs/data-vectorizer"}
 dotenv = "0.15.0"
-fluvio = {version = "0.23.1", default-features = false, features = ["compress"]}
-futures-util = "0.3.30"
+fluvio = {version = "0.24.0", default-features = false, features = ["compress"]}
+futures-util = "0.3.31"
 greptimedb-ingester = {git = "https://github.com/GreptimeTeam/greptimedb-ingester-rust.git", rev = "2e6b0c5eb6a5e7549c3100e4d356b07d15cce66d"}
 jsonwebtoken = {version = "9.3.0", default-features = false}
 lazy_static = "1.5.0"
 multipart = "0.18.0"
-qdrant-client = "1.11.0"
+qdrant-client = "1.12.1"
 rand = "0.8.5"
 redis = {version = "0.27.5", features = ["json"]}
-reqwest = {version = "0.12.7", default-features = false, features = [
+reqwest = {version = "0.12.9", default-features = false, features = [
     "json",
     "rustls-tls",
 ]}
 rocket = {version = "0.5.1", features = ["json"]}
 rstest = "0.23.0"
-rustls = "0.23.12"
-serde = {version = "1.0.209", features = ["derive"]}
-serde_json = {version = "1.0.128", features = ["preserve_order"]}
+rustls = "0.23.16"
+serde = {version = "1.0.215", features = ["derive"]}
+serde_json = {version = "1.0.132", features = ["preserve_order"]}
 shared = {path = "rs/shared"}
 sqlx = {version = "0.8.2", features = [
     "postgres",
@@ -55,7 +55,7 @@ sqlx = {version = "0.8.2", features = [
 strum = {version = "0.26.3", features = ["derive"]}
 thiserror = "2.0.3"
 tiktoken-rs = "0.6.0"
-tokio = "1.36.0"
+tokio = "1.41.0"
 tracing = "0.1.40"
 tracing-subscriber = {version = "0.3.18", features = ["env-filter", "time"]}
-uuid7 = "1.0.2"
+uuid7 = "1.1.0"
