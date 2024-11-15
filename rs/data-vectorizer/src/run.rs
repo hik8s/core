@@ -19,9 +19,9 @@ use tracing::info;
 use crate::{error::DataVectorizationError, vectorize::vectorize_classes};
 
 pub async fn run_data_vectorizer() -> Result<(), DataVectorizationError> {
-    let fluvio = FluvioConnection::new(TopicName::Class).await?;
+    let fluvio = FluvioConnection::new().await?;
     let qdrant = QdrantConnection::new().await?;
-    let mut consumer = fluvio.create_consumer(0).await?;
+    let mut consumer = fluvio.create_consumer(0, TopicName::Class).await?;
     let tokenizer = Tokenizer::new()?;
     let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
     let polling_interval = Duration::from_millis(100);

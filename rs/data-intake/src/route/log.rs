@@ -1,12 +1,13 @@
 use crate::process::multipart::{into_multipart, process_metadata, process_stream};
 
-use super::error::LogIntakeError;
+use crate::error::DataIntakeError;
 use rocket::http::ContentType;
 use rocket::post;
 use rocket::Data;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
 use shared::fluvio::FluvioConnection;
+use shared::fluvio::TopicName;
 use shared::log_error;
 use shared::router::auth::guard::AuthenticatedUser;
 use shared::types::metadata::Metadata;
@@ -20,7 +21,7 @@ pub async fn log_intake<'a>(
     fluvio: FluvioConnection,
     content_type: &ContentType,
     data: Data<'a>,
-) -> Result<String, LogIntakeError> {
+) -> Result<String, DataIntakeError> {
     let mut multipart = into_multipart(content_type, data).await?;
     let mut metadata: Option<Metadata> = None;
 
@@ -31,17 +32,17 @@ pub async fn log_intake<'a>(
         // read multipart entry
         let field = multipart
             .read_entry()
-            .map_err(|e| LogIntakeError::MultipartDataInvalid(e))?
-            .ok_or_else(|| LogIntakeError::MultipartNoFields)?;
+            .map_err(|e| DataIntakeError::MultipartDataInvalid(e))?
+            .ok_or_else(|| DataIntakeError::MultipartNoFields)?;
         match field.headers.name.deref() {
             "metadata" => {
                 // process metadata
                 process_metadata(field.data, &mut metadata)
-                    .map_err(|e| LogIntakeError::MultipartMetadata(e))?;
+                    .map_err(|e| DataIntakeError::MultipartMetadata(e))?;
             }
             "stream" => {
                 // process stream
-                let metadata = metadata.ok_or_else(|| LogIntakeError::MetadataNone)?;
+                let metadata = metadata.ok_or_else(|| DataIntakeError::MetadataNone)?;
                 let mut logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
@@ -52,9 +53,10 @@ pub async fn log_intake<'a>(
 
                 // send to fluvio
                 for log in logs.iter_mut() {
-                    log.truncate_record(&user.customer_id, fluvio.topic.max_bytes);
+                    let max_bytes = fluvio.get_topic(TopicName::Log).max_bytes;
+                    log.truncate_record(&user.customer_id, max_bytes);
                     let serialized_record = serde_json::to_string(&log).unwrap();
-                    if serialized_record.len() > fluvio.topic.max_bytes {
+                    if serialized_record.len() > max_bytes {
                         warn!(
                             "Data too large for record, will be skipped. customer_id: {}, key: {}, record_id: {}, len: {}",
                             &user.customer_id,
@@ -65,13 +67,13 @@ pub async fn log_intake<'a>(
                         continue;
                     }
                     fluvio
-                        .producer
+                        .get_producer(TopicName::Log)
                         .send(user.customer_id.clone(), serialized_record)
                         .await
                         .map_err(|e| log_error!(e))
                         .ok();
                     fluvio
-                        .producer
+                        .get_producer(TopicName::Log)
                         .flush()
                         .await
                         .map_err(|e| log_error!(e))
@@ -80,7 +82,7 @@ pub async fn log_intake<'a>(
                 return Ok("Success".to_string());
             }
             field_name => {
-                return Err(LogIntakeError::MultipartUnexpectedFieldName(
+                return Err(DataIntakeError::MultipartUnexpectedFieldName(
                     field_name.to_string(),
                 ));
             }
@@ -90,7 +92,7 @@ pub async fn log_intake<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::error::DataIntakeError;
+    use super::DataIntakeError;
     use crate::server::initialize_data_intake;
 
     use rstest::rstest;

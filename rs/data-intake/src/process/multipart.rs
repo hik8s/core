@@ -1,4 +1,4 @@
-use crate::log::error::LogIntakeError;
+use crate::error::DataIntakeError;
 
 use super::chunk::process_chunk;
 use multipart::server::{Multipart, MultipartData};
@@ -94,20 +94,20 @@ pub fn process_metadata(
 pub async fn into_multipart<'a>(
     content_type: &ContentType,
     data: Data<'a>,
-) -> Result<Multipart<Cursor<Vec<u8>>>, LogIntakeError> {
+) -> Result<Multipart<Cursor<Vec<u8>>>, DataIntakeError> {
     let mut buffer = Vec::new();
     let limit = DATA_INTAKE_LIMIT_MEMIBYTES.mebibytes();
     let result = data.open(limit).stream_to(&mut buffer).await;
     match result {
         Ok(n) => {
             if !n.complete {
-                return Err(log_error!(LogIntakeError::PayloadTooLarge(
+                return Err(log_error!(DataIntakeError::PayloadTooLarge(
                     limit.to_string()
                 )));
             }
         }
         Err(e) => {
-            return Err(LogIntakeError::MultipartIoError(log_error!(e)));
+            return Err(DataIntakeError::MultipartIoError(log_error!(e)));
         }
     }
 
@@ -115,7 +115,7 @@ pub async fn into_multipart<'a>(
         .params()
         .find(|(k, _)| k == "boundary")
         .map(|(_, v)| v)
-        .ok_or_else(|| LogIntakeError::ContentTypeBoundaryMissing)?;
+        .ok_or_else(|| DataIntakeError::ContentTypeBoundaryMissing)?;
 
     let multipart = Multipart::with_body(Cursor::new(buffer), boundary);
     Ok(multipart)
