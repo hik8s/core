@@ -1,6 +1,6 @@
 use crate::process::multipart::{into_multipart, process_metadata, process_stream};
 
-use super::error::LogIntakeError;
+use crate::error::DataIntakeError;
 use rocket::http::ContentType;
 use rocket::post;
 use rocket::Data;
@@ -21,7 +21,7 @@ pub async fn log_intake<'a>(
     fluvio: FluvioConnection,
     content_type: &ContentType,
     data: Data<'a>,
-) -> Result<String, LogIntakeError> {
+) -> Result<String, DataIntakeError> {
     let mut multipart = into_multipart(content_type, data).await?;
     let mut metadata: Option<Metadata> = None;
 
@@ -32,17 +32,17 @@ pub async fn log_intake<'a>(
         // read multipart entry
         let field = multipart
             .read_entry()
-            .map_err(|e| LogIntakeError::MultipartDataInvalid(e))?
-            .ok_or_else(|| LogIntakeError::MultipartNoFields)?;
+            .map_err(|e| DataIntakeError::MultipartDataInvalid(e))?
+            .ok_or_else(|| DataIntakeError::MultipartNoFields)?;
         match field.headers.name.deref() {
             "metadata" => {
                 // process metadata
                 process_metadata(field.data, &mut metadata)
-                    .map_err(|e| LogIntakeError::MultipartMetadata(e))?;
+                    .map_err(|e| DataIntakeError::MultipartMetadata(e))?;
             }
             "stream" => {
                 // process stream
-                let metadata = metadata.ok_or_else(|| LogIntakeError::MetadataNone)?;
+                let metadata = metadata.ok_or_else(|| DataIntakeError::MetadataNone)?;
                 let mut logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
@@ -82,7 +82,7 @@ pub async fn log_intake<'a>(
                 return Ok("Success".to_string());
             }
             field_name => {
-                return Err(LogIntakeError::MultipartUnexpectedFieldName(
+                return Err(DataIntakeError::MultipartUnexpectedFieldName(
                     field_name.to_string(),
                 ));
             }
@@ -92,7 +92,7 @@ pub async fn log_intake<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::error::DataIntakeError;
+    use super::DataIntakeError;
     use crate::server::initialize_data_intake;
 
     use rstest::rstest;

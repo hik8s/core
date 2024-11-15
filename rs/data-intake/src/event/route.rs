@@ -1,4 +1,4 @@
-use crate::log::error::LogIntakeError;
+use crate::error::DataIntakeError;
 
 use rocket::post;
 use rocket::serde::json::Json;
@@ -11,7 +11,7 @@ pub async fn event_intake(
     user: AuthenticatedUser,
     fluvio: FluvioConnection,
     event: Json<serde_json::Value>,
-) -> Result<String, LogIntakeError> {
+) -> Result<String, DataIntakeError> {
     let producer = fluvio.get_producer(TopicName::Event);
     producer
         .send(user.customer_id.clone(), event.into_inner().to_string())
