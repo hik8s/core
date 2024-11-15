@@ -4,9 +4,12 @@ use tracing::info;
 use crate::{
     constant::{
         TOPIC_CLASS_BYTES_PER_RECORD, TOPIC_CLASS_NAME, TOPIC_CLASS_PARTITIONS,
-        TOPIC_CLASS_REPLICAS, TOPIC_EVENT_BYTES_PER_RECORD, TOPIC_EVENT_NAME,
-        TOPIC_EVENT_PARTITIONS, TOPIC_EVENT_REPLICAS, TOPIC_LOG_BYTES_PER_RECORD, TOPIC_LOG_NAME,
-        TOPIC_LOG_PARTITIONS, TOPIC_LOG_REPLICAS,
+        TOPIC_CLASS_REPLICAS, TOPIC_CUSTOM_RESOURCE_BYTES_PER_RECORD, TOPIC_CUSTOM_RESOURCE_NAME,
+        TOPIC_CUSTOM_RESOURCE_PARTITIONS, TOPIC_CUSTOM_RESOURCE_REPLICAS,
+        TOPIC_EVENT_BYTES_PER_RECORD, TOPIC_EVENT_NAME, TOPIC_EVENT_PARTITIONS,
+        TOPIC_EVENT_REPLICAS, TOPIC_LOG_BYTES_PER_RECORD, TOPIC_LOG_NAME, TOPIC_LOG_PARTITIONS,
+        TOPIC_LOG_REPLICAS, TOPIC_RESOURCE_BYTES_PER_RECORD, TOPIC_RESOURCE_NAME,
+        TOPIC_RESOURCE_PARTITIONS, TOPIC_RESOURCE_REPLICAS,
     },
     log_error,
 };
@@ -20,6 +23,8 @@ pub enum TopicName {
     Log,
     Class,
     Event,
+    Resource,
+    CustomResource,
 }
 
 #[derive(Clone)]
@@ -50,6 +55,18 @@ impl FluvioTopic {
                 partitions: TOPIC_EVENT_PARTITIONS,
                 replicas: TOPIC_EVENT_REPLICAS,
                 max_bytes: TOPIC_EVENT_BYTES_PER_RECORD,
+            },
+            TopicName::Resource => FluvioTopic {
+                name: TOPIC_RESOURCE_NAME.to_owned(),
+                partitions: TOPIC_RESOURCE_PARTITIONS,
+                replicas: TOPIC_RESOURCE_REPLICAS,
+                max_bytes: TOPIC_RESOURCE_BYTES_PER_RECORD,
+            },
+            TopicName::CustomResource => FluvioTopic {
+                name: TOPIC_CUSTOM_RESOURCE_NAME.to_owned(),
+                partitions: TOPIC_CUSTOM_RESOURCE_PARTITIONS,
+                replicas: TOPIC_CUSTOM_RESOURCE_REPLICAS,
+                max_bytes: TOPIC_CUSTOM_RESOURCE_BYTES_PER_RECORD,
             },
         }
     }

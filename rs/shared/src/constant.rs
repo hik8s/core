@@ -31,6 +31,16 @@ pub const TOPIC_EVENT_PARTITIONS: u32 = 1;
 pub const TOPIC_EVENT_REPLICAS: u32 = 1;
 pub const TOPIC_EVENT_BYTES_PER_RECORD: usize = 131072;
 
+pub const TOPIC_RESOURCE_NAME: &str = "resource";
+pub const TOPIC_RESOURCE_PARTITIONS: u32 = 1;
+pub const TOPIC_RESOURCE_REPLICAS: u32 = 1;
+pub const TOPIC_RESOURCE_BYTES_PER_RECORD: usize = 131072;
+
+pub const TOPIC_CUSTOM_RESOURCE_NAME: &str = "customresource";
+pub const TOPIC_CUSTOM_RESOURCE_PARTITIONS: u32 = 1;
+pub const TOPIC_CUSTOM_RESOURCE_REPLICAS: u32 = 1;
+pub const TOPIC_CUSTOM_RESOURCE_BYTES_PER_RECORD: usize = 131072;
+
 // prompting
 pub const DEFAULT_SYSTEM_PROMPT: &str = "You are an assistant to a site reliability engineer. \
 You can request tools that allow you to answer questions with relevant data. \
