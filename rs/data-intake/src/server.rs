@@ -1,8 +1,5 @@
-use crate::customresource::route::customresource_intake;
 use crate::error::DataIntakeError;
-use crate::event::route::event_intake;
-use crate::log::route::log_intake;
-use crate::resource::route::resource_intake;
+use crate::route::{customresource_intake, event_intake, log_intake, resource_intake};
 use rocket::{routes, Build, Rocket};
 use shared::router::rocket::{build_rocket, Connection};
 use shared::{connections::greptime::connect::GreptimeConnection, fluvio::FluvioConnection};
