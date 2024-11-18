@@ -10,9 +10,13 @@ chat-backend = {workspace = true}
 data-intake = {workspace = true}
 data-processing = {workspace = true}
 data-vectorizer = {workspace = true}
+glob = {workspace = true}
+itertools = {workspace = true}
 lazy_static = {workspace = true}
 rocket = {workspace = true}
 rstest = {workspace = true}
+serde_json = {workspace = true}
+serde_yaml = {workspace = true}
 shared = {workspace = true}
 thiserror = {workspace = true}
 tokio = {workspace = true}

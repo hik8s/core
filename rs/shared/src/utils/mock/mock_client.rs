@@ -23,6 +23,36 @@ pub async fn post_test_stream(client: &Client, route: &str, test_stream: String)
     response.status()
 }
 
+pub async fn post_test(client: &Client, route: &str, json_value: serde_json::Value) -> Status {
+    let token = get_env_var("AUTH0_TOKEN").unwrap();
+    let response = client
+        .post(route)
+        .header(ContentType::JSON)
+        .header(Header::new("Authorization", format!("Bearer {}", token)))
+        .json(&json_value)
+        .dispatch()
+        .await;
+
+    response.status()
+}
+
+pub async fn post_test_batch(
+    client: &Client,
+    route: &str,
+    json_values: Vec<serde_json::Value>,
+) -> Status {
+    let token = get_env_var("AUTH0_TOKEN").unwrap();
+    let response = client
+        .post(route)
+        .header(ContentType::JSON)
+        .header(Header::new("Authorization", format!("Bearer {}", token)))
+        .json(&json_values) // Changed to send array of values
+        .dispatch()
+        .await;
+
+    response.status()
+}
+
 fn generate_random_string(length: usize) -> String {
     let charset: Vec<char> = "abcdefghijklmnopqrstuvwxyz0123456789".chars().collect();
     let mut rng = rand::thread_rng();
