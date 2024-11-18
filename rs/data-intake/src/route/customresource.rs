@@ -22,3 +22,22 @@ pub async fn customresource_intake(
 
     Ok("Success".to_string())
 }
+
+#[post("/customresources", format = "json", data = "<customresources>")]
+pub async fn customresources_intake(
+    user: AuthenticatedUser,
+    fluvio: FluvioConnection,
+    customresources: Json<Vec<serde_json::Value>>,
+) -> Result<String, DataIntakeError> {
+    let producer = fluvio.get_producer(TopicName::CustomResource);
+    for cr in customresources.into_inner() {
+        producer
+            .send(user.customer_id.clone(), cr.to_string())
+            .await
+            .map_err(|e| log_error!(e))
+            .ok();
+    }
+    producer.flush().await.map_err(|e| log_error!(e)).ok();
+
+    Ok("Success".to_string())
+}

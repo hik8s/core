@@ -22,3 +22,22 @@ pub async fn event_intake(
 
     Ok("Success".to_string())
 }
+
+#[post("/events", format = "json", data = "<events>")]
+pub async fn events_intake(
+    user: AuthenticatedUser,
+    fluvio: FluvioConnection,
+    events: Json<Vec<serde_json::Value>>,
+) -> Result<String, DataIntakeError> {
+    let producer = fluvio.get_producer(TopicName::Event);
+    for event in events.into_inner() {
+        producer
+            .send(user.customer_id.clone(), event.to_string())
+            .await
+            .map_err(|e| log_error!(e))
+            .ok();
+    }
+    producer.flush().await.map_err(|e| log_error!(e)).ok();
+
+    Ok("Success".to_string())
+}
