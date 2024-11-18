@@ -8,8 +8,6 @@ use shared::router::rocket::{build_rocket, Connection};
 use shared::{connections::greptime::connect::GreptimeConnection, fluvio::FluvioConnection};
 
 pub async fn initialize_data_intake() -> Result<Rocket<Build>, DataIntakeError> {
-    std::env::set_var("ROCKET_ADDRESS", "0.0.0.0");
-
     let greptime = GreptimeConnection::new().await?;
     let fluvio = FluvioConnection::new().await?;
 

@@ -9,6 +9,7 @@ RUN cargo build --release
 
 # data-intake
 FROM debian:bookworm-slim AS data-intake
+COPY ./Rocket.toml /Rocket.toml
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /target/release/data-intake /data-intake
 CMD ["/data-intake"]
@@ -27,6 +28,7 @@ CMD ["/data-vectorizer"]
 
 # chat-backend
 FROM debian:bookworm-slim AS chat-backend
+COPY ./Rocket.toml /Rocket.toml
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /target/release/chat-backend /chat-backend
 CMD ["/chat-backend"]
