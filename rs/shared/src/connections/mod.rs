@@ -1,3 +1,4 @@
+pub mod dbname;
 mod error;
 pub mod fluvio;
 pub mod greptime;

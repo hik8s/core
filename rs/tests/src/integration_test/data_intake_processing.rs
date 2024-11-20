@@ -63,7 +63,8 @@ mod tests {
         let greptime = GreptimeConnection::new().await?;
         let qdrant = QdrantConnection::new().await.unwrap();
         let pod_name = test_data.metadata.pod_name.clone();
-        let db_name = get_db_name(&get_env_var("AUTH0_CLIENT_ID_DEV").unwrap());
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let db = DbName::Log;
 
         let start_time = tokio::time::Instant::now();
         let timeout = Duration::from_secs(300);
@@ -72,7 +73,7 @@ mod tests {
 
         while start_time.elapsed() < timeout {
             // check greptime
-            rows = read_records(greptime.clone(), &db_name, &pod_name)
+            rows = read_records(greptime.clone(), &db, &customer_id, &pod_name)
                 .await
                 .unwrap();
 

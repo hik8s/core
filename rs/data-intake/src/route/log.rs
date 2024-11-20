@@ -4,6 +4,7 @@ use crate::error::DataIntakeError;
 use rocket::http::ContentType;
 use rocket::post;
 use rocket::Data;
+use shared::connections::dbname::DbName;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
 use shared::fluvio::FluvioConnection;
@@ -24,8 +25,10 @@ pub async fn log_intake<'a>(
 ) -> Result<String, DataIntakeError> {
     let mut multipart = into_multipart(content_type, data).await?;
     let mut metadata: Option<Metadata> = None;
+    let db = DbName::Log;
+    let topic = TopicName::Log;
 
-    greptime.create_database(&user.db_name).await?;
+    greptime.create_database(&db, &user.customer_id).await?;
     // The loop will exit successfully if the stream field is processed,
     // exit with an error during processing and if no more field is found
     loop {
@@ -46,14 +49,14 @@ pub async fn log_intake<'a>(
                 let mut logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
-                let stream_inserter = greptime.streaming_inserter(&user.db_name)?;
+                let stream_inserter = greptime.streaming_inserter(&db, &user.customer_id)?;
                 let insert_request = logs_to_insert_request(&logs, &metadata.pod_name);
                 stream_inserter.insert(vec![insert_request]).await?;
                 stream_inserter.finish().await?;
 
                 // send to fluvio
                 for log in logs.iter_mut() {
-                    let max_bytes = fluvio.get_topic(TopicName::Log).max_bytes;
+                    let max_bytes = fluvio.get_topic(topic).max_bytes;
                     log.truncate_record(&user.customer_id, max_bytes);
                     let serialized_record = serde_json::to_string(&log).unwrap();
                     if serialized_record.len() > max_bytes {
@@ -67,13 +70,13 @@ pub async fn log_intake<'a>(
                         continue;
                     }
                     fluvio
-                        .get_producer(TopicName::Log)
+                        .get_producer(topic)
                         .send(user.customer_id.clone(), serialized_record)
                         .await
                         .map_err(|e| log_error!(e))
                         .ok();
                     fluvio
-                        .get_producer(TopicName::Log)
+                        .get_producer(topic)
                         .flush()
                         .await
                         .map_err(|e| log_error!(e))
