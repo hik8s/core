@@ -11,6 +11,7 @@ use rocket::{request::FromRequest, State};
 use tracing::info;
 
 use crate::{
+    connections::dbname::DbName,
     constant::{EMBEDDING_SIZE, EMBEDDING_USIZE},
     types::class::vectorized::{from_scored_point, VectorizedClass},
 };
@@ -36,41 +37,47 @@ impl QdrantConnection {
         Ok(connection)
     }
 
-    pub async fn create_collection(&self, db_name: &str) -> Result<(), QdrantConnectionError> {
+    pub async fn create_collection(
+        &self,
+        db: &DbName,
+        customer_id: &str,
+    ) -> Result<(), QdrantConnectionError> {
         let collections = self.client.list_collections().await?;
         for collection in collections.collections {
-            if collection.name == db_name {
+            if collection.name == db.id(customer_id) {
                 return Ok(());
             }
         }
 
         self.client
             .create_collection(
-                CreateCollectionBuilder::new(db_name.to_owned())
+                CreateCollectionBuilder::new(db.id(customer_id))
                     .vectors_config(VectorParamsBuilder::new(EMBEDDING_SIZE, Distance::Cosine)),
             )
             .await?;
-        info!("Collection {} created", db_name);
+        info!("Collection {} created", db);
         Ok(())
     }
     pub async fn upsert_points(
         &self,
         qdrant_point: Vec<PointStruct>,
-        db_name: &str,
+        db: &DbName,
+        customer_id: &str,
     ) -> Result<PointsOperationResponse, QdrantConnectionError> {
-        self.create_collection(&db_name).await?;
-        let request = UpsertPointsBuilder::new(db_name.to_owned(), qdrant_point).wait(false);
+        self.create_collection(&db, customer_id).await?;
+        let request = UpsertPointsBuilder::new(db.id(customer_id), qdrant_point).wait(false);
         let response = self.client.upsert_points(request).await?;
         Ok(response)
     }
     pub async fn search_classes(
         &self,
-        db_name: &str,
+        db: &DbName,
+        customer_id: &str,
         array: [f32; EMBEDDING_USIZE],
         filter: Filter,
         limit: u64,
     ) -> Result<Vec<VectorizedClass>, QdrantConnectionError> {
-        let request = SearchPointsBuilder::new(db_name.to_owned(), array.to_vec(), limit)
+        let request = SearchPointsBuilder::new(db.id(customer_id), array.to_vec(), limit)
             .filter(filter)
             .with_payload(true);
         let response = self.client.search_points(request).await?;
@@ -79,12 +86,13 @@ impl QdrantConnection {
     }
     pub async fn search_key(
         &self,
-        db_name: &str,
+        db: &DbName,
+        customer_id: &str,
         key: &str,
         limit: u64,
     ) -> Result<Vec<VectorizedClass>, QdrantConnectionError> {
         let filter = Filter::must([Condition::matches("key", key.to_string())]);
-        let request = QueryPointsBuilder::new(db_name.to_owned())
+        let request = QueryPointsBuilder::new(db.id(customer_id))
             .filter(filter)
             .limit(limit)
             .with_payload(true);

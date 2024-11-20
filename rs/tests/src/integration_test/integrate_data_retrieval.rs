@@ -4,11 +4,12 @@ mod tests {
     use rstest::rstest;
     use shared::{
         connections::{
+            dbname::DbName,
             openai::tools::{LogRetrievalArgs, Tool},
             qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
         },
         constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
-        get_db_name, get_env_var,
+        get_env_var,
         testdata::{UserTest, UserTestData},
         tracing::setup::setup_tracing,
         types::tokenizer::Tokenizer,
@@ -33,12 +34,16 @@ mod tests {
             .await
             .unwrap()
             .0;
-        let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
-        let db_name = get_db_name(&client_id);
-        qdrant.upsert_points(points, &db_name).await.unwrap();
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        qdrant
+            .upsert_points(points, &DbName::Event, &customer_id)
+            .await
+            .unwrap();
 
         let tool = Tool::LogRetrieval(LogRetrievalArgs::new(&testdata));
-        let result = tool.request(&qdrant, &testdata.prompt, &client_id).await?;
+        let result = tool
+            .request(&qdrant, &testdata.prompt, &customer_id)
+            .await?;
 
         info!(result);
         assert!(result.contains("OOMKilled Exit Code 137"));

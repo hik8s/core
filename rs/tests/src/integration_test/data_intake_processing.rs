@@ -5,7 +5,7 @@ mod tests {
     use data_processing::run::run_data_processing;
     use data_vectorizer::run::run_data_vectorizer;
     use rstest::rstest;
-    use shared::connections::get_db_name;
+    use shared::connections::dbname::DbName;
     use shared::connections::greptime::connect::GreptimeConnection;
     use shared::connections::greptime::middleware::query::read_records;
     use shared::connections::qdrant::connect::QdrantConnection;
@@ -78,7 +78,10 @@ mod tests {
                 .unwrap();
 
             // check qdrant
-            classes = qdrant.search_key(&db_name, &pod_name, 1000).await.unwrap();
+            classes = qdrant
+                .search_key(&db, &customer_id, &pod_name, 1000)
+                .await
+                .unwrap();
             info!(
                 "Classes: {}/{} | Pod: {}",
                 classes.len(),
