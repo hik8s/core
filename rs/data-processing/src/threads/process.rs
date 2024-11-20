@@ -50,6 +50,8 @@ pub enum ProcessThreadError {
     Utf8Error(#[from] Utf8Error),
     #[error("Fluvio offset error: {0}")]
     OffsetError(#[from] OffsetError),
+    #[error("Invalid json: {0}")]
+    InvalidJson(String),
 }
 
 pub async fn process_logs(

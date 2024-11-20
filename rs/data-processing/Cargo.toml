@@ -6,6 +6,7 @@ version = "0.2.11"
 [dependencies]
 algorithm = {workspace = true}
 anyhow = {workspace = true}
+chrono = {workspace = true}
 dotenv = {workspace = true}
 fluvio = {workspace = true}
 futures-util = {workspace = true}

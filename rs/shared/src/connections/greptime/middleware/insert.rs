@@ -57,6 +57,41 @@ pub fn classified_log_to_insert_request(log: ClassifiedLogRecord) -> InsertReque
     }
 }
 
+pub fn resource_to_insert_request(
+    apiversion: String,
+    kind: String,
+    name: String,
+    uid: String,
+    metadata: String,
+    namespace: Option<String>,
+    spec: Option<String>,
+    status: Option<String>,
+    timestamp: i64,
+) -> InsertRequest {
+    let mut columns: Vec<Column> = vec![
+        timestamp_column(vec![timestamp]),
+        tag_column("uid", vec![uid]),
+        string_column("apiversion", vec![apiversion]),
+        string_column("name", vec![name]),
+        string_column("metadata", vec![metadata]),
+    ];
+    if namespace.is_some() {
+        columns.push(string_column("namespace", vec![namespace.unwrap()]));
+    }
+    if spec.is_some() {
+        columns.push(string_column("spec", vec![spec.unwrap()]));
+    }
+    if status.is_some() {
+        columns.push(string_column("status", vec![status.unwrap()]));
+    }
+
+    InsertRequest {
+        table_name: kind,
+        columns,
+        row_count: 1,
+    }
+}
+
 fn timestamp_column(timestamps: Vec<i64>) -> Column {
     Column {
         column_name: "timestamp".to_owned(),

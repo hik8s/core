@@ -1032,6 +1032,7 @@ version = "0.2.11"
 dependencies = [
  "algorithm",
  "anyhow",
+ "chrono",
  "dotenv",
  "fluvio",
  "futures-util",
