@@ -44,12 +44,12 @@ pub fn extract_managed_field_timestamps(metadata: &Value) -> Vec<i64> {
         .unwrap_or_default()
 }
 
-pub fn extract_creation_timestamp(metadata: &Value) -> i64 {
-    metadata
-        .get("creationTimestamp")
-        .and_then(|ct| ct.as_str())
-        .and_then(|ct_str| {
-            DateTime::parse_from_rfc3339(ct_str)
+pub fn extract_timestamp(value: &Value, key: &str) -> i64 {
+    value
+        .get(key)
+        .and_then(|v| v.as_str())
+        .and_then(|time_str| {
+            DateTime::parse_from_rfc3339(time_str)
                 .map(|dt| dt.with_timezone(&Utc).timestamp_millis())
                 .ok()
         })

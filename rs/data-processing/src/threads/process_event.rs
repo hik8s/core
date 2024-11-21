@@ -9,13 +9,10 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use shared::{log_error, log_error_continue};
 
-use super::json_util::{
-    extract_managed_field_timestamps, extract_timestamp, get_as_option_string, get_as_ref,
-    get_as_string,
-};
+use super::json_util::{extract_timestamp, get_as_option_string, get_as_ref, get_as_string};
 use super::process::ProcessThreadError;
 
-pub async fn process_resource(
+pub async fn process_event(
     mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
     db_name: DbName,
 ) -> Result<(), ProcessThreadError> {
@@ -31,35 +28,34 @@ pub async fn process_resource(
         let data_str = String::from_utf8_lossy(payload);
         let json: Value = from_str(&data_str).map_err(|e| log_error!(e))?;
 
-        let kind = log_error_continue!(get_as_string(&json, "kind"));
         let apiversion = log_error_continue!(get_as_string(&json, "apiVersion"));
+        let last_timestamp = extract_timestamp(&json, "lastTimestamp");
+        let message = get_as_option_string(&json, "message");
+        let reason = get_as_option_string(&json, "reason");
+        let resource = log_error_continue!(get_as_ref(&json, "involvedObject"));
+        let resource_name = get_as_option_string(resource, "name");
+        let resource_kind = get_as_option_string(resource, "kind");
 
         let metadata = log_error_continue!(get_as_ref(&json, "metadata"));
-        let uid = log_error_continue!(get_as_string(metadata, "uid"));
-        let name = log_error_continue!(get_as_string(metadata, "name"));
+        let resource_uid = log_error_continue!(get_as_string(metadata, "uid"));
         let namespace = get_as_option_string(metadata, "namespace");
-
-        let mut timestamps = extract_managed_field_timestamps(metadata);
-        timestamps.push(extract_timestamp(metadata, "creationTimestamp"));
-        timestamps.sort();
-        let latest_timestamp = timestamps.last().unwrap_or(&0);
 
         let status = json.get("status").map(|s| s.to_string());
         let spec = json.get("spec").map(|s| s.to_string());
 
         let insert_request = resource_to_insert_request(
             apiversion,
-            Some(kind.clone()),
-            Some(name),
-            uid,
+            resource_kind,
+            resource_name,
+            resource_uid,
             metadata.to_string(),
             namespace,
             spec,
             status,
-            None,
-            None,
-            kind,
-            latest_timestamp.to_owned(),
+            reason,
+            message,
+            db_name.to_string(),
+            last_timestamp,
         );
         let stream_inserter = greptime.streaming_inserter(&db_name, &customer_id)?;
         stream_inserter.insert(vec![insert_request]).await?;

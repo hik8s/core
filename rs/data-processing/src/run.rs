@@ -1,5 +1,6 @@
 use crate::error::DataProcessingError;
 use crate::threads::process::process_logs;
+use crate::threads::process_event::process_event;
 use crate::threads::process_resource::process_resource;
 
 use shared::connections::dbname::DbName;
@@ -46,6 +47,19 @@ pub async fn run_customresource_processing(
     threads.push(tokio::spawn(async move {
         let resource_consumer = fluvio.create_consumer(0, TopicName::CustomResource).await?;
         process_resource(resource_consumer, DbName::CustomResource).await?;
+        Ok(())
+    }));
+
+    Ok(threads)
+}
+
+pub async fn run_event_processing(
+) -> Result<Vec<JoinHandle<Result<(), DataProcessingError>>>, DataProcessingError> {
+    let fluvio = FluvioConnection::new().await?;
+    let mut threads: Vec<JoinHandle<Result<(), DataProcessingError>>> = Vec::new();
+    threads.push(tokio::spawn(async move {
+        let resource_consumer = fluvio.create_consumer(0, TopicName::Event).await?;
+        process_event(resource_consumer, DbName::Event).await?;
         Ok(())
     }));
 
