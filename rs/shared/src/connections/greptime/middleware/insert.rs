@@ -61,8 +61,8 @@ pub fn resource_to_insert_request(
     apiversion: String,
     kind: Option<String>,
     name: Option<String>,
-    uid: String,
-    metadata: String,
+    uid: Option<String>,
+    metadata: Option<String>,
     namespace: Option<String>,
     spec: Option<String>,
     status: Option<String>,
@@ -73,11 +73,15 @@ pub fn resource_to_insert_request(
 ) -> InsertRequest {
     let mut columns: Vec<Column> = vec![
         timestamp_column(vec![timestamp]),
-        tag_column("uid", vec![uid]),
         string_column("apiversion", vec![apiversion]),
-        string_column("metadata", vec![metadata]),
     ];
 
+    if let Some(metadata) = metadata {
+        columns.push(string_column("metadata", vec![metadata]));
+    }
+    if let Some(uid) = uid {
+        columns.push(tag_column("uid", vec![uid]));
+    }
     if kind.is_some() {
         columns.push(string_column("kind", vec![kind.clone().unwrap()]));
     }

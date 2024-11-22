@@ -35,10 +35,8 @@ pub async fn process_event(
         let resource = log_error_continue!(get_as_ref(&json, "involvedObject"));
         let resource_name = get_as_option_string(resource, "name");
         let resource_kind = get_as_option_string(resource, "kind");
-
-        let metadata = log_error_continue!(get_as_ref(&json, "metadata"));
-        let resource_uid = log_error_continue!(get_as_string(metadata, "uid"));
-        let namespace = get_as_option_string(metadata, "namespace");
+        let resource_uid = get_as_option_string(resource, "uid");
+        let resource_namespace = get_as_option_string(resource, "namespace");
 
         let status = json.get("status").map(|s| s.to_string());
         let spec = json.get("spec").map(|s| s.to_string());
@@ -48,8 +46,8 @@ pub async fn process_event(
             resource_kind,
             resource_name,
             resource_uid,
-            metadata.to_string(),
-            namespace,
+            None,
+            resource_namespace,
             spec,
             status,
             reason,

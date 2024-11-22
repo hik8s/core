@@ -35,8 +35,8 @@ pub async fn process_resource(
         let apiversion = log_error_continue!(get_as_string(&json, "apiVersion"));
 
         let metadata = log_error_continue!(get_as_ref(&json, "metadata"));
-        let uid = log_error_continue!(get_as_string(metadata, "uid"));
-        let name = log_error_continue!(get_as_string(metadata, "name"));
+        let uid = get_as_option_string(metadata, "uid");
+        let name = get_as_option_string(metadata, "name");
         let namespace = get_as_option_string(metadata, "namespace");
 
         let mut timestamps = extract_managed_field_timestamps(metadata);
@@ -50,9 +50,9 @@ pub async fn process_resource(
         let insert_request = resource_to_insert_request(
             apiversion,
             Some(kind.clone()),
-            Some(name),
+            name,
             uid,
-            metadata.to_string(),
+            Some(metadata.to_string()),
             namespace,
             spec,
             status,
