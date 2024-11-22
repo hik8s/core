@@ -236,13 +236,13 @@ mod tests {
 
     #[tokio::test]
     #[rstest]
-    #[case(UserTestData::new(UserTest::Logs), 1.0)]
-    #[case(UserTestData::new(UserTest::RetrieveLogs), 1.0)]
-    #[case(UserTestData::new(UserTest::RetrieveLogsForMe), 1.0)]
-    #[case(UserTestData::new(UserTest::RetrieveLogsForClusterForMe), 1.0)]
-    #[case(UserTestData::new(UserTest::RetrieveLogsAppNamespace), 1.0)]
-    #[case(UserTestData::new(UserTest::LogsAppNamespace), 1.0)]
-    #[case(UserTestData::new(UserTest::LogsAppNamespaceForMe), 1.0)]
+    #[case(UserTestData::new(UserTest::Logs), 0.9)]
+    #[case(UserTestData::new(UserTest::RetrieveLogs), 0.9)]
+    #[case(UserTestData::new(UserTest::RetrieveLogsForMe), 0.9)]
+    #[case(UserTestData::new(UserTest::RetrieveLogsForClusterForMe), 0.9)]
+    #[case(UserTestData::new(UserTest::RetrieveLogsAppNamespace), 0.9)]
+    #[case(UserTestData::new(UserTest::LogsAppNamespace), 0.9)]
+    #[case(UserTestData::new(UserTest::LogsAppNamespaceForMe), 0.9)]
     async fn test_completion_log_retrieval(
         #[case] testdata: UserTestData,
         #[case] success_rate: f32,

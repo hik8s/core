@@ -5,9 +5,10 @@ use qdrant_client::{
         Condition, CreateCollectionBuilder, Distance, Filter, PointStruct, PointsOperationResponse,
         QueryPointsBuilder, SearchPointsBuilder, UpsertPointsBuilder, VectorParamsBuilder,
     },
-    Qdrant,
+    Qdrant, QdrantError,
 };
 use rocket::{request::FromRequest, State};
+use tonic::Code;
 use tracing::info;
 
 use crate::{
@@ -49,12 +50,20 @@ impl QdrantConnection {
             }
         }
 
-        self.client
+        match self
+            .client
             .create_collection(
                 CreateCollectionBuilder::new(db.id(customer_id))
                     .vectors_config(VectorParamsBuilder::new(EMBEDDING_SIZE, Distance::Cosine)),
             )
-            .await?;
+            .await
+        {
+            Ok(_) => (),
+            Err(QdrantError::ResponseError { status }) if status.code() == Code::AlreadyExists => {
+                return Ok(())
+            }
+            Err(e) => return Err(e.into()),
+        };
         info!("Collection {} created", db);
         Ok(())
     }

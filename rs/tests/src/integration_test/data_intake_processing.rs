@@ -65,9 +65,10 @@ mod tests {
         let pod_name = test_data.metadata.pod_name.clone();
         let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
         let db = DbName::Log;
+        qdrant.create_collection(&db, &customer_id).await.unwrap();
 
         let start_time = tokio::time::Instant::now();
-        let timeout = Duration::from_secs(300);
+        let timeout = Duration::from_secs(30);
         let mut rows = Vec::new();
         let mut classes = Vec::new();
 

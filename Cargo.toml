@@ -59,6 +59,7 @@ strum = {version = "0.26.3", features = ["derive"]}
 thiserror = "2.0.3"
 tiktoken-rs = "0.6.0"
 tokio = "1.41.0"
+tonic = "0.12.3"
 tracing = "0.1.40"
 tracing-subscriber = {version = "0.3.18", features = ["env-filter", "time"]}
 uuid7 = "1.1.0"
