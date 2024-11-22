@@ -1,14 +1,18 @@
 use sqlx::{postgres::PgRow, Executor};
 
-use crate::{connections::greptime::connect::GreptimeConnection, log_error};
+use crate::{
+    connections::{dbname::DbName, greptime::connect::GreptimeConnection},
+    log_error,
+};
 
 pub async fn read_records(
     greptime: GreptimeConnection,
-    db_name: &str,
+    db: &DbName,
+    customer_id: &str,
     table_name: &str,
 ) -> Result<Vec<PgRow>, sqlx::Error> {
     let psql = greptime
-        .connect_db(&db_name)
+        .connect_db(&db, customer_id)
         .await
         .map_err(|e| log_error!(e))
         .unwrap();

@@ -7,7 +7,10 @@ mod tests {
     use chat_backend::chat::process::{process_user_message, RequestOptions};
     use data_vectorizer::vectorize::vectorize_classes;
     use rstest::rstest;
-    use shared::testdata::{UserTest, UserTestData};
+    use shared::{
+        connections::dbname::DbName,
+        testdata::{UserTest, UserTestData},
+    };
     use tokio::sync::mpsc;
 
     use shared::{
@@ -16,7 +19,7 @@ mod tests {
             OpenAIConnection,
         },
         constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
-        get_db_name, get_env_var,
+        get_env_var,
         tracing::setup::setup_tracing,
         types::tokenizer::Tokenizer,
         utils::ratelimit::RateLimiter,
@@ -36,12 +39,14 @@ mod tests {
             .await
             .unwrap()
             .0;
-        let client_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
-        let db_name = get_db_name(&client_id);
-        qdrant.upsert_points(points, &db_name).await.unwrap();
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        qdrant
+            .upsert_points(points, &DbName::Log, &customer_id)
+            .await
+            .unwrap();
 
         // Prompt processing
-        let request_option = RequestOptions::new(&testdata.prompt, &client_id);
+        let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
         process_user_message(&qdrant, &mut messages, &tx, request_option)

@@ -3,8 +3,8 @@ use std::{collections::HashMap, time::Duration};
 use futures_util::StreamExt;
 use shared::{
     connections::{
+        dbname::DbName,
         fluvio::{offset::commit_and_flush_offsets, util::get_record_key},
-        get_db_name,
         qdrant::connect::QdrantConnection,
     },
     constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
@@ -60,8 +60,9 @@ pub async fn run_data_vectorizer() -> Result<(), DataVectorizationError> {
                 rate_limiter.tokens_used.lock().await,
                 customer_id
             );
-            let db_name = get_db_name(&customer_id);
-            qdrant.upsert_points(points, &db_name).await?;
+            qdrant
+                .upsert_points(points, &DbName::Log, &customer_id)
+                .await?;
         }
         // commit fluvio offset
         commit_and_flush_offsets(&mut consumer, "".to_string()).await?;

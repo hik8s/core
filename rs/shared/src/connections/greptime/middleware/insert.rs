@@ -57,6 +57,60 @@ pub fn classified_log_to_insert_request(log: ClassifiedLogRecord) -> InsertReque
     }
 }
 
+pub fn resource_to_insert_request(
+    apiversion: String,
+    kind: Option<String>,
+    name: Option<String>,
+    uid: Option<String>,
+    metadata: Option<String>,
+    namespace: Option<String>,
+    spec: Option<String>,
+    status: Option<String>,
+    reason: Option<String>,
+    message: Option<String>,
+    table_name: String,
+    timestamp: i64,
+) -> InsertRequest {
+    let mut columns: Vec<Column> = vec![
+        timestamp_column(vec![timestamp]),
+        string_column("apiversion", vec![apiversion]),
+    ];
+
+    if let Some(metadata) = metadata {
+        columns.push(string_column("metadata", vec![metadata]));
+    }
+    if let Some(uid) = uid {
+        columns.push(tag_column("uid", vec![uid]));
+    }
+    if kind.is_some() {
+        columns.push(string_column("kind", vec![kind.clone().unwrap()]));
+    }
+    if name.is_some() {
+        columns.push(string_column("name", vec![name.unwrap()]));
+    }
+    if namespace.is_some() {
+        columns.push(string_column("namespace", vec![namespace.unwrap()]));
+    }
+    if spec.is_some() {
+        columns.push(string_column("spec", vec![spec.unwrap()]));
+    }
+    if status.is_some() {
+        columns.push(string_column("status", vec![status.unwrap()]));
+    }
+    if reason.is_some() {
+        columns.push(string_column("reason", vec![reason.unwrap()]));
+    }
+    if let Some(message) = message {
+        columns.push(string_column("message", vec![message]));
+    }
+
+    InsertRequest {
+        table_name,
+        columns,
+        row_count: 1,
+    }
+}
+
 fn timestamp_column(timestamps: Vec<i64>) -> Column {
     Column {
         column_name: "timestamp".to_owned(),

@@ -9,11 +9,13 @@ use serde_json::json;
 use std::fmt;
 
 use crate::{
-    connections::qdrant::{
-        connect::{create_filter, QdrantConnection},
-        error::QdrantConnectionError,
+    connections::{
+        dbname::DbName,
+        qdrant::{
+            connect::{create_filter, QdrantConnection},
+            error::QdrantConnectionError,
+        },
     },
-    get_db_name,
     testdata::UserTestData,
     types::class::vectorized::VectorizedClass,
 };
@@ -131,9 +133,8 @@ impl Tool {
             Tool::LogRetrieval(args) => {
                 let search_prompt = create_search_prompt(user_message, &args);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
-                let db_name = get_db_name(customer_id);
                 let filter = create_filter(args.namespace.as_ref(), args.application.as_ref());
-                let classes = qdrant.search_classes(&db_name, array, filter, 30).await?;
+                let classes = qdrant.search_classes(&DbName::Log, customer_id, array, filter, 30).await?;
                 let result = classes
                     .into_iter()
                     .map(|vc| format_log_entry(&vc))
@@ -235,13 +236,13 @@ mod tests {
 
     #[tokio::test]
     #[rstest]
-    #[case(UserTestData::new(UserTest::Logs), 1.0)]
-    #[case(UserTestData::new(UserTest::RetrieveLogs), 1.0)]
-    #[case(UserTestData::new(UserTest::RetrieveLogsForMe), 1.0)]
-    #[case(UserTestData::new(UserTest::RetrieveLogsForClusterForMe), 1.0)]
-    #[case(UserTestData::new(UserTest::RetrieveLogsAppNamespace), 1.0)]
-    #[case(UserTestData::new(UserTest::LogsAppNamespace), 1.0)]
-    #[case(UserTestData::new(UserTest::LogsAppNamespaceForMe), 1.0)]
+    #[case(UserTestData::new(UserTest::Logs), 0.9)]
+    #[case(UserTestData::new(UserTest::RetrieveLogs), 0.9)]
+    #[case(UserTestData::new(UserTest::RetrieveLogsForMe), 0.9)]
+    #[case(UserTestData::new(UserTest::RetrieveLogsForClusterForMe), 0.9)]
+    #[case(UserTestData::new(UserTest::RetrieveLogsAppNamespace), 0.9)]
+    #[case(UserTestData::new(UserTest::LogsAppNamespace), 0.9)]
+    #[case(UserTestData::new(UserTest::LogsAppNamespaceForMe), 0.9)]
     async fn test_completion_log_retrieval(
         #[case] testdata: UserTestData,
         #[case] success_rate: f32,

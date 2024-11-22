@@ -2,8 +2,8 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::spu::SpuSocketPool;
 use fluvio::TopicProducer;
+use shared::connections::dbname::DbName;
 use shared::connections::fluvio::util::get_record_key;
-use shared::connections::get_db_name;
 use shared::constant::TOPIC_CLASS_BYTES_PER_RECORD;
 use shared::fluvio::{commit_and_flush_offsets, OffsetError};
 use shared::preprocessing::log::preprocess_message;
@@ -50,6 +50,8 @@ pub enum ProcessThreadError {
     Utf8Error(#[from] Utf8Error),
     #[error("Fluvio offset error: {0}")]
     OffsetError(#[from] OffsetError),
+    #[error("Invalid json: {0}")]
+    InvalidJson(String),
 }
 
 pub async fn process_logs(
@@ -76,8 +78,7 @@ pub async fn process_logs(
 
         // insert into greptimedb
         let insert_request = classified_log_to_insert_request(classified_log);
-        let db_name = get_db_name(&customer_id);
-        let stream_inserter = greptime.streaming_inserter(&db_name)?;
+        let stream_inserter = greptime.streaming_inserter(&DbName::Log, &customer_id)?;
         stream_inserter
             .insert(vec![insert_request])
             .await

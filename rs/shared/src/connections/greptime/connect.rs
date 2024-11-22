@@ -1,3 +1,4 @@
+use crate::connections::dbname::DbName;
 use crate::connections::ConfigError;
 use crate::log_error;
 
@@ -51,23 +52,29 @@ impl GreptimeConnection {
     }
     pub fn streaming_inserter(
         &self,
+        db: &DbName,
         customer_id: &str,
     ) -> Result<StreamInserter, GreptimeConnectionError> {
-        let database = Database::new_with_dbname(customer_id, self.client.clone());
+        let database = Database::new_with_dbname(db.id(customer_id), self.client.clone());
         database
             .streaming_inserter()
             .map_err(|e| log_error!(e).into())
     }
 
-    pub async fn create_database(&self, db_name: &str) -> Result<(), GreptimeConnectionError> {
-        let result = sqlx::query(&format!("CREATE DATABASE {}", db_name))
+    pub async fn create_database(
+        &self,
+        db: &DbName,
+        customer_id: &str,
+    ) -> Result<(), GreptimeConnectionError> {
+        let db_id = db.id(customer_id);
+        let result = sqlx::query(&format!("CREATE DATABASE {}", db_id))
             .execute(&self.admin_psql)
             .await;
         if let Err(e) = result {
             match e {
                 Error::Database(ref db_err) if db_err.code() == Some(Cow::Borrowed("22023")) => {
                     // this could happen if the database was created between the check and the create
-                    tracing::debug!("Database {} already exists.", db_name);
+                    tracing::debug!("Database {} already exists.", db_id);
                 }
                 e => return Err(log_error!(e).into()),
             }
@@ -76,9 +83,10 @@ impl GreptimeConnection {
     }
     pub async fn connect_db(
         &self,
-        db_name: &str,
+        db: &DbName,
+        customer_id: &str,
     ) -> Result<Pool<Postgres>, GreptimeConnectionError> {
-        let psql_uri = self.config.get_psql_uri(db_name);
+        let psql_uri = self.config.get_psql_uri(&db.id(customer_id));
         PgPoolOptions::new()
             .max_connections(5)
             .connect(&psql_uri)

@@ -3,21 +3,15 @@ use rocket::request::{FromRequest, Outcome, Request};
 
 use super::error::AuthenticationError;
 use super::validation::validate_token;
-use crate::connections::get_db_name;
 
 #[derive(Debug)]
 pub struct AuthenticatedUser {
     pub customer_id: String,
-    pub db_name: String,
 }
 
 impl AuthenticatedUser {
     pub fn new(customer_id: String) -> Self {
-        let db_name = get_db_name(&customer_id);
-        AuthenticatedUser {
-            customer_id,
-            db_name,
-        }
+        AuthenticatedUser { customer_id }
     }
 }
 

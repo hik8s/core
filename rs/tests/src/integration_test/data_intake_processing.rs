@@ -5,7 +5,7 @@ mod tests {
     use data_processing::run::run_data_processing;
     use data_vectorizer::run::run_data_vectorizer;
     use rstest::rstest;
-    use shared::connections::get_db_name;
+    use shared::connections::dbname::DbName;
     use shared::connections::greptime::connect::GreptimeConnection;
     use shared::connections::greptime::middleware::query::read_records;
     use shared::connections::qdrant::connect::QdrantConnection;
@@ -63,21 +63,26 @@ mod tests {
         let greptime = GreptimeConnection::new().await?;
         let qdrant = QdrantConnection::new().await.unwrap();
         let pod_name = test_data.metadata.pod_name.clone();
-        let db_name = get_db_name(&get_env_var("AUTH0_CLIENT_ID_DEV").unwrap());
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let db = DbName::Log;
+        qdrant.create_collection(&db, &customer_id).await.unwrap();
 
         let start_time = tokio::time::Instant::now();
-        let timeout = Duration::from_secs(300);
+        let timeout = Duration::from_secs(30);
         let mut rows = Vec::new();
         let mut classes = Vec::new();
 
         while start_time.elapsed() < timeout {
             // check greptime
-            rows = read_records(greptime.clone(), &db_name, &pod_name)
+            rows = read_records(greptime.clone(), &db, &customer_id, &pod_name)
                 .await
                 .unwrap();
 
             // check qdrant
-            classes = qdrant.search_key(&db_name, &pod_name, 1000).await.unwrap();
+            classes = qdrant
+                .search_key(&db, &customer_id, &pod_name, 1000)
+                .await
+                .unwrap();
             info!(
                 "Classes: {}/{} | Pod: {}",
                 classes.len(),

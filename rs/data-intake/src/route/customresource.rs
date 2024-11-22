@@ -6,15 +6,20 @@ use shared::fluvio::{FluvioConnection, TopicName};
 use shared::log_error;
 use shared::router::auth::guard::AuthenticatedUser;
 
-#[post("/customresource", format = "json", data = "<event>")]
+#[post("/customresource", format = "json", data = "<customresource>")]
 pub async fn customresource_intake(
     user: AuthenticatedUser,
     fluvio: FluvioConnection,
-    event: Json<serde_json::Value>,
+    customresource: Json<serde_json::Value>,
 ) -> Result<String, DataIntakeError> {
+    // let resource_json = customresource.clone().into_inner();
+    // save_resource(&resource_json, "customresource").unwrap();
     let producer = fluvio.get_producer(TopicName::CustomResource);
     producer
-        .send(user.customer_id.clone(), event.into_inner().to_string())
+        .send(
+            user.customer_id.clone(),
+            customresource.into_inner().to_string(),
+        )
         .await
         .map_err(|e| log_error!(e))
         .ok();
