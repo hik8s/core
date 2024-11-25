@@ -3,7 +3,7 @@ mod tests {
     use data_intake::error::DataIntakeError;
     use data_intake::server::initialize_data_intake;
     use data_processing::run::run_data_processing;
-    use data_vectorizer::vectorize_class::vectorize_class;
+    use data_vectorizer::vectorize_class;
     use rstest::rstest;
     use shared::connections::dbname::DbName;
     use shared::connections::greptime::connect::GreptimeConnection;
@@ -52,7 +52,7 @@ mod tests {
         // data processing
         THREAD_PROCESSING.call_once(|| {
             tokio::spawn(async move {
-                run_data_processing().await.unwrap();
+                run_data_processing().unwrap();
             });
         });
         // data vectorizer

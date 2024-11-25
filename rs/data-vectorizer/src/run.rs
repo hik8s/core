@@ -3,8 +3,7 @@ use std::sync::Arc;
 use shared::utils::ratelimit::RateLimiter;
 use tokio::task::JoinHandle;
 
-use crate::error::DataVectorizationError;
-use crate::vectorize_class::vectorize_class;
+use crate::{error::DataVectorizationError, vectorize_class};
 
 pub fn run_vectorize_class(
     limiter: Arc<RateLimiter>,

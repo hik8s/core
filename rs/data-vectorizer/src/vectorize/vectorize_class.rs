@@ -1,22 +1,29 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use futures_util::StreamExt;
+use qdrant_client::qdrant::PointStruct;
 use shared::{
     connections::{
         dbname::DbName,
         fluvio::{offset::commit_and_flush_offsets, util::get_record_key},
+        openai::embeddings::request_embedding,
         qdrant::connect::QdrantConnection,
     },
-    constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
     fluvio::{FluvioConnection, TopicName},
     log_error, log_error_continue,
-    types::{class::Class, tokenizer::Tokenizer},
+    types::{
+        class::{
+            vectorized::{to_qdrant_points, to_representations, to_vectorized_classes},
+            Class,
+        },
+        tokenizer::Tokenizer,
+    },
     utils::ratelimit::RateLimiter,
 };
 use tokio::time::timeout;
 use tracing::info;
 
-use crate::{error::DataVectorizationError, vectorize::vectorize_classes};
+use crate::error::DataVectorizationError;
 
 pub async fn vectorize_class(limiter: Arc<RateLimiter>) -> Result<(), DataVectorizationError> {
     let fluvio = FluvioConnection::new().await?;
@@ -53,7 +60,7 @@ pub async fn vectorize_class(limiter: Arc<RateLimiter>) -> Result<(), DataVector
         // Process batch
         for (customer_id, classes) in batch.drain() {
             let (points, total_token_count) =
-                vectorize_classes(&classes, &tokenizer, &limiter).await?;
+                vectorize_class_batch(&classes, &tokenizer, &limiter).await?;
             info!(
                 "Vectorized {} classes with {total_token_count} tokens. Total used tokens: {}, ID: {}",
                 classes.len(),
@@ -67,4 +74,25 @@ pub async fn vectorize_class(limiter: Arc<RateLimiter>) -> Result<(), DataVector
         // commit fluvio offset
         commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
     }
+}
+
+pub async fn vectorize_class_batch(
+    classes: &[Class],
+    tokenizer: &Tokenizer,
+    rate_limiter: &RateLimiter,
+) -> Result<(Vec<PointStruct>, usize), DataVectorizationError> {
+    // Vectorize class
+    let (vectorized_classes, total_token_count_cut) = to_vectorized_classes(classes, tokenizer);
+
+    // Obey rate limit
+    rate_limiter.check_rate_limit(total_token_count_cut).await;
+
+    // Get embeddings
+    let representations = to_representations(&vectorized_classes);
+    let arrays = request_embedding(&representations).await?;
+
+    // Create qdrant points
+    let qdrant_points = to_qdrant_points(&vectorized_classes, &arrays)?;
+
+    Ok((qdrant_points, total_token_count_cut))
 }
