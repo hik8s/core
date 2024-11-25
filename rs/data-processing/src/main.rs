@@ -8,11 +8,11 @@ use shared::tracing::setup::setup_tracing;
 #[tokio::main]
 async fn main() -> Result<(), DataProcessingError> {
     setup_tracing(true);
-    let mut threads = run_data_processing().await?;
-    threads.extend(run_resource_processing().await?);
-    threads.extend(run_customresource_processing().await?);
+    let mut threads = run_data_processing()?;
+    threads.extend(run_resource_processing()?);
+    threads.extend(run_customresource_processing()?);
 
-    threads.extend(run_event_processing().await?);
+    threads.extend(run_event_processing()?);
     // Wait for all threads to complete
     for thread in threads {
         thread.await??;
