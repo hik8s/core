@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use futures_util::StreamExt;
 use shared::{
@@ -18,12 +18,12 @@ use tracing::info;
 
 use crate::{error::DataVectorizationError, vectorize::vectorize_classes};
 
-pub async fn vectorize_class() -> Result<(), DataVectorizationError> {
+pub async fn vectorize_class(limiter: Arc<RateLimiter>) -> Result<(), DataVectorizationError> {
     let fluvio = FluvioConnection::new().await?;
     let qdrant = QdrantConnection::new().await?;
     let mut consumer = fluvio.create_consumer(0, TopicName::Class).await?;
     let tokenizer = Tokenizer::new()?;
-    let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
+
     let polling_interval = Duration::from_millis(100);
     loop {
         let mut batch = HashMap::<String, Vec<Class>>::new();
@@ -53,11 +53,11 @@ pub async fn vectorize_class() -> Result<(), DataVectorizationError> {
         // Process batch
         for (customer_id, classes) in batch.drain() {
             let (points, total_token_count) =
-                vectorize_classes(&classes, &tokenizer, &rate_limiter).await?;
+                vectorize_classes(&classes, &tokenizer, &limiter).await?;
             info!(
                 "Vectorized {} classes with {total_token_count} tokens. Total used tokens: {}, ID: {}",
                 classes.len(),
-                rate_limiter.tokens_used.lock().await,
+                limiter.tokens_used.lock().await,
                 customer_id
             );
             qdrant

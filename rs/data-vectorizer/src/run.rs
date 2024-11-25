@@ -1,70 +1,21 @@
-use std::{collections::HashMap, time::Duration};
+use std::sync::Arc;
 
-use futures_util::StreamExt;
-use shared::{
-    connections::{
-        dbname::DbName,
-        fluvio::{offset::commit_and_flush_offsets, util::get_record_key},
-        qdrant::connect::QdrantConnection,
-    },
-    constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
-    fluvio::{FluvioConnection, TopicName},
-    log_error, log_error_continue,
-    types::{class::Class, tokenizer::Tokenizer},
-    utils::ratelimit::RateLimiter,
-};
-use tokio::time::timeout;
-use tracing::info;
+use shared::utils::ratelimit::RateLimiter;
+use tokio::task::JoinHandle;
 
-use crate::{error::DataVectorizationError, vectorize::vectorize_classes};
+use crate::error::DataVectorizationError;
+use crate::vectorize_class::vectorize_class;
 
-pub async fn run_data_vectorizer() -> Result<(), DataVectorizationError> {
-    let fluvio = FluvioConnection::new().await?;
-    let qdrant = QdrantConnection::new().await?;
-    let mut consumer = fluvio.create_consumer(0, TopicName::Class).await?;
-    let tokenizer = Tokenizer::new()?;
-    let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
-    let polling_interval = Duration::from_millis(100);
-    loop {
-        let mut batch = HashMap::<String, Vec<Class>>::new();
-        let start_time = tokio::time::Instant::now();
+pub fn run_vectorize_class(
+    limiter: Arc<RateLimiter>,
+) -> Result<Vec<JoinHandle<Result<(), DataVectorizationError>>>, DataVectorizationError> {
+    // Vector to hold all spawned threads
+    let mut threads: Vec<JoinHandle<Result<(), DataVectorizationError>>> = Vec::new();
 
-        // Accumulate batch
-        while start_time.elapsed() < polling_interval {
-            let result = match timeout(polling_interval, consumer.next()).await {
-                Ok(Some(Ok(record))) => Ok(record),
-                Ok(Some(Err(e))) => Err(e), // error receiving record
-                Ok(None) => continue,       // consumer stream ended (does not happen)
-                Err(_) => continue,         // no record received within the timeout
-            };
-            let record = log_error_continue!(result);
-            let customer_id = get_record_key(&record).map_err(|e| log_error!(e))?;
-            let class: Class = record.try_into()?;
+    threads.push(tokio::spawn(async move {
+        vectorize_class(limiter).await?;
+        Ok(())
+    }));
 
-            if let Some(classes) = batch.get_mut(&customer_id) {
-                classes.push(class);
-            } else {
-                let mut classes = Vec::new();
-                classes.push(class);
-                batch.insert(customer_id, classes);
-            }
-        }
-
-        // Process batch
-        for (customer_id, classes) in batch.drain() {
-            let (points, total_token_count) =
-                vectorize_classes(&classes, &tokenizer, &rate_limiter).await?;
-            info!(
-                "Vectorized {} classes with {total_token_count} tokens. Total used tokens: {}, ID: {}",
-                classes.len(),
-                rate_limiter.tokens_used.lock().await,
-                customer_id
-            );
-            qdrant
-                .upsert_points(points, &DbName::Log, &customer_id)
-                .await?;
-        }
-        // commit fluvio offset
-        commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
-    }
+    Ok(threads)
 }
