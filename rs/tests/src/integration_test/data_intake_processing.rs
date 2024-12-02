@@ -51,9 +51,7 @@ mod tests {
 
         // data processing
         THREAD_PROCESSING.call_once(|| {
-            tokio::spawn(async move {
-                run_data_processing().unwrap();
-            });
+            run_data_processing().unwrap();
         });
         // data vectorizer
         THREAD_VECTORIZER.call_once(|| {

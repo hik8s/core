@@ -32,8 +32,9 @@ pub fn run_resource_processing(
     let mut threads: Vec<JoinHandle<Result<(), DataProcessingError>>> = Vec::new();
     threads.push(tokio::spawn(async move {
         let fluvio = FluvioConnection::new().await?;
-        let resource_consumer = fluvio.create_consumer(0, TopicName::Resource).await?;
-        process_resource(resource_consumer, DbName::Resource).await?;
+        let consumer = fluvio.create_consumer(0, TopicName::Resource).await?;
+        let producer = fluvio.get_producer(TopicName::ProcessedResource).clone();
+        process_resource(consumer, producer, DbName::Resource).await?;
         Ok(())
     }));
 
@@ -45,8 +46,11 @@ pub fn run_customresource_processing(
     let mut threads: Vec<JoinHandle<Result<(), DataProcessingError>>> = Vec::new();
     threads.push(tokio::spawn(async move {
         let fluvio = FluvioConnection::new().await?;
-        let resource_consumer = fluvio.create_consumer(0, TopicName::CustomResource).await?;
-        process_resource(resource_consumer, DbName::CustomResource).await?;
+        let consumer = fluvio.create_consumer(0, TopicName::CustomResource).await?;
+        let producer = fluvio
+            .get_producer(TopicName::ProcessedCustomResource)
+            .clone();
+        process_resource(consumer, producer, DbName::CustomResource).await?;
         Ok(())
     }));
 
@@ -58,8 +62,9 @@ pub fn run_event_processing(
     let mut threads: Vec<JoinHandle<Result<(), DataProcessingError>>> = Vec::new();
     threads.push(tokio::spawn(async move {
         let fluvio = FluvioConnection::new().await?;
-        let resource_consumer = fluvio.create_consumer(0, TopicName::Event).await?;
-        process_event(resource_consumer, DbName::Event).await?;
+        let consumer = fluvio.create_consumer(0, TopicName::Event).await?;
+        let producer = fluvio.get_producer(TopicName::ProcessedEvent).clone();
+        process_event(consumer, producer, DbName::Event).await?;
         Ok(())
     }));
 
