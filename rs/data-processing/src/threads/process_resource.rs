@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use fluvio::spu::SpuSocketPool;
+use fluvio::TopicProducer;
 use futures_util::StreamExt;
 use serde_json::{from_str, Value};
 use shared::connections::dbname::DbName;
@@ -7,6 +11,7 @@ use shared::connections::greptime::middleware::insert::resource_to_insert_reques
 
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
+use shared::fluvio::commit_and_flush_offsets;
 use shared::{log_error, log_error_continue};
 
 use super::json_util::{
@@ -17,6 +22,7 @@ use super::process::ProcessThreadError;
 
 pub async fn process_resource(
     mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
+    producer: Arc<TopicProducer<SpuSocketPool>>,
     db_name: DbName,
 ) -> Result<(), ProcessThreadError> {
     let greptime = GreptimeConnection::new().await?;
@@ -64,6 +70,16 @@ pub async fn process_resource(
         let stream_inserter = greptime.streaming_inserter(&db_name, &customer_id)?;
         stream_inserter.insert(vec![insert_request]).await?;
         stream_inserter.finish().await?;
+        producer
+            .send(customer_id.clone(), json.to_string())
+            .await
+            .map_err(|e| log_error!(e))
+            .ok();
+        producer.flush().await.map_err(|e| log_error!(e)).ok();
+
+        commit_and_flush_offsets(&mut consumer, customer_id)
+            .await
+            .map_err(|e| log_error!(e))?;
     }
     Ok(())
 }
