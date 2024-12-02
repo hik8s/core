@@ -1,3 +1,98 @@
+use serde::{Deserialize, Serialize};
+use uuid7::uuid4;
+
+use crate::types::class::vectorized::Id;
+
 pub mod config;
 pub mod connect;
 pub mod error;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceQdrantMetadata {
+    pub kind: String,
+    pub qdrant_uid: String,
+    pub resource_uid: String,
+    pub name: String,
+    pub namespace: String,
+    pub data: String,
+    pub data_type: String,
+}
+impl ResourceQdrantMetadata {
+    pub fn new(
+        kind: String,
+        resource_uid: String,
+        name: String,
+        namespace: String,
+        data: String,
+        data_type: String,
+    ) -> Self {
+        Self {
+            kind,
+            qdrant_uid: uuid4().to_string(),
+            resource_uid,
+            name,
+            namespace,
+            data,
+            data_type,
+        }
+    }
+}
+
+impl Id for ResourceQdrantMetadata {
+    fn get_id(&self) -> &str {
+        &self.qdrant_uid
+    }
+    fn get_data(&self) -> &str {
+        &self.data
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventQdrantMetadata {
+    pub apiversion: String,
+    pub kind: String,
+    pub qdrant_uid: String,
+    pub resource_uid: String,
+    pub name: String,
+    pub namespace: String,
+    pub message: String,
+    pub reason: String,
+    pub event_type: String,
+    pub data: String,
+}
+
+impl EventQdrantMetadata {
+    pub fn new(
+        apiversion: String,
+        kind: String,
+        resource_uid: String,
+        name: String,
+        namespace: String,
+        message: String,
+        reason: String,
+        event_type: String,
+        data: String,
+    ) -> Self {
+        Self {
+            apiversion,
+            kind,
+            qdrant_uid: uuid4().to_string(),
+            resource_uid,
+            name,
+            namespace,
+            message,
+            reason,
+            event_type,
+            data,
+        }
+    }
+}
+
+impl Id for EventQdrantMetadata {
+    fn get_id(&self) -> &str {
+        &self.qdrant_uid
+    }
+    fn get_data(&self) -> &str {
+        &self.data
+    }
+}

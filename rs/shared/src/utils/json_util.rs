@@ -3,7 +3,7 @@ use std::io;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-pub fn clean_json_string(s: &str) -> String {
+fn clean_json_string(s: &str) -> String {
     s.trim_matches('"').to_string()
 }
 
@@ -54,4 +54,36 @@ pub fn extract_timestamp(value: &Value, key: &str) -> i64 {
                 .ok()
         })
         .unwrap_or_default()
+}
+
+pub fn extract_remove_key(
+    json: &mut Value,
+    kind: &str,
+    metadata_map: &serde_json::Map<String, Value>,
+    key: &str,
+) -> Option<String> {
+    json.as_object_mut().and_then(|m| m.remove(key)).map(|s| {
+        let mut map = serde_json::Map::new();
+        map.insert("kind".to_string(), Value::String(kind.to_string()));
+        map.insert("spec".to_string(), s);
+
+        map.insert("metadata".to_string(), Value::Object(metadata_map.clone()));
+
+        serde_yaml::to_string(&Value::Object(map)).unwrap()
+    })
+}
+
+pub fn create_metadata_map(
+    name: &str,
+    namespace: &str,
+    uid: &str,
+) -> serde_json::Map<String, Value> {
+    let mut metadata_map = serde_json::Map::new();
+    metadata_map.insert("name".to_string(), Value::String(name.to_string()));
+    metadata_map.insert(
+        "namespace".to_string(),
+        Value::String(namespace.to_string()),
+    );
+    metadata_map.insert("uid".to_string(), Value::String(uid.to_string()));
+    metadata_map
 }

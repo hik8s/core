@@ -3,19 +3,21 @@ mod tests {
     use data_intake::error::DataIntakeError;
     use data_intake::server::initialize_data_intake;
     use data_processing::run::run_data_processing;
-    use data_vectorizer::run::run_data_vectorizer;
+    use data_vectorizer::vectorize_class;
     use rstest::rstest;
     use shared::connections::dbname::DbName;
     use shared::connections::greptime::connect::GreptimeConnection;
     use shared::connections::greptime::middleware::query::read_records;
     use shared::connections::qdrant::connect::QdrantConnection;
+    use shared::constant::OPENAI_EMBEDDING_TOKEN_LIMIT;
     use shared::get_env_var;
     use shared::mock::rocket::get_test_client;
     use shared::tracing::setup::setup_tracing;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
+    use shared::utils::ratelimit::RateLimiter;
     use std::collections::HashSet;
-    use std::sync::{Mutex, Once};
+    use std::sync::{Arc, Mutex, Once};
     use std::time::Duration;
     use tracing::info;
 
@@ -49,14 +51,13 @@ mod tests {
 
         // data processing
         THREAD_PROCESSING.call_once(|| {
-            tokio::spawn(async move {
-                run_data_processing().await.unwrap();
-            });
+            run_data_processing().unwrap();
         });
         // data vectorizer
         THREAD_VECTORIZER.call_once(|| {
             tokio::spawn(async move {
-                run_data_vectorizer().await.unwrap();
+                let limiter = Arc::new(RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT));
+                vectorize_class(limiter).await.unwrap();
             });
         });
 

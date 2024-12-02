@@ -1,4 +1,4 @@
-use crate::log_error;
+use crate::{log_error, log_error_continue};
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::TopicProducerConfigBuilder;
@@ -7,12 +7,16 @@ use fluvio::{
     Offset,
 };
 use fluvio::{spu::SpuSocketPool, Fluvio, TopicProducer};
+use futures_util::StreamExt;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use strum::IntoEnumIterator;
+use tokio::time::timeout;
 
 use super::error::FluvioConnectionError;
 use super::topic::{create_topic, FluvioTopic, TopicName};
+use super::util::get_record_key;
 
 #[derive(Clone)]
 pub struct FluvioConnection {
@@ -77,6 +81,35 @@ impl FluvioConnection {
             .await
             .map_err(|e| FluvioConnectionError::ConsumerError(log_error!(e).into()))?;
         Ok(consumer)
+    }
+
+    pub async fn next_batch(
+        &self,
+        consumer: &mut (impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin),
+        polling_interval: Duration,
+    ) -> Result<HashMap<String, Vec<ConsumerRecord>>, FluvioConnectionError> {
+        let start_time = Instant::now();
+        let mut batch: HashMap<String, Vec<ConsumerRecord>> = HashMap::new();
+
+        while start_time.elapsed() < polling_interval {
+            let result = match timeout(polling_interval, consumer.next()).await {
+                Ok(Some(Ok(record))) => Ok(record),
+                Ok(Some(Err(e))) => Err(e), // error receiving record
+                Ok(None) => continue,       // consumer stream ended (does not happen)
+                Err(_) => continue,         // no record received within the timeout
+            };
+            let record = log_error_continue!(result);
+            let customer_id = get_record_key(&record).map_err(|e| log_error!(e))?;
+
+            if let Some(records_by_key) = batch.get_mut(&customer_id) {
+                records_by_key.push(record);
+            } else {
+                let mut batch_by_key = Vec::new();
+                batch_by_key.push(record);
+                batch.insert(customer_id, batch_by_key);
+            }
+        }
+        Ok(batch)
     }
 }
 

@@ -1011,7 +1011,7 @@ dependencies = [
 
 [[package]]
 name = "data-intake"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "greptimedb-ingester",
  "multipart",
@@ -1028,7 +1028,7 @@ dependencies = [
 
 [[package]]
 name = "data-processing"
-version = "0.2.11"
+version = "0.3.0"
 dependencies = [
  "algorithm",
  "anyhow",
@@ -1047,13 +1047,15 @@ dependencies = [
 
 [[package]]
 name = "data-vectorizer"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "futures-util",
  "qdrant-client",
  "rstest",
+ "serde",
  "serde_json",
+ "serde_yaml",
  "shared",
  "thiserror 2.0.3",
  "tokio",
@@ -4505,11 +4507,13 @@ dependencies = [
  "rustls 0.23.16",
  "serde",
  "serde_json",
+ "serde_yaml",
  "sqlx",
  "strum 0.26.3",
  "thiserror 2.0.3",
  "tiktoken-rs",
  "tokio",
+ "tonic 0.12.3",
  "tracing",
  "tracing-subscriber",
  "uuid7",

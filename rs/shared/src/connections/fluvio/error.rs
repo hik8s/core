@@ -1,3 +1,5 @@
+use std::str::Utf8Error;
+
 use anyhow::Error;
 use fluvio::dataplane::link::ErrorCode;
 use thiserror::Error;
@@ -20,6 +22,8 @@ pub enum FluvioConnectionError {
     ConsumerConfigError(#[source] Error),
     #[error("Consumer error: {0}")]
     ConsumerError(#[source] Error),
+    #[error("Utf8 error: {0}")]
+    Utf8Error(#[from] Utf8Error),
 }
 
 #[derive(Error, Debug)]

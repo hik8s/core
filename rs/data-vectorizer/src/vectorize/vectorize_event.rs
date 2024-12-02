@@ -1,0 +1,129 @@
+use std::{sync::Arc, time::Duration};
+
+use serde::Serialize;
+use serde_json::{from_str, Value};
+use shared::{
+    connections::{
+        dbname::DbName,
+        openai::embeddings::request_embedding,
+        qdrant::{connect::QdrantConnection, EventQdrantMetadata},
+    },
+    fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
+    log_error, log_error_continue,
+    types::{
+        class::vectorized::{to_qdrant_points, Id},
+        tokenizer::Tokenizer,
+    },
+    utils::{get_as_option_string, get_as_ref, get_as_string, ratelimit::RateLimiter},
+};
+use tracing::info;
+
+use crate::error::DataVectorizationError;
+
+pub async fn vectorize_event(
+    limiter: Arc<RateLimiter>,
+    db: DbName,
+    topic: TopicName,
+) -> Result<(), DataVectorizationError> {
+    let fluvio = FluvioConnection::new().await?;
+    let qdrant = QdrantConnection::new().await?;
+    let mut consumer = fluvio.create_consumer(0, topic).await?;
+    let tokenizer = Tokenizer::new()?;
+    let polling_interval = Duration::from_millis(100);
+    loop {
+        // Accumulate batch
+        let mut batch = fluvio.next_batch(&mut consumer, polling_interval).await?;
+
+        // Process batch
+        for (customer_id, records) in batch.drain() {
+            // tracing::info!("ID {} | resources: {}", customer_id, records.len());
+
+            let mut chunk = vec![];
+            let mut metachunk = vec![];
+
+            let mut total_token_count = 0;
+            for record in records {
+                let data_str = String::from_utf8_lossy(record.value());
+                let mut json: Value = from_str(&data_str).map_err(|e| log_error!(e))?;
+
+                // let last_timestamp = extract_timestamp(&json, "lastTimestamp");
+                let message = get_as_option_string(&json, "message");
+                let reason = get_as_option_string(&json, "reason");
+                let event_type = get_as_option_string(&json, "type");
+
+                let resource = log_error_continue!(get_as_ref(&json, "involvedObject"));
+                let resource_apiversion =
+                    log_error_continue!(get_as_string(&resource, "apiVersion"));
+                let resource_name = log_error_continue!(get_as_string(&resource, "name"));
+                let resource_namespace = get_as_option_string(&resource, "namespace")
+                    .unwrap_or("not_namespaced".to_string());
+                let resource_kind = log_error_continue!(get_as_string(&resource, "kind"));
+                let resource_uid = log_error_continue!(get_as_string(&resource, "uid"));
+                {
+                    let metadata = json.get_mut("metadata").expect("metadata field missing");
+
+                    if let Some(metadata_obj) = metadata.as_object_mut() {
+                        metadata_obj.remove("managedFields");
+                    }
+                }
+
+                let event = serde_yaml::to_string(&json);
+
+                if let Ok(data) = event {
+                    let (data_clip, token_count) = tokenizer.clip_tail(data.clone());
+                    let resource_embedding = EventQdrantMetadata::new(
+                        resource_apiversion,
+                        resource_kind,
+                        resource_uid,
+                        resource_name,
+                        resource_namespace,
+                        message.unwrap_or_default(),
+                        reason.unwrap_or_default(),
+                        event_type.unwrap_or_default(),
+                        data,
+                    );
+                    chunk.push(data_clip);
+                    metachunk.push(resource_embedding);
+                    total_token_count += token_count;
+                }
+
+                if total_token_count > 100000 {
+                    limiter.check_rate_limit(total_token_count).await;
+                    let chunk_len =
+                        vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &customer_id, &db)
+                            .await?;
+                    info!("Vectorized {chunk_len} {db} with {total_token_count} tokens. ID: {customer_id}");
+                    total_token_count = 0;
+                }
+            }
+
+            limiter.check_rate_limit(total_token_count).await;
+            let chunk_len =
+                vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &customer_id, &db).await?;
+            info!("Vectorized {chunk_len} {db} with {total_token_count} tokens. ID: {customer_id}");
+            chunk.clear();
+            metachunk.clear();
+        }
+        // commit fluvio offset
+        commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
+    }
+    // Ok(())
+}
+
+async fn vectorize_chunk<T: Serialize + Id>(
+    chunk: &mut Vec<String>,
+    metachunk: &mut Vec<T>,
+    qdrant: &QdrantConnection,
+    customer_id: &str,
+    db: &DbName,
+) -> Result<usize, DataVectorizationError> {
+    let arrays = request_embedding(chunk).await?;
+    let qdrant_points = to_qdrant_points(metachunk, &arrays)?;
+    qdrant
+        .upsert_points(qdrant_points, &db, customer_id)
+        .await?;
+    let chunk_len = chunk.len();
+    chunk.clear();
+    metachunk.clear();
+    Ok(chunk_len)
+}

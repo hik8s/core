@@ -5,7 +5,7 @@ mod tests {
     use async_openai::{error::OpenAIError, types::ChatCompletionRequestMessage};
     use bm25::{Language, SearchEngineBuilder};
     use chat_backend::chat::process::{process_user_message, RequestOptions};
-    use data_vectorizer::vectorize::vectorize_classes;
+    use data_vectorizer::vectorize_class_batch;
     use rstest::rstest;
     use shared::{
         connections::dbname::DbName,
@@ -35,10 +35,11 @@ mod tests {
         let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
 
         // Data ingestion
-        let points = vectorize_classes(&vec![testdata.class.clone()], &tokenizer, &rate_limiter)
-            .await
-            .unwrap()
-            .0;
+        let points =
+            vectorize_class_batch(&vec![testdata.class.clone()], &tokenizer, &rate_limiter)
+                .await
+                .unwrap()
+                .0;
         let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
         qdrant
             .upsert_points(points, &DbName::Log, &customer_id)

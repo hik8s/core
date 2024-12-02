@@ -8,7 +8,8 @@ use crate::{
         TOPIC_CUSTOM_RESOURCE_PARTITIONS, TOPIC_CUSTOM_RESOURCE_REPLICAS,
         TOPIC_EVENT_BYTES_PER_RECORD, TOPIC_EVENT_NAME, TOPIC_EVENT_PARTITIONS,
         TOPIC_EVENT_REPLICAS, TOPIC_LOG_BYTES_PER_RECORD, TOPIC_LOG_NAME, TOPIC_LOG_PARTITIONS,
-        TOPIC_LOG_REPLICAS, TOPIC_RESOURCE_BYTES_PER_RECORD, TOPIC_RESOURCE_NAME,
+        TOPIC_LOG_REPLICAS, TOPIC_PROCESSED_CUSTOM_RESOURCE_NAME, TOPIC_PROCESSED_EVENT_NAME,
+        TOPIC_PROCESSED_RESOURCE_NAME, TOPIC_RESOURCE_BYTES_PER_RECORD, TOPIC_RESOURCE_NAME,
         TOPIC_RESOURCE_PARTITIONS, TOPIC_RESOURCE_REPLICAS,
     },
     log_error,
@@ -21,10 +22,13 @@ use strum::EnumIter;
 #[derive(Debug, Clone, Copy, EnumIter, Hash, Eq, PartialEq)]
 pub enum TopicName {
     Log,
-    Class,
     Event,
     Resource,
     CustomResource,
+    Class,
+    ProcessedEvent,
+    ProcessedResource,
+    ProcessedCustomResource,
 }
 
 #[derive(Clone)]
@@ -67,6 +71,24 @@ impl FluvioTopic {
                 partitions: TOPIC_CUSTOM_RESOURCE_PARTITIONS,
                 replicas: TOPIC_CUSTOM_RESOURCE_REPLICAS,
                 max_bytes: TOPIC_CUSTOM_RESOURCE_BYTES_PER_RECORD,
+            },
+            TopicName::ProcessedEvent => FluvioTopic {
+                name: TOPIC_PROCESSED_EVENT_NAME.to_owned(),
+                partitions: TOPIC_EVENT_PARTITIONS,
+                replicas: TOPIC_EVENT_REPLICAS,
+                max_bytes: TOPIC_EVENT_BYTES_PER_RECORD,
+            },
+            TopicName::ProcessedResource => FluvioTopic {
+                name: TOPIC_PROCESSED_RESOURCE_NAME.to_owned(),
+                partitions: TOPIC_RESOURCE_PARTITIONS,
+                replicas: TOPIC_RESOURCE_REPLICAS,
+                max_bytes: TOPIC_RESOURCE_BYTES_PER_RECORD,
+            },
+            TopicName::ProcessedCustomResource => FluvioTopic {
+                name: TOPIC_PROCESSED_CUSTOM_RESOURCE_NAME.to_owned(),
+                partitions: TOPIC_RESOURCE_PARTITIONS,
+                replicas: TOPIC_RESOURCE_REPLICAS,
+                max_bytes: TOPIC_RESOURCE_BYTES_PER_RECORD,
             },
         }
     }
