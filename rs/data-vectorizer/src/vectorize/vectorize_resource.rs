@@ -15,7 +15,7 @@ use shared::{
         tokenizer::Tokenizer,
     },
     utils::{
-        json_util::{get_as_option_string, get_as_string},
+        create_metadata_map, extract_remove_key, get_as_option_string, get_as_string,
         ratelimit::RateLimiter,
     },
 };
@@ -132,32 +132,4 @@ async fn vectorize_chunk<T: Serialize + Id>(
     chunk.clear();
     metachunk.clear();
     Ok(chunk_len)
-}
-
-fn extract_remove_key(
-    json: &mut Value,
-    kind: &str,
-    metadata_map: &serde_json::Map<String, Value>,
-    key: &str,
-) -> Option<String> {
-    json.as_object_mut().and_then(|m| m.remove(key)).map(|s| {
-        let mut map = serde_json::Map::new();
-        map.insert("kind".to_string(), Value::String(kind.to_string()));
-        map.insert("spec".to_string(), s);
-
-        map.insert("metadata".to_string(), Value::Object(metadata_map.clone()));
-
-        serde_yaml::to_string(&Value::Object(map)).unwrap()
-    })
-}
-
-fn create_metadata_map(name: &str, namespace: &str, uid: &str) -> serde_json::Map<String, Value> {
-    let mut metadata_map = serde_json::Map::new();
-    metadata_map.insert("name".to_string(), Value::String(name.to_string()));
-    metadata_map.insert(
-        "namespace".to_string(),
-        Value::String(namespace.to_string()),
-    );
-    metadata_map.insert("uid".to_string(), Value::String(uid.to_string()));
-    metadata_map
 }

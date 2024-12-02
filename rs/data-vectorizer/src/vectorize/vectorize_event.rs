@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use serde::Serialize;
 use serde_json::{from_str, Value};
@@ -6,7 +6,7 @@ use shared::{
     connections::{
         dbname::DbName,
         openai::embeddings::request_embedding,
-        qdrant::{connect::QdrantConnection, EventQdrantMetadata, ResourceQdrantMetadata},
+        qdrant::{connect::QdrantConnection, EventQdrantMetadata},
     },
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
     log_error, log_error_continue,
@@ -14,12 +14,9 @@ use shared::{
         class::vectorized::{to_qdrant_points, Id},
         tokenizer::Tokenizer,
     },
-    utils::{
-        json_util::{extract_timestamp, get_as_option_string, get_as_ref, get_as_string},
-        ratelimit::RateLimiter,
-    },
+    utils::{get_as_option_string, get_as_ref, get_as_string, ratelimit::RateLimiter},
 };
-use tracing::{debug, info};
+use tracing::info;
 
 use crate::error::DataVectorizationError;
 
@@ -49,7 +46,7 @@ pub async fn vectorize_event(
                 let data_str = String::from_utf8_lossy(record.value());
                 let mut json: Value = from_str(&data_str).map_err(|e| log_error!(e))?;
 
-                let last_timestamp = extract_timestamp(&json, "lastTimestamp");
+                // let last_timestamp = extract_timestamp(&json, "lastTimestamp");
                 let message = get_as_option_string(&json, "message");
                 let reason = get_as_option_string(&json, "reason");
                 let event_type = get_as_option_string(&json, "type");
@@ -129,32 +126,4 @@ async fn vectorize_chunk<T: Serialize + Id>(
     chunk.clear();
     metachunk.clear();
     Ok(chunk_len)
-}
-
-fn extract_remove_key(
-    json: &mut Value,
-    kind: &str,
-    metadata_map: &serde_json::Map<String, Value>,
-    key: &str,
-) -> Option<String> {
-    json.as_object_mut().and_then(|m| m.remove(key)).map(|s| {
-        let mut map = serde_json::Map::new();
-        map.insert("kind".to_string(), Value::String(kind.to_string()));
-        map.insert("spec".to_string(), s);
-
-        map.insert("metadata".to_string(), Value::Object(metadata_map.clone()));
-
-        serde_yaml::to_string(&Value::Object(map)).unwrap()
-    })
-}
-
-fn create_metadata_map(name: &str, namespace: &str, uid: &str) -> serde_json::Map<String, Value> {
-    let mut metadata_map = serde_json::Map::new();
-    metadata_map.insert("name".to_string(), Value::String(name.to_string()));
-    metadata_map.insert(
-        "namespace".to_string(),
-        Value::String(namespace.to_string()),
-    );
-    metadata_map.insert("uid".to_string(), Value::String(uid.to_string()));
-    metadata_map
 }

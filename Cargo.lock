@@ -4507,6 +4507,7 @@ dependencies = [
  "rustls 0.23.16",
  "serde",
  "serde_json",
+ "serde_yaml",
  "sqlx",
  "strum 0.26.3",
  "thiserror 2.0.3",

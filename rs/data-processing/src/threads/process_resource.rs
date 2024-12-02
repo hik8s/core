@@ -14,11 +14,11 @@ use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use shared::fluvio::commit_and_flush_offsets;
 use shared::{log_error, log_error_continue};
 
-use super::json_util::{
+use super::process::ProcessThreadError;
+use shared::utils::{
     extract_managed_field_timestamps, extract_timestamp, get_as_option_string, get_as_ref,
     get_as_string,
 };
-use super::process::ProcessThreadError;
 
 pub async fn process_resource(
     mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
