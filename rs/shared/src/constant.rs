@@ -31,6 +31,10 @@ pub const TOPIC_EVENT_PARTITIONS: u32 = 1;
 pub const TOPIC_EVENT_REPLICAS: u32 = 1;
 pub const TOPIC_EVENT_BYTES_PER_RECORD: usize = 131072;
 
+pub const TOPIC_PROCESSED_EVENT_NAME: &str = "processedevent";
+pub const TOPIC_PROCESSED_RESOURCE_NAME: &str = "processedresource";
+pub const TOPIC_PROCESSED_CUSTOM_RESOURCE_NAME: &str = "processedcustomresource";
+
 pub const TOPIC_RESOURCE_NAME: &str = "resource";
 pub const TOPIC_RESOURCE_PARTITIONS: u32 = 1;
 pub const TOPIC_RESOURCE_REPLICAS: u32 = 1;

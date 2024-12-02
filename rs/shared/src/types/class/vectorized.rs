@@ -8,6 +8,20 @@ use tracing::debug;
 
 use super::Class;
 
+pub trait Id {
+    fn get_id(&self) -> &str;
+    fn get_data(&self) -> &str;
+}
+
+impl Id for VectorizedClass {
+    fn get_id(&self) -> &str {
+        &self.class_id
+    }
+    fn get_data(&self) -> &str {
+        &self.representation
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct VectorizedClass {
     pub class_id: String,
@@ -49,24 +63,23 @@ impl TryFrom<ScoredPoint> for VectorizedClass {
     }
 }
 
-pub fn to_qdrant_point(
-    class: &VectorizedClass,
+pub fn to_qdrant_point<T: Serialize + Id>(
+    item: &T,
     array: [f32; EMBEDDING_USIZE],
 ) -> Result<PointStruct, JsonError> {
-    let payload = serde_json::to_string(&class)?;
+    let payload = serde_json::to_string(&item)?;
     let payload: HashMap<String, Value> = serde_json::from_str(&payload)?;
-    let point = PointStruct::new(class.class_id.clone(), array.to_vec(), payload);
+    let point = PointStruct::new(item.get_id(), array.to_vec(), payload);
     Ok(point)
 }
 
-pub fn to_qdrant_points(
-    classes: &[VectorizedClass],
+pub fn to_qdrant_points<T: Serialize + Id>(
+    data: &[T],
     arrays: &[[f32; EMBEDDING_USIZE]],
 ) -> Result<Vec<PointStruct>, JsonError> {
-    classes
-        .iter()
+    data.iter()
         .zip(arrays.iter())
-        .map(|(vectorized_class, array)| to_qdrant_point(vectorized_class, *array))
+        .map(|(item, array)| to_qdrant_point(item, *array))
         .collect()
 }
 
@@ -100,6 +113,10 @@ pub fn to_vectorized_classes(
             (vec, sum + token_count_cut as usize)
         },
     )
+}
+
+pub fn vectorize(classes: &[Class], tokenizer: &Tokenizer) -> (Vec<VectorizedClass>, usize) {
+    to_vectorized_classes(classes, tokenizer)
 }
 
 pub fn to_representations(vectorized_classes: &[VectorizedClass]) -> Vec<String> {
