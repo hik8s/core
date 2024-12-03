@@ -51,6 +51,17 @@ impl Id for ResourceQdrantMetadata {
     }
 }
 
+impl TryFrom<ScoredPoint> for ResourceQdrantMetadata {
+    type Error = serde_json::Error;
+
+    fn try_from(point: ScoredPoint) -> Result<Self, Self::Error> {
+        let payload: HashMap<String, qdrant::Value> = point.payload;
+        let json_value = serde_json::to_value(payload)?;
+        let resource: ResourceQdrantMetadata = serde_json::from_value(json_value)?;
+        Ok(resource)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventQdrantMetadata {
     pub apiversion: String,

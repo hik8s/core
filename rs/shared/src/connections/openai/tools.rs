@@ -6,7 +6,6 @@ use async_openai::types::{
 use qdrant_client::qdrant::ScoredPoint;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::info;
 
 use std::fmt;
 
@@ -14,12 +13,10 @@ use crate::{
     connections::{
         dbname::DbName,
         qdrant::{
-            connect::{create_filter, QdrantConnection},
-            error::QdrantConnectionError, EventQdrantMetadata,
+            connect::{create_filter, create_filter_with_data_type, QdrantConnection},
+            error::QdrantConnectionError, EventQdrantMetadata, ResourceQdrantMetadata,
         },
-    },
-    testdata::UserTestData,
-    types::class::vectorized::VectorizedClass,
+    }, log_error, testdata::UserTestData, types::class::vectorized::VectorizedClass
 };
 
 use super::embeddings::request_embedding;
@@ -80,12 +77,46 @@ impl EventRetrievalArgs {
         prompt
     }
 }
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct ResourceStatusRetrievalArgs {
+    pub namespace: Option<String>,
+    pub name: Option<String>,
+    pub kind: Option<String>,
+    pub intention: String,
+}
+
+impl TryFrom<String> for ResourceStatusRetrievalArgs {
+    type Error = serde_json::Error;
+
+    fn try_from(json_string: String) -> Result<Self, Self::Error> {
+        serde_json::from_str(&json_string)
+    }
+}
+
+impl ResourceStatusRetrievalArgs {
+    pub fn search_prompt(&self, user_message: &str) -> String {
+        let mut prompt: String = user_message.to_string();
+        prompt.push_str(format!("\nUser intention: {}", self.intention).as_str());
+        
+        if let Some(kind) = &self.kind {
+            prompt.push_str(&format!("\nKind: {}", kind));
+        }
+        if let Some(name) = &self.name {
+            prompt.push_str(&format!("\nName: {}", name));
+        }
+        if let Some(namespace) = &self.namespace {
+            prompt.push_str(&format!("\nNamespace: {}", namespace));
+        }
+        prompt
+    }
+}
 
 #[derive(Debug)]
 pub enum Tool {
     ClusterOverview,
     LogRetrieval(LogRetrievalArgs),
     EventRetrieval(EventRetrievalArgs),
+    ResourceStatusRetrieval(ResourceStatusRetrievalArgs),
 }
 
 impl fmt::Display for Tool {
@@ -94,6 +125,7 @@ impl fmt::Display for Tool {
             Tool::ClusterOverview => "cluster-overview",
             Tool::LogRetrieval(_) => "log-retrieval",
             Tool::EventRetrieval(_) => "event-retrieval",
+            Tool::ResourceStatusRetrieval(_) => "resource-status-retrieval",
         };
         write!(f, "{}", tool_name)
     }
@@ -107,6 +139,7 @@ impl TryFrom<FunctionCall> for Tool {
             "cluster-overview" => Ok(Tool::ClusterOverview),
             "log-retrieval" => Ok(Tool::LogRetrieval(arguments.try_into().unwrap())),
             "event-retrieval" => Ok(Tool::EventRetrieval(arguments.try_into().unwrap())),
+            "resource-status-retrieval" => Ok(Tool::ResourceStatusRetrieval(arguments.try_into().unwrap())),
             _ => Err(format!("Could not parse tool name: {}", name)),
         }
     }
@@ -191,6 +224,34 @@ impl Tool {
                 })),
                 strict: Some(true),
             },
+            Tool::ResourceStatusRetrieval(_) => FunctionObject {
+                name: self.to_string(),
+                description: Some("Retrieve the status key of resources from the kubernetes cluster".to_string()),
+                parameters: Some(json!({
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": ["string", "null"],
+                            "description": "Name of the resource or associated application, service, or container",
+                        },
+                        "namespace": {
+                            "type": ["string", "null"],
+                            "description": "Name of the namespace"
+                        },
+                        "kind": {
+                            "type": ["string", "null"],
+                            "description": "Resource kind"
+                        },
+                        "intention": {
+                            "type": "string",
+                            "description": "The users intention. What does the user want to achieve and what information should the resource status contain?"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["name", "namespace", "kind", "intention"]
+                })),
+                strict: Some(true),
+            },
         }
     }
     pub async fn request(
@@ -225,6 +286,17 @@ impl Tool {
                     .collect::<String>();
                 Ok(format!("{header}\n{result}"))
             }
+            Tool::ResourceStatusRetrieval(args) => {
+                let search_prompt = args.search_prompt(user_message);
+                let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
+                let filter = create_filter_with_data_type(args.namespace.as_ref(), args.name.as_ref(), "status");
+                let resource_status = qdrant.search_points(&DbName::Resource, customer_id, array, filter, 30).await?;
+                let result = resource_status
+                    .into_iter()
+                    .map(|sp| format_resource_status(sp).map_err(|e| log_error!(e)).unwrap_or_default())
+                    .collect::<String>();
+                Ok(result)
+            }
         }
     }
     pub fn test_request(&self) -> String {
@@ -232,6 +304,7 @@ impl Tool {
             Tool::ClusterOverview => "We got a bunch of pods here and then theres this huge pile of containers in this corner of the cluster".to_string(),
             Tool::LogRetrieval(_) => "OOMKilled exit code 137".to_owned(),
             Tool::EventRetrieval(_) => "message: Stopping container hello-server\nreason: Killing".to_owned(),
+            Tool::ResourceStatusRetrieval(_) => "Resource status: OOMKilled exit code 137".to_owned(),
         }
     }
 }
@@ -299,6 +372,16 @@ pub fn format_event(sp: ScoredPoint) -> Result<String, serde_json::Error> {
     Ok(format!(
         "{}: Object: {}/{}, Type: {}, Reason: {}, Message: {}, Score: {}\n",
         event.namespace, event.kind, event.name, event.event_type, event.reason, event.message, score
+    ))
+}
+
+pub fn format_resource_status(sp: ScoredPoint) -> Result<String, serde_json::Error> {
+    let score = sp.score;
+    let resource = ResourceQdrantMetadata::try_from(sp)?;
+
+    Ok(format!(
+        "{}: Object: {}/{}, Status: {}, Score: {}\n",
+        resource.namespace, resource.kind, resource.name, resource.data, score
     ))
 }
 

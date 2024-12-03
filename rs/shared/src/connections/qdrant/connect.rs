@@ -138,6 +138,23 @@ pub fn create_filter(namespace: Option<&String>, application: Option<&String>) -
     Filter::must(conditions)
 }
 
+pub fn create_filter_with_data_type(
+    namespace: Option<&String>,
+    application: Option<&String>,
+    data_type: &str,
+) -> Filter {
+    let mut conditions = Vec::new();
+    conditions.push(Condition::matches("data_type", data_type.to_owned()));
+    if let Some(val) = namespace {
+        conditions.push(Condition::matches("namespace", val.to_owned()));
+    }
+    if let Some(val) = application {
+        conditions.push(Condition::matches("key", val.to_owned()));
+    }
+
+    Filter::must(conditions)
+}
+
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for QdrantConnection {
     type Error = ();
