@@ -3,7 +3,8 @@ use std::sync::Arc;
 use qdrant_client::{
     qdrant::{
         Condition, CreateCollectionBuilder, Distance, Filter, PointStruct, PointsOperationResponse,
-        QueryPointsBuilder, SearchPointsBuilder, UpsertPointsBuilder, VectorParamsBuilder,
+        QueryPointsBuilder, ScoredPoint, SearchPointsBuilder, UpsertPointsBuilder,
+        VectorParamsBuilder,
     },
     Qdrant, QdrantError,
 };
@@ -73,7 +74,7 @@ impl QdrantConnection {
         db: &DbName,
         customer_id: &str,
     ) -> Result<PointsOperationResponse, QdrantConnectionError> {
-        self.create_collection(&db, customer_id).await?;
+        self.create_collection(db, customer_id).await?;
         let request = UpsertPointsBuilder::new(db.id(customer_id), qdrant_point).wait(false);
         let response = self.client.upsert_points(request).await?;
         Ok(response)
@@ -92,6 +93,20 @@ impl QdrantConnection {
         let response = self.client.search_points(request).await?;
         let vectorized_classes = from_scored_point(response.result)?;
         Ok(vectorized_classes)
+    }
+    pub async fn search_points(
+        &self,
+        db: &DbName,
+        customer_id: &str,
+        array: [f32; EMBEDDING_USIZE],
+        filter: Filter,
+        limit: u64,
+    ) -> Result<Vec<ScoredPoint>, QdrantConnectionError> {
+        let request = SearchPointsBuilder::new(db.id(customer_id), array.to_vec(), limit)
+            .filter(filter)
+            .with_payload(true);
+        let response = self.client.search_points(request).await?;
+        Ok(response.result)
     }
     pub async fn search_key(
         &self,

@@ -17,6 +17,7 @@ pub enum UserTest {
     RetrieveLogsAppNamespace,
     LogsAppNamespace,
     LogsAppNamespaceForMe,
+    RetrieveEvent,
     PodKillOutOffMemory,
 }
 
@@ -28,6 +29,7 @@ impl UserTest {
             UserTest::RetrieveLogsForMe => format!("Could you retrieve logs for me?"),
             UserTest::RetrieveLogsForClusterForMe => format!("Could you retrieve logs for the cluster for me?"),
             UserTest::RetrieveLogsAppNamespace => format!("Could you investigate the logs from {} in {}?", &meta.pod_name, &meta.namespace),
+            UserTest::RetrieveEvent => "Please retrieve events for me".to_string(),
             UserTest::LogsAppNamespace => format!("{} logs in {}?", &meta.pod_name, &meta.namespace),
             UserTest::LogsAppNamespaceForMe => format!("{} logs in {} for me?", &meta.pod_name, &meta.namespace),
             UserTest::PodKillOutOffMemory => format!("I have a problem with my application called {} in namespace {}? Could you investigate the logs and also provide an overview of the cluster?", &meta.pod_name, &meta.namespace),
@@ -41,6 +43,7 @@ impl UserTest {
     }
 }
 
+#[derive(Debug)]
 pub struct UserTestData {
     pub prompt: String,
     pub class: Class,

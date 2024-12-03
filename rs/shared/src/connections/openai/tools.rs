@@ -3,8 +3,10 @@ use async_openai::types::{
     ChatCompletionToolType, FunctionCall, FunctionObject,
 };
 
+use qdrant_client::qdrant::ScoredPoint;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tracing::info;
 
 use std::fmt;
 
@@ -13,7 +15,7 @@ use crate::{
         dbname::DbName,
         qdrant::{
             connect::{create_filter, QdrantConnection},
-            error::QdrantConnectionError,
+            error::QdrantConnectionError, EventQdrantMetadata,
         },
     },
     testdata::UserTestData,
@@ -44,10 +46,46 @@ impl TryFrom<String> for LogRetrievalArgs {
         serde_json::from_str(&json_string)
     }
 }
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct EventRetrievalArgs {
+    pub namespace: Option<String>,
+    pub application: Option<String>,
+    pub kind: Option<String>,
+    pub intention: String,
+}
+
+impl TryFrom<String> for EventRetrievalArgs {
+    type Error = serde_json::Error;
+
+    fn try_from(json_string: String) -> Result<Self, Self::Error> {
+        serde_json::from_str(&json_string)
+    }
+}
+
+impl EventRetrievalArgs {
+    pub fn search_prompt(&self, user_message: &str) -> String {
+        let mut prompt: String = user_message.to_string();
+        prompt.push_str(format!("\nUser intention: {}", self.intention).as_str());
+    
+        if self.application.is_some() {
+            prompt.push_str(&format!("\nApplication: {}", self.application.as_ref().unwrap()));
+        }
+        if self.namespace.is_some() {
+            prompt.push_str(&format!("\nNamespace: {}", self.namespace.as_ref().unwrap()));
+        }
+        if self.kind.is_some() {
+            prompt.push_str(&format!("\nKind: {}", self.kind.as_ref().unwrap()));
+        }
+        prompt
+    }
+}
+
 #[derive(Debug)]
 pub enum Tool {
     ClusterOverview,
     LogRetrieval(LogRetrievalArgs),
+    EventRetrieval(EventRetrievalArgs),
 }
 
 impl fmt::Display for Tool {
@@ -55,6 +93,7 @@ impl fmt::Display for Tool {
         let tool_name = match self {
             Tool::ClusterOverview => "cluster-overview",
             Tool::LogRetrieval(_) => "log-retrieval",
+            Tool::EventRetrieval(_) => "event-retrieval",
         };
         write!(f, "{}", tool_name)
     }
@@ -67,6 +106,7 @@ impl TryFrom<FunctionCall> for Tool {
         match name.as_str() {
             "cluster-overview" => Ok(Tool::ClusterOverview),
             "log-retrieval" => Ok(Tool::LogRetrieval(arguments.try_into().unwrap())),
+            "event-retrieval" => Ok(Tool::EventRetrieval(arguments.try_into().unwrap())),
             _ => Err(format!("Could not parse tool name: {}", name)),
         }
     }
@@ -97,6 +137,9 @@ impl Tool {
                 strict: Some(true),
             },
             Tool::LogRetrieval(_) => FunctionObject {
+                // No args are used, because this is used to instruct the model on how to call the tool.
+                // Args are then filled by the model
+                // TODO: derive the parameters from the args, e.g. special serialization impl
                 name: self.to_string(),
                 description: Some("Retrieve logs from the kubernetes cluster".to_string()),
                 parameters: Some(json!({
@@ -120,6 +163,34 @@ impl Tool {
                 })),
                 strict: Some(true),
             },
+            Tool::EventRetrieval(_) => FunctionObject {
+                name: self.to_string(),
+                description: Some("Retrieve events from the kubernetes cluster".to_string()),
+                parameters: Some(json!({
+                    "type": "object",
+                    "properties": {
+                        "application": {
+                            "type": ["string", "null"],
+                            "description": "Name of the application, service, or container",
+                        },
+                        "namespace": {
+                            "type": ["string", "null"],
+                            "description": "Name of the namespace"
+                        },
+                        "kind": {
+                            "type": ["string", "null"],
+                            "description": "Name of the resource kind"
+                        },
+                        "intention": {
+                            "type": "string",
+                            "description": "The users intention. What does the user want to achieve and what information should the events contain?"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["application", "namespace", "kind", "intention"]
+                })),
+                strict: Some(true),
+            },
         }
     }
     pub async fn request(
@@ -140,13 +211,27 @@ impl Tool {
                     .map(|vc| format_log_entry(&vc))
                     .collect::<String>();
                 Ok(result)
-            },
+            }, 
+            Tool::EventRetrieval(args) =>   { 
+                let search_prompt = args.search_prompt(user_message);
+                let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
+                let filter = create_filter(None, None);
+                let events = qdrant.search_points(&DbName::Event, customer_id, array, filter, 30).await?;
+                
+                let header = "These are events in the format. Namespace: Object: kind/name, Type: ..., Reason: ..., Message: ..., Score: ...".to_string();
+                let result = events
+                    .into_iter()
+                    .map(|vc| format_event(vc).unwrap_or_default())
+                    .collect::<String>();
+                Ok(format!("{header}\n{result}"))
+            }
         }
     }
     pub fn test_request(&self) -> String {
         match self {
             Tool::ClusterOverview => "We got a bunch of pods here and then theres this huge pile of containers in this corner of the cluster".to_string(),
             Tool::LogRetrieval(_) => "OOMKilled exit code 137".to_owned(),
+            Tool::EventRetrieval(_) => "message: Stopping container hello-server\nreason: Killing".to_owned(),
         }
     }
 }
@@ -198,9 +283,6 @@ pub fn create_search_prompt(user_message: &str, args: &LogRetrievalArgs) -> Stri
     let mut prompt = user_message.to_string();
     prompt.push_str(format!("\nUser intention: {}", args.intention).as_str());
 
-    // if !args.keywords.is_empty() {
-    //     prompt.push_str(&format!("\nKeywords: {}", self.keywords.join(",")));
-    // }
     prompt
 }
 
@@ -209,6 +291,15 @@ pub fn format_log_entry(vc: &VectorizedClass) -> String {
         "\n{}/{}, Score {}: {}",
         vc.namespace, vc.key, vc.score, vc.representation
     )
+}
+
+pub fn format_event(sp: ScoredPoint) -> Result<String, serde_json::Error> {
+    let score = sp.score;
+    let event = EventQdrantMetadata::try_from(sp)?;
+    Ok(format!(
+        "{}: Object: {}/{}, Type: {}, Reason: {}, Message: {}, Score: {}\n",
+        event.namespace, event.kind, event.name, event.event_type, event.reason, event.message, score
+    ))
 }
 
 #[cfg(test)]
@@ -348,6 +439,8 @@ mod tests {
         }
         assert!(!answer.is_empty());
         assert!(tool_call_chunks.is_empty());
+        tracing::debug!("Messages: {:#?}", messages);
+        tracing::debug!("Answer: {}", answer);
         Ok(())
     }
 }

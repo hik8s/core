@@ -15,7 +15,7 @@ use tokio::sync::mpsc;
 use crate::constant::OPENAI_CHAT_MODEL_MINI;
 
 use super::messages::create_simple_system_message;
-use super::tools::{LogRetrievalArgs, Tool};
+use super::tools::{EventRetrievalArgs, LogRetrievalArgs, Tool};
 
 pub struct OpenAIConnection {
     pub client: Client<OpenAIConfig>,
@@ -56,7 +56,10 @@ impl OpenAIConnection {
         // the args are not required for ChatCompletionTool
         let log_retrieval: ChatCompletionTool =
             Tool::LogRetrieval(LogRetrievalArgs::default()).into();
-        let tools = vec![log_retrieval, Tool::ClusterOverview.into()];
+        let event_retrieval: ChatCompletionTool =
+            Tool::EventRetrieval(EventRetrievalArgs::default()).into();
+
+        let tools = vec![log_retrieval, Tool::ClusterOverview.into(), event_retrieval];
         self.request_builder(messages, model, 1024, Some(num_choices), None, Some(tools))
     }
     // CHAT COMPLETION
