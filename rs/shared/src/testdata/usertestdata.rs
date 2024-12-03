@@ -19,6 +19,7 @@ pub enum UserTest {
     LogsAppNamespaceForMe,
     RetrieveEvent,
     RetrieveResourceStatus,
+    RetrieveCustomResourceStatus,
     PodKillOutOffMemory,
 }
 
@@ -32,6 +33,7 @@ impl UserTest {
             UserTest::RetrieveLogsAppNamespace => format!("Could you investigate the logs from {} in {}?", &meta.pod_name, &meta.namespace),
             UserTest::RetrieveEvent => "Please retrieve events for me".to_string(),
             UserTest::RetrieveResourceStatus => "Please retrieve resource status for me".to_string(),
+            UserTest::RetrieveCustomResourceStatus => "Please retrieve status of custom resources for me. There seems to be a problem with a certificate in examples namespace.".to_string(),
             UserTest::LogsAppNamespace => format!("{} logs in {}?", &meta.pod_name, &meta.namespace),
             UserTest::LogsAppNamespaceForMe => format!("{} logs in {} for me?", &meta.pod_name, &meta.namespace),
             UserTest::PodKillOutOffMemory => format!("I have a problem with my application called {} in namespace {}? Could you investigate the logs and also provide an overview of the cluster?", &meta.pod_name, &meta.namespace),

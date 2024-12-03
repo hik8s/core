@@ -60,12 +60,15 @@ impl OpenAIConnection {
             Tool::EventRetrieval(EventRetrievalArgs::default()).into();
         let resource_status_retrieval: ChatCompletionTool =
             Tool::ResourceStatusRetrieval(ResourceStatusRetrievalArgs::default()).into();
+        let customresource_status_retrieval: ChatCompletionTool =
+            Tool::CustomResourceStatusRetrieval(ResourceStatusRetrievalArgs::default()).into();
 
         let tools = vec![
             log_retrieval,
             Tool::ClusterOverview.into(),
             event_retrieval,
             resource_status_retrieval,
+            customresource_status_retrieval,
         ];
         self.request_builder(messages, model, 1024, Some(num_choices), None, Some(tools))
     }
