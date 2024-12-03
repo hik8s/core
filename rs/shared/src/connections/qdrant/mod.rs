@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use qdrant_client::qdrant;
+use qdrant_client::qdrant::ScoredPoint;
 use serde::{Deserialize, Serialize};
 use uuid7::uuid4;
 
@@ -47,6 +51,17 @@ impl Id for ResourceQdrantMetadata {
     }
 }
 
+impl TryFrom<ScoredPoint> for ResourceQdrantMetadata {
+    type Error = serde_json::Error;
+
+    fn try_from(point: ScoredPoint) -> Result<Self, Self::Error> {
+        let payload: HashMap<String, qdrant::Value> = point.payload;
+        let json_value = serde_json::to_value(payload)?;
+        let resource: ResourceQdrantMetadata = serde_json::from_value(json_value)?;
+        Ok(resource)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventQdrantMetadata {
     pub apiversion: String,
@@ -85,6 +100,17 @@ impl EventQdrantMetadata {
             event_type,
             data,
         }
+    }
+}
+
+impl TryFrom<ScoredPoint> for EventQdrantMetadata {
+    type Error = serde_json::Error;
+
+    fn try_from(point: ScoredPoint) -> Result<Self, Self::Error> {
+        let payload: HashMap<String, qdrant::Value> = point.payload;
+        let json_value = serde_json::to_value(payload)?;
+        let event: EventQdrantMetadata = serde_json::from_value(json_value)?;
+        Ok(event)
     }
 }
 

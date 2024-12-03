@@ -53,12 +53,12 @@ pub async fn vectorize_event(
 
                 let resource = log_error_continue!(get_as_ref(&json, "involvedObject"));
                 let resource_apiversion =
-                    log_error_continue!(get_as_string(&resource, "apiVersion"));
-                let resource_name = log_error_continue!(get_as_string(&resource, "name"));
-                let resource_namespace = get_as_option_string(&resource, "namespace")
+                    log_error_continue!(get_as_string(resource, "apiVersion"));
+                let resource_name = log_error_continue!(get_as_string(resource, "name"));
+                let resource_namespace = get_as_option_string(resource, "namespace")
                     .unwrap_or("not_namespaced".to_string());
-                let resource_kind = log_error_continue!(get_as_string(&resource, "kind"));
-                let resource_uid = log_error_continue!(get_as_string(&resource, "uid"));
+                let resource_kind = log_error_continue!(get_as_string(resource, "kind"));
+                let resource_uid = log_error_continue!(get_as_string(resource, "uid"));
                 {
                     let metadata = json.get_mut("metadata").expect("metadata field missing");
 
@@ -110,7 +110,7 @@ pub async fn vectorize_event(
     // Ok(())
 }
 
-async fn vectorize_chunk<T: Serialize + Id>(
+pub async fn vectorize_chunk<T: Serialize + Id>(
     chunk: &mut Vec<String>,
     metachunk: &mut Vec<T>,
     qdrant: &QdrantConnection,
@@ -119,9 +119,7 @@ async fn vectorize_chunk<T: Serialize + Id>(
 ) -> Result<usize, DataVectorizationError> {
     let arrays = request_embedding(chunk).await?;
     let qdrant_points = to_qdrant_points(metachunk, &arrays)?;
-    qdrant
-        .upsert_points(qdrant_points, &db, customer_id)
-        .await?;
+    qdrant.upsert_points(qdrant_points, db, customer_id).await?;
     let chunk_len = chunk.len();
     chunk.clear();
     metachunk.clear();

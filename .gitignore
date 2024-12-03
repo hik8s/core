@@ -2,4 +2,4 @@
 .env
 .vscode
 qdrant_storage
-.testdata
+.testdata*
