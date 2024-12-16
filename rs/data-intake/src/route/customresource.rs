@@ -5,6 +5,7 @@ use rocket::serde::json::Json;
 use shared::fluvio::{FluvioConnection, TopicName};
 use shared::log_error;
 use shared::router::auth::guard::AuthenticatedUser;
+use shared::utils::get_as_string;
 
 #[post("/customresource", format = "json", data = "<customresource>")]
 pub async fn customresource_intake(
@@ -12,14 +13,18 @@ pub async fn customresource_intake(
     fluvio: FluvioConnection,
     customresource: Json<serde_json::Value>,
 ) -> Result<String, DataIntakeError> {
-    // let resource_json = customresource.clone().into_inner();
-    // save_resource(&resource_json, "customresource").unwrap();
+    let cr = customresource.into_inner();
+    let kind = get_as_string(&cr, "kind").map_err(|e| log_error!(e));
+
+    if let Ok(kind) = kind {
+        if kind.to_lowercase() == "partition" {
+            return Ok("Success".to_string());
+        }
+    }
+
     let producer = fluvio.get_producer(TopicName::CustomResource);
     producer
-        .send(
-            user.customer_id.clone(),
-            customresource.into_inner().to_string(),
-        )
+        .send(user.customer_id.clone(), cr.to_string())
         .await
         .map_err(|e| log_error!(e))
         .ok();
@@ -36,6 +41,13 @@ pub async fn customresources_intake(
 ) -> Result<String, DataIntakeError> {
     let producer = fluvio.get_producer(TopicName::CustomResource);
     for cr in customresources.into_inner() {
+        let kind = get_as_string(&cr, "kind").map_err(|e| log_error!(e));
+
+        if let Ok(kind) = kind {
+            if kind.to_lowercase() == "partition" {
+                continue;
+            }
+        }
         producer
             .send(user.customer_id.clone(), cr.to_string())
             .await
