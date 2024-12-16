@@ -1,6 +1,12 @@
 use serde_json::Value;
 
-use super::whitelist::RESOURCE_STATUS_ALLOWED_KEYS;
+pub const RESOURCE_STATUS_ALLOWED_KEYS: &[&str] = &[
+    "status.conditions",
+    "status.containerStatuses",
+    "status.leader.spu",
+];
+
+pub const RESOURCE_IGNORE_KEYS: &[&str] = &["metadata.resourceVersion", "metadata.managedFields"];
 
 #[derive(Debug, PartialEq)]
 pub struct Difference {
@@ -47,6 +53,13 @@ fn compare_values(old: &Value, new: &Value, path: String, differences: &mut Vec<
 }
 
 fn is_whitelisted_status_key(path: &str, value: &Value) -> bool {
+    if RESOURCE_IGNORE_KEYS
+        .iter()
+        .any(|&ignore_key| path.starts_with(ignore_key))
+    {
+        return false;
+    }
+
     if !path.starts_with("status") {
         return true; // Not a status field, allow all
     }
@@ -172,7 +185,13 @@ mod tests {
                 "name": "classes-0",
                 "namespace": "fluvio-stag",
                 "uid": "ea9dc3ff-0900-4f4d-b56b-b34011d2ba1f",
-                "resourceVersion": "66423481"
+                "resourceVersion": "66423481",
+                "managedFields": {
+                    "some_test_array_object": [{"number": 123}],
+                    "some_number": 123,
+                    "subresource": "status",
+                    "time": "2024-12-15T19:52:08Z"
+                },
             },
             "spec": {
                 "compressionType": "Any",
@@ -203,7 +222,13 @@ mod tests {
                 "name": "classes-0",
                 "namespace": "fluvio-stag",
                 "uid": "ea9dc3ff-0900-4f4d-b56b-b34011d2ba1f",
-                "resourceVersion": "66423482" // should be considered
+                "resourceVersion": "66423482", // should be considered
+                "managedFields": {
+                    "some_test_array_object": [{"number": 567}],
+                    "some_number": 567,
+                    "subresource": "status",
+                    "time": "2024-12-15T19:63:08Z"
+                },
             },
             "spec": {
                 "compressionType": "Any",
@@ -231,12 +256,6 @@ mod tests {
 
         let expected = vec![
             Difference {
-                path: "metadata.resourceVersion".to_string(),
-                old_value: Some(json!("66423481")),
-                new_value: Some(json!("66423482")),
-                diff_type: DiffType::Modified,
-            },
-            Difference {
                 path: "spec.leader".to_string(),
                 old_value: Some(json!(100)),
                 new_value: Some(json!(101)),
@@ -255,7 +274,7 @@ mod tests {
                 diff_type: DiffType::Modified,
             },
         ];
-        assert_eq!(differences.len(), 4);
+        assert_eq!(differences.len(), expected.len());
         assert_eq!(differences, expected);
     }
 
@@ -344,12 +363,6 @@ mod tests {
         let differences = compare_json(&old, &new);
 
         let expected = vec![
-            Difference {
-                path: "metadata.resourceVersion".to_string(),
-                old_value: Some(json!("141509498")),
-                new_value: Some(json!("141509504")),
-                diff_type: DiffType::Modified,
-            },
             Difference {
                 path: "status.conditions[0].status".to_string(),
                 old_value: Some(json!("True")),
