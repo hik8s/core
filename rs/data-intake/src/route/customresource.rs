@@ -18,7 +18,6 @@ pub async fn customresource_intake(
 
     if let Ok(kind) = kind {
         if kind.to_lowercase() == "partition" {
-            tracing::info!("Partition resource detected, skipping");
             return Ok("Success".to_string());
         }
     }
@@ -46,7 +45,6 @@ pub async fn customresources_intake(
 
         if let Ok(kind) = kind {
             if kind.to_lowercase() == "partition" {
-                tracing::info!("Partition resource detected, skipping");
                 continue;
             }
         }
