@@ -18,7 +18,16 @@ pub async fn customresource_intake(
 
     if let Ok(kind) = kind {
         if kind.to_lowercase() == "partition" {
-            return Ok("Success".to_string());
+            return Ok("Skip partition".to_string());
+        }
+        if kind.to_lowercase() == "kustomization" {
+            return Ok("Skip kustomization".to_string());
+        }
+        if kind.to_lowercase() == "ciliumendpoint" {
+            return Ok("Skip ciliumendpoint".to_string());
+        }
+        if kind.to_lowercase() == "ciliumidentity" {
+            return Ok("Skip ciliumidentity".to_string());
         }
     }
 
@@ -45,6 +54,15 @@ pub async fn customresources_intake(
 
         if let Ok(kind) = kind {
             if kind.to_lowercase() == "partition" {
+                continue;
+            }
+            if kind.to_lowercase() == "kustomization" {
+                continue;
+            }
+            if kind.to_lowercase() == "ciliumendpoint" {
+                continue;
+            }
+            if kind.to_lowercase() == "ciliumidentity" {
                 continue;
             }
         }
