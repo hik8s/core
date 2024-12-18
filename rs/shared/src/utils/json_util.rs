@@ -65,7 +65,7 @@ pub fn extract_remove_key(
     json.as_object_mut().and_then(|m| m.remove(key)).map(|s| {
         let mut map = serde_json::Map::new();
         map.insert("kind".to_string(), Value::String(kind.to_string()));
-        map.insert("spec".to_string(), s);
+        map.insert(key.to_string(), s);
 
         map.insert("metadata".to_string(), Value::Object(metadata_map.clone()));
 

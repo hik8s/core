@@ -5,6 +5,7 @@ use rocket::serde::json::Json;
 use shared::fluvio::{FluvioConnection, TopicName};
 use shared::log_error;
 use shared::router::auth::guard::AuthenticatedUser;
+use shared::utils::get_as_ref;
 
 #[post("/resource", format = "json", data = "<resource>")]
 pub async fn resource_intake(
@@ -13,8 +14,21 @@ pub async fn resource_intake(
     resource: Json<serde_json::Value>,
 ) -> Result<String, DataIntakeError> {
     let producer = fluvio.get_producer(TopicName::Resource);
+    let json = resource.into_inner();
+    let metadata = get_as_ref(&json, "metadata").map_err(|e| log_error!(e))?;
+    if let Some(owner_refs) = metadata.get("ownerReferences") {
+        if let Some(refs) = owner_refs.as_array() {
+            if refs.len() == 1 {
+                if let Some(owner) = refs.first() {
+                    if owner.get("kind").and_then(|k| k.as_str()) == Some("Job") {
+                        return Ok("Skipping Job pod".to_string());
+                    }
+                }
+            }
+        }
+    }
     producer
-        .send(user.customer_id.clone(), resource.into_inner().to_string())
+        .send(user.customer_id.clone(), json.to_string())
         .await
         .map_err(|e| log_error!(e))
         .ok();
@@ -32,6 +46,18 @@ pub async fn resources_intake(
     let producer = fluvio.get_producer(TopicName::Resource);
 
     for resource in resources.into_inner() {
+        let metadata = get_as_ref(&resource, "metadata").map_err(|e| log_error!(e))?;
+        if let Some(owner_refs) = metadata.get("ownerReferences") {
+            if let Some(refs) = owner_refs.as_array() {
+                if refs.len() == 1 {
+                    if let Some(owner) = refs.first() {
+                        if owner.get("kind").and_then(|k| k.as_str()) == Some("Job") {
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
         producer
             .send(user.customer_id.clone(), resource.to_string())
             .await

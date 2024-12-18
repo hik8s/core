@@ -40,6 +40,8 @@ pub enum DataIntakeError {
     GreptimeError(#[from] GreptimeConnectionError),
     #[error("Rocket error: {0}")]
     RocketError(#[from] rocket::Error),
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
 }
 
 impl From<DataIntakeError> for Status {
@@ -96,6 +98,10 @@ impl From<DataIntakeError> for Status {
             }
             DataIntakeError::GreptimeError(_) => Status::InternalServerError,
             DataIntakeError::RocketError(_) => Status::InternalServerError,
+            DataIntakeError::IoError(e) => {
+                error!("Io Error: {:?}", e);
+                Status::InternalServerError
+            }
         }
     }
 }
