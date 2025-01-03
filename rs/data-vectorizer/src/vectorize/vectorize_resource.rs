@@ -6,7 +6,10 @@ use shared::{
     connections::{
         dbname::DbName,
         openai::embeddings::request_embedding,
-        qdrant::{connect::QdrantConnection, ResourceQdrantMetadata},
+        qdrant::{
+            connect::{update_deleted_resources, QdrantConnection},
+            ResourceQdrantMetadata,
+        },
     },
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
     log_error, log_error_continue,
@@ -41,8 +44,9 @@ pub async fn vectorize_resource(
         for (customer_id, records) in batch.drain() {
             // tracing::info!("ID {} | resources: {}", customer_id, records.len());
 
-            let mut chunk = vec![];
-            let mut metachunk = vec![];
+            let mut chunk: Vec<String> = vec![];
+            let mut metachunk: Vec<ResourceQdrantMetadata> = vec![];
+            let mut uids_deleted: Vec<String> = vec![];
 
             let mut total_token_count = 0;
             for record in records {
@@ -53,7 +57,13 @@ pub async fn vectorize_resource(
 
                 let name = log_error_continue!(get_as_string(metadata, "name"));
                 let uid = log_error_continue!(get_as_string(metadata, "uid"));
-
+                let deletion_ts = get_as_option_string(metadata, "deletionTimestamp");
+                if let Some(deletion_ts) = deletion_ts {
+                    if !deletion_ts.is_empty() {
+                        uids_deleted.push(uid.clone());
+                        continue;
+                    }
+                }
                 let namespace = get_as_option_string(metadata, "namespace")
                     .unwrap_or("not_namespaced".to_string());
 
@@ -107,8 +117,11 @@ pub async fn vectorize_resource(
             let chunk_len =
                 vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &customer_id, &db).await?;
             info!("Vectorized {chunk_len} {db} with {total_token_count} tokens. ID: {customer_id}");
+            update_deleted_resources(&qdrant, &customer_id, &db, &uids_deleted).await?;
+
             chunk.clear();
             metachunk.clear();
+            uids_deleted.clear();
         }
         // commit fluvio offset
         commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
@@ -125,9 +138,7 @@ async fn vectorize_chunk<T: Serialize + Id>(
 ) -> Result<usize, DataVectorizationError> {
     let arrays = request_embedding(chunk).await?;
     let qdrant_points = to_qdrant_points(metachunk, &arrays)?;
-    qdrant
-        .upsert_points(qdrant_points, &db, customer_id)
-        .await?;
+    qdrant.upsert_points(qdrant_points, db, customer_id).await?;
     let chunk_len = chunk.len();
     chunk.clear();
     metachunk.clear();

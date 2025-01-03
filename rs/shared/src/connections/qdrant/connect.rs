@@ -3,10 +3,10 @@ use std::sync::Arc;
 use qdrant_client::{
     qdrant::{
         Condition, CreateCollectionBuilder, Distance, Filter, PointStruct, PointsOperationResponse,
-        QueryPointsBuilder, ScoredPoint, SearchPointsBuilder, UpsertPointsBuilder,
-        VectorParamsBuilder,
+        QueryPointsBuilder, ScoredPoint, SearchPointsBuilder, SetPayloadPointsBuilder,
+        UpsertPointsBuilder, VectorParamsBuilder,
     },
-    Qdrant, QdrantError,
+    Payload, Qdrant, QdrantError,
 };
 use rocket::{request::FromRequest, State};
 use tonic::Code;
@@ -79,6 +79,24 @@ impl QdrantConnection {
         let response = self.client.upsert_points(request).await?;
         Ok(response)
     }
+    pub async fn update_points(
+        &self,
+        db: &DbName,
+        customer_id: &str,
+        filter: Filter,
+        new_payload: Payload,
+    ) -> Result<PointsOperationResponse, QdrantConnectionError> {
+        let response = self
+            .client
+            .set_payload(
+                SetPayloadPointsBuilder::new(db.id(customer_id), new_payload)
+                    .points_selector(filter)
+                    .wait(true),
+            )
+            .await?;
+        Ok(response)
+    }
+
     pub async fn search_classes(
         &self,
         db: &DbName,
@@ -155,6 +173,40 @@ pub fn create_filter_with_data_type(
     Filter::must(conditions)
 }
 
+pub fn match_any(key: &str, values: &[String]) -> Filter {
+    let conditions: Vec<Condition> = values
+        .iter()
+        .map(|v| Condition::matches(key, v.to_owned()))
+        .collect();
+    Filter::should(conditions)
+}
+
+pub async fn update_deleted_resources(
+    qdrant: &QdrantConnection,
+    customer_id: &str,
+    db: &DbName,
+    uids: &[String],
+) -> Result<(), QdrantConnectionError> {
+    // Skip if no points to update
+    if uids.is_empty() {
+        return Ok(());
+    }
+
+    // Create filter for matching UIDs
+    let filter = match_any("resource_uid", uids);
+
+    // Create payload with deleted flag
+    let mut payload = Payload::new();
+    payload.insert("deleted", true);
+
+    // Update points in batch
+    qdrant
+        .update_points(db, customer_id, filter, payload)
+        .await?;
+
+    Ok(())
+}
+
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for QdrantConnection {
     type Error = ();
@@ -193,4 +245,11 @@ pub fn not_namespace(namespace: &str) -> Filter {
         "namespace".to_string(),
         namespace.to_string(),
     )])
+}
+
+pub fn string_filter(key: &str, value: &str) -> Filter {
+    Filter::must([Condition::matches(key, value.to_owned())])
+}
+pub fn bool_filter(key: &str) -> Filter {
+    Filter::must([Condition::matches(key, true)])
 }

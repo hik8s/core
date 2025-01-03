@@ -10,6 +10,7 @@ use crate::types::class::vectorized::Id;
 pub mod config;
 pub mod connect;
 pub mod error;
+mod test;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceQdrantMetadata {
