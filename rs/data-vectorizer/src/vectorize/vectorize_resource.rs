@@ -51,10 +51,10 @@ pub async fn vectorize_resource(
                 let kind = log_error_continue!(get_as_string(&json, "kind"));
                 let metadata = json.get_mut("metadata").expect("metadata field missing");
 
-                let name = log_error_continue!(get_as_string(&metadata, "name"));
-                let uid = log_error_continue!(get_as_string(&metadata, "uid"));
+                let name = log_error_continue!(get_as_string(metadata, "name"));
+                let uid = log_error_continue!(get_as_string(metadata, "uid"));
 
-                let namespace = get_as_option_string(&metadata, "namespace")
+                let namespace = get_as_option_string(metadata, "namespace")
                     .unwrap_or("not_namespaced".to_string());
 
                 if let Some(metadata_obj) = metadata.as_object_mut() {

@@ -90,7 +90,7 @@ mod tests {
                 test_data.expected_class.count,
                 pod_name
             );
-            if rows.len() > 0 && classes.len() == test_data.expected_class.count as usize {
+            if !rows.is_empty() && classes.len() == test_data.expected_class.count as usize {
                 // successfully received data
                 RECEIVED_DATA.lock().unwrap().insert(pod_name.clone());
                 break;

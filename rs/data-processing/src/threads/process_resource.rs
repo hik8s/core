@@ -21,7 +21,7 @@ use shared::utils::{
 };
 
 pub async fn process_resource(
-    mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
+    mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>>,
     producer: Arc<TopicProducer<SpuSocketPool>>,
     db_name: DbName,
 ) -> Result<(), ProcessThreadError> {

@@ -44,11 +44,10 @@ mod tests {
         let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
 
         // Data ingestion
-        let points =
-            vectorize_class_batch(&vec![testdata.class.clone()], &tokenizer, &rate_limiter)
-                .await
-                .unwrap()
-                .0;
+        let points = vectorize_class_batch(&[testdata.class.clone()], &tokenizer, &rate_limiter)
+            .await
+            .unwrap()
+            .0;
         let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
         qdrant
             .upsert_points(points, &db, &customer_id)
@@ -107,7 +106,7 @@ mod tests {
             tracing::info!("---");
         }
         assert!(evaluation, "evaluation: {evaluation} question: {question}");
-        assert!(tool_content.contains(&format!("{}", &testdata.class.to_string())));
+        assert!(tool_content.contains(&testdata.class.to_string()));
         tracing::info!("Search and evaluation took: {:?}", start.elapsed());
         Ok(())
     }
@@ -291,8 +290,8 @@ mod tests {
         while let Some(message_delta) = rx.recv().await {
             answer.push_str(&message_delta);
         }
-        tracing::info!("Messages: {:#?}", messages);
-        tracing::info!("Answer: {}", answer);
+        tracing::debug!("Messages: {:#?}", messages);
+        tracing::debug!("Answer: {}", answer);
         assert!(!answer.is_empty());
         assert_eq!(messages.len(), 4);
         for (message, expected_message) in zip(&messages, &testdata.messages) {

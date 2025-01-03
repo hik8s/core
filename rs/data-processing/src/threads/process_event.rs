@@ -18,7 +18,7 @@ use super::process::ProcessThreadError;
 use shared::utils::{extract_timestamp, get_as_option_string, get_as_ref, get_as_string};
 
 pub async fn process_event(
-    mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
+    mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>>,
     producer: Arc<TopicProducer<SpuSocketPool>>,
     db_name: DbName,
 ) -> Result<(), ProcessThreadError> {
