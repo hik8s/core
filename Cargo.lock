@@ -5015,6 +5015,7 @@ dependencies = [
  "glob",
  "itertools 0.13.0",
  "lazy_static",
+ "qdrant-client",
  "rocket",
  "rstest",
  "serde_json",
@@ -5023,6 +5024,7 @@ dependencies = [
  "thiserror 2.0.3",
  "tokio",
  "tracing",
+ "uuid7",
 ]
 
 [[package]]

@@ -1,0 +1,150 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: 2024-12-15T20:00:00Z
+  finalizers:
+  - batch.kubernetes.io/job-tracking
+  generateName: kyverno-cleanup-update-requests-28904880-
+  labels:
+    batch.kubernetes.io/controller-uid: f5fd0d47-b75d-425d-ad48-72a88801b2ba
+    batch.kubernetes.io/job-name: kyverno-cleanup-update-requests-28904880
+    controller-uid: f5fd0d47-b75d-425d-ad48-72a88801b2ba
+    job-name: kyverno-cleanup-update-requests-28904880
+  managedFields:
+  - apiVersion: v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:finalizers:
+          .: {}
+          v:"batch.kubernetes.io/job-tracking": {}
+        f:generateName: {}
+        f:labels:
+          .: {}
+          f:batch.kubernetes.io/controller-uid: {}
+          f:batch.kubernetes.io/job-name: {}
+          f:controller-uid: {}
+          f:job-name: {}
+        f:ownerReferences:
+          .: {}
+          k:{"uid":"f5fd0d47-b75d-425d-ad48-72a88801b2ba"}: {}
+      f:spec:
+        f:containers:
+          k:{"name":"cleanup"}:
+            .: {}
+            f:command: {}
+            f:image: {}
+            f:imagePullPolicy: {}
+            f:name: {}
+            f:resources: {}
+            f:securityContext:
+              .: {}
+              f:allowPrivilegeEscalation: {}
+              f:capabilities:
+                .: {}
+                f:drop: {}
+              f:privileged: {}
+              f:readOnlyRootFilesystem: {}
+              f:runAsNonRoot: {}
+              f:seccompProfile:
+                .: {}
+                f:type: {}
+            f:terminationMessagePath: {}
+            f:terminationMessagePolicy: {}
+        f:dnsPolicy: {}
+        f:enableServiceLinks: {}
+        f:restartPolicy: {}
+        f:schedulerName: {}
+        f:securityContext: {}
+        f:serviceAccount: {}
+        f:serviceAccountName: {}
+        f:terminationGracePeriodSeconds: {}
+    manager: kube-controller-manager
+    operation: Update
+    time: 2024-12-15T20:00:00Z
+  name: kyverno-cleanup-update-requests-28904880-pwmcv
+  namespace: kyverno
+  ownerReferences:
+  - apiVersion: batch/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Deployment
+    name: kyverno-cleanup-update-requests-28904880
+    uid: f5fd0d47-b75d-425d-ad48-72a88801b2ba
+  resourceVersion: '146313170'
+  uid: bf076442-ef7d-44de-9acc-42552939b77f
+spec:
+  containers:
+  - command:
+    - /bin/bash
+    - -c
+    - |
+      set -euo pipefail
+      COUNT=$(kubectl get updaterequests.kyverno.io -A | wc -l)
+      if [ "$COUNT" -gt 10000 ]; then
+        echo "too many updaterequests found ($COUNT), cleaning up..."
+        kubectl delete updaterequests.kyverno.io --all -n kyverno
+      else
+        echo "($COUNT) reports found, no clean up needed"
+      fi
+    image: bitnami/kubectl:1.28.5
+    imagePullPolicy: IfNotPresent
+    name: cleanup
+    resources: {}
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-jvmd2
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: OnFailure
+  schedulerName: default-scheduler
+  securityContext: {}
+  serviceAccount: kyverno-cleanup-jobs
+  serviceAccountName: kyverno-cleanup-jobs
+  terminationGracePeriodSeconds: 30
+  tolerations:
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
+  volumes:
+  - name: kube-api-access-jvmd2
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+status:
+  phase: Pending
+  qosClass: BestEffort
