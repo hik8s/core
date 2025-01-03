@@ -58,6 +58,7 @@ mod tests {
         update_deleted_resources(&qdrant, customer_id, &db, &resource_uids).await?;
 
         // Verify update
+        let db = DbName::Log;
         let filter = match_any("resource_uid", &resource_uids);
         let request = QueryPointsBuilder::new(db.id(customer_id))
             .filter(filter)
@@ -70,7 +71,6 @@ mod tests {
             assert_eq!(payload.get("deleted"), Some(&Value::from(true)));
             assert_eq!(payload.get("name"), Some(&Value::from("test_name")));
             assert_eq!(payload.get("version"), Some(&Value::from("1.0")));
-            tracing::info!("payload: {:?}", payload);
         }
 
         Ok(())

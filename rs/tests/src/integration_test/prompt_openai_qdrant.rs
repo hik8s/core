@@ -1,12 +1,6 @@
-use std::path::Path;
-
-use shared::connections::qdrant::EventQdrantMetadata;
-
-use crate::util::read_yaml_files;
-
 #[cfg(test)]
 mod tests {
-    use std::{iter::zip, time::Instant};
+    use std::{iter::zip, path::Path, time::Instant};
 
     use async_openai::{error::OpenAIError, types::ChatCompletionRequestMessage};
     use bm25::{Language, SearchEngineBuilder};
@@ -14,7 +8,7 @@ mod tests {
     use data_vectorizer::{vectorize::vectorize_event::vectorize_chunk, vectorize_class_batch};
     use rstest::rstest;
     use shared::{
-        connections::dbname::DbName,
+        connections::{dbname::DbName, qdrant::EventQdrantMetadata},
         testdata::{UserTest, UserTestData},
     };
     use tokio::sync::mpsc;
@@ -30,6 +24,8 @@ mod tests {
         types::tokenizer::Tokenizer,
         utils::ratelimit::RateLimiter,
     };
+
+    use crate::util::read_yaml_files;
 
     #[tokio::test]
     #[rstest]
@@ -111,7 +107,23 @@ mod tests {
         Ok(())
     }
 
-    use super::get_event_qdrant_metadata;
+    fn get_event_qdrant_metadata() -> EventQdrantMetadata {
+        let testdata_dir = Path::new(".testdata_examples");
+        let path = testdata_dir.join("event");
+        let json = read_yaml_files(&path).unwrap().pop().unwrap();
+        let data = serde_yaml::to_string(&json).unwrap();
+        EventQdrantMetadata::new(
+            "v1".to_owned(),
+            "Pod".to_owned(),
+            "1234".to_owned(),
+            "hello-server-597dbdc58-bz6zv".to_owned(),
+            "examples".to_owned(),
+            "Stopping container hello-server".to_owned(),
+            "Killing".to_owned(),
+            "Normal".to_owned(),
+            data,
+        )
+    }
 
     #[tokio::test]
     #[rstest]
@@ -332,22 +344,4 @@ mod tests {
         // tracing::info!("Search and evaluation took: {:?}", start.elapsed());
         Ok(())
     }
-}
-
-fn get_event_qdrant_metadata() -> EventQdrantMetadata {
-    let testdata_dir = Path::new(".testdata_examples");
-    let path = testdata_dir.join("event");
-    let json = read_yaml_files(&path).unwrap().pop().unwrap();
-    let data = serde_yaml::to_string(&json).unwrap();
-    EventQdrantMetadata::new(
-        "v1".to_owned(),
-        "Pod".to_owned(),
-        "1234".to_owned(),
-        "hello-server-597dbdc58-bz6zv".to_owned(),
-        "examples".to_owned(),
-        "Stopping container hello-server".to_owned(),
-        "Killing".to_owned(),
-        "Normal".to_owned(),
-        data,
-    )
 }
