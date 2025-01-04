@@ -167,6 +167,7 @@ mod tests {
         sleep(Duration::from_secs(3)).await;
 
         let db = DbName::Resource;
+        qdrant.create_collection(&db, &customer_id).await.unwrap();
         let filter = match_any("resource_uid", &[resource_uid]);
         let request = QueryPointsBuilder::new(db.id(&customer_id))
             .filter(filter)
