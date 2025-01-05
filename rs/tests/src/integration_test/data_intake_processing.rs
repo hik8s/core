@@ -141,9 +141,9 @@ mod tests {
 
     #[tokio::test]
     #[rstest]
-    #[case(("pod-deletion", "resources"))]
+    #[case(("pod-deletion", "resources", 3))]
     async fn integration_pod_deletion(
-        #[case] (subdir, route): (&str, &str),
+        #[case] (subdir, route, num_points): (&str, &str, usize),
     ) -> Result<(), DataIntakeError> {
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
@@ -167,7 +167,7 @@ mod tests {
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
         assert_eq!(status.code, 200);
-        sleep(Duration::from_secs(3)).await;
+        sleep(Duration::from_secs(5)).await;
 
         let db = DbName::Resource;
         // this is be created by the insert methods
@@ -178,7 +178,7 @@ mod tests {
             .query_points(&db, &customer_id, filter, 1000)
             .await
             .unwrap();
-        assert_eq!(points.len(), 3);
+        assert_eq!(points.len(), num_points);
         for point in points.iter() {
             let payload = &point.payload;
             assert_eq!(payload.get("deleted"), Some(&Value::from(true)));

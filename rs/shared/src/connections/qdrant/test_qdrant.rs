@@ -33,7 +33,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_query_deleted() -> Result<(), QdrantConnectionError> {
+    async fn test_update_query_search_deleted() -> Result<(), QdrantConnectionError> {
         // Setup
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await?;
@@ -43,10 +43,11 @@ mod tests {
         // Create initial point with multiple fields
         let uid1 = uuid4().to_string();
         let uid2 = uuid4().to_string();
+        let uid3 = uuid4().to_string();
 
         let point1 = create_test_point(&uid1);
         let point2 = create_test_point(&uid2);
-        let point3 = create_test_point(&uuid4().to_string());
+        let point3 = create_test_point(&uid3);
 
         // Insert point
         qdrant
@@ -54,14 +55,17 @@ mod tests {
             .await?;
 
         // Update deleted field
-        let resource_uids = [uid1, uid2];
+        let mut resource_uids = vec![uid1, uid2];
+
         update_deleted_resources(&qdrant, customer_id, &db, &resource_uids).await?;
 
         // Verify update
         let db = DbName::Log;
 
-        let filter = match_any("resource_uid", &resource_uids);
-        let points = qdrant.query_points(&db, customer_id, filter, 1000).await?;
+        let filter_uid12 = match_any("resource_uid", &resource_uids);
+        let points = qdrant
+            .query_points(&db, customer_id, filter_uid12, 1000)
+            .await?;
         assert_eq!(points.len(), 2);
         for point in points.iter() {
             let payload = &point.payload;
@@ -69,6 +73,21 @@ mod tests {
             assert_eq!(payload.get("name"), Some(&Value::from("test_name")));
             assert_eq!(payload.get("version"), Some(&Value::from("1.0")));
         }
+
+        let array = [0.1; EMBEDDING_SIZE as usize];
+        resource_uids.push(uid3);
+        let filter_uid123 = match_any("resource_uid", &resource_uids);
+
+        let points = qdrant
+            .search_points(&db, customer_id, array, filter_uid123, 1000)
+            .await?;
+        for point in points.iter() {
+            let payload = &point.payload;
+            assert_eq!(payload.get("deleted"), Some(&Value::from(false)));
+            assert_eq!(payload.get("name"), Some(&Value::from("test_name")));
+            assert_eq!(payload.get("version"), Some(&Value::from("1.0")));
+        }
+        assert_eq!(points.len(), 1);
 
         Ok(())
     }

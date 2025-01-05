@@ -100,12 +100,11 @@ impl QdrantConnection {
         db: &DbName,
         customer_id: &str,
         array: [f32; EMBEDDING_USIZE],
-        filter: Filter,
+        mut filter: Filter,
         limit: u64,
     ) -> Result<Vec<ScoredPoint>, QdrantConnectionError> {
-        let not_deleted = Filter::must_not([Condition::matches("deleted", true)]);
+        filter.must_not.push(Condition::matches("deleted", true));
         let request = SearchPointsBuilder::new(db.id(customer_id), array.to_vec(), limit)
-            .filter(not_deleted)
             .filter(filter)
             .with_payload(true);
         let response = self.client.search_points(request).await?;
