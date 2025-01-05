@@ -96,22 +96,6 @@ impl QdrantConnection {
             .await?;
         Ok(response)
     }
-
-    pub async fn search_classes(
-        &self,
-        db: &DbName,
-        customer_id: &str,
-        array: [f32; EMBEDDING_USIZE],
-        filter: Filter,
-        limit: u64,
-    ) -> Result<Vec<VectorizedClass>, QdrantConnectionError> {
-        let request = SearchPointsBuilder::new(db.id(customer_id), array.to_vec(), limit)
-            .filter(filter)
-            .with_payload(true);
-        let response = self.client.search_points(request).await?;
-        let vectorized_classes = from_scored_point(response.result)?;
-        Ok(vectorized_classes)
-    }
     pub async fn search_points(
         &self,
         db: &DbName,

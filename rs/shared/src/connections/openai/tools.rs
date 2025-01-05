@@ -16,7 +16,7 @@ use crate::{
             connect::{create_filter, create_filter_with_data_type, QdrantConnection},
             error::QdrantConnectionError, EventQdrantMetadata, ResourceQdrantMetadata,
         },
-    }, log_error, testdata::UserTestData, types::class::vectorized::VectorizedClass
+    }, log_error, testdata::UserTestData, types::class::vectorized::{from_scored_point, VectorizedClass}
 };
 
 use super::embeddings::request_embedding;
@@ -297,7 +297,8 @@ impl Tool {
                 let search_prompt = create_search_prompt(user_message, &args);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter(args.namespace.as_ref(), args.application.as_ref());
-                let classes = qdrant.search_classes(&DbName::Log, customer_id, array, filter, 30).await?;
+                let points = qdrant.search_points(&DbName::Log, customer_id, array, filter, 30).await?;
+                let classes = from_scored_point(points)?;
                 let result = classes
                     .into_iter()
                     .map(|vc| format_log_entry(&vc))
