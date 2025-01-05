@@ -15,7 +15,6 @@ use tracing::info;
 use crate::{
     connections::dbname::DbName,
     constant::{EMBEDDING_SIZE, EMBEDDING_USIZE},
-    types::class::vectorized::{from_scored_point, VectorizedClass},
 };
 
 use super::{config::QdrantConfig, error::QdrantConnectionError};
@@ -104,27 +103,27 @@ impl QdrantConnection {
         filter: Filter,
         limit: u64,
     ) -> Result<Vec<ScoredPoint>, QdrantConnectionError> {
+        let not_deleted = Filter::must_not([Condition::matches("deleted", true)]);
         let request = SearchPointsBuilder::new(db.id(customer_id), array.to_vec(), limit)
+            .filter(not_deleted)
             .filter(filter)
             .with_payload(true);
         let response = self.client.search_points(request).await?;
         Ok(response.result)
     }
-    pub async fn search_key(
+    pub async fn query_points(
         &self,
         db: &DbName,
         customer_id: &str,
-        key: &str,
+        filter: Filter,
         limit: u64,
-    ) -> Result<Vec<VectorizedClass>, QdrantConnectionError> {
-        let filter = Filter::must([Condition::matches("key", key.to_string())]);
+    ) -> Result<Vec<ScoredPoint>, QdrantConnectionError> {
         let request = QueryPointsBuilder::new(db.id(customer_id))
             .filter(filter)
             .limit(limit)
             .with_payload(true);
         let response = self.client.query(request).await?;
-        let vectorized_classes = from_scored_point(response.result)?;
-        Ok(vectorized_classes)
+        Ok(response.result)
     }
 }
 

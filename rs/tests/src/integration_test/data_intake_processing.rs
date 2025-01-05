@@ -4,17 +4,18 @@ mod tests {
     use data_intake::server::initialize_data_intake;
     use data_processing::run::{run_data_processing, run_resource_processing};
     use data_vectorizer::run::run_vectorize_resource;
-    use data_vectorizer::{vectorize_class, vectorize_resource};
-    use qdrant_client::qdrant::{QueryPointsBuilder, Value};
+    use data_vectorizer::vectorize_class;
+    use qdrant_client::qdrant::Value;
     use rstest::rstest;
     use shared::connections::dbname::DbName;
     use shared::connections::greptime::connect::GreptimeConnection;
     use shared::connections::greptime::middleware::query::read_records;
-    use shared::connections::qdrant::connect::{match_any, QdrantConnection};
+    use shared::connections::qdrant::connect::{match_any, string_filter, QdrantConnection};
     use shared::constant::OPENAI_EMBEDDING_TOKEN_LIMIT;
     use shared::get_env_var;
     use shared::mock::rocket::get_test_client;
     use shared::tracing::setup::setup_tracing;
+    use shared::types::class::vectorized::{from_scored_point, VectorizedClass};
     use shared::utils::mock::mock_client::post_test_batch;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
@@ -78,7 +79,7 @@ mod tests {
         let start_time = tokio::time::Instant::now();
         let timeout = Duration::from_secs(30);
         let mut rows = Vec::new();
-        let mut classes = Vec::new();
+        let mut classes: Vec<VectorizedClass> = Vec::new();
 
         while start_time.elapsed() < timeout {
             // check greptime
@@ -87,10 +88,12 @@ mod tests {
                 .unwrap();
 
             // check qdrant
-            classes = qdrant
-                .search_key(&db, &customer_id, &pod_name, 1000)
+            let filter = string_filter("key", &pod_name);
+            let points = qdrant
+                .query_points(&db, &customer_id, filter, 1000)
                 .await
                 .unwrap();
+            classes = from_scored_point(points).unwrap();
             info!(
                 "Classes: {}/{} | Pod: {}",
                 classes.len(),
@@ -116,7 +119,7 @@ mod tests {
         Ok(())
     }
 
-    fn update_resource_uids(resources: &mut [serde_json::Value]) -> String {
+    fn replace_resource_uids(resources: &mut [serde_json::Value]) -> String {
         let resource_uid = uuid4().to_string();
 
         for resource in resources.iter_mut() {
@@ -160,22 +163,23 @@ mod tests {
         let mut json = read_yaml_files(&path).unwrap();
 
         // this assumes that the same resource uid is being sent
-        let resource_uid = update_resource_uids(&mut json);
+        let resource_uid = replace_resource_uids(&mut json);
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
         assert_eq!(status.code, 200);
         sleep(Duration::from_secs(3)).await;
 
         let db = DbName::Resource;
+        // this is be created by the insert methods
         qdrant.create_collection(&db, &customer_id).await.unwrap();
         let filter = match_any("resource_uid", &[resource_uid]);
-        let request = QueryPointsBuilder::new(db.id(&customer_id))
-            .filter(filter)
-            .with_payload(true);
 
-        let response = qdrant.client.query(request).await.unwrap();
-        assert_eq!(response.result.len(), 3);
-        for point in response.result.iter() {
+        let points = qdrant
+            .query_points(&db, &customer_id, filter, 1000)
+            .await
+            .unwrap();
+        assert_eq!(points.len(), 3);
+        for point in points.iter() {
             let payload = &point.payload;
             assert_eq!(payload.get("deleted"), Some(&Value::from(true)));
         }

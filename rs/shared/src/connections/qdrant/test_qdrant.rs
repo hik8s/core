@@ -13,7 +13,7 @@ mod tests {
     };
 
     use qdrant_client::{
-        qdrant::{PointStruct, QueryPointsBuilder, Value},
+        qdrant::{PointStruct, Value},
         Payload,
     };
     use uuid7::uuid4;
@@ -33,7 +33,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_deleted_field() -> Result<(), QdrantConnectionError> {
+    async fn test_update_query_deleted() -> Result<(), QdrantConnectionError> {
         // Setup
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await?;
@@ -43,10 +43,10 @@ mod tests {
         // Create initial point with multiple fields
         let uid1 = uuid4().to_string();
         let uid2 = uuid4().to_string();
-        let uid3 = uuid4().to_string();
+
         let point1 = create_test_point(&uid1);
         let point2 = create_test_point(&uid2);
-        let point3 = create_test_point(&uid3);
+        let point3 = create_test_point(&uuid4().to_string());
 
         // Insert point
         qdrant
@@ -59,14 +59,11 @@ mod tests {
 
         // Verify update
         let db = DbName::Log;
-        let filter = match_any("resource_uid", &resource_uids);
-        let request = QueryPointsBuilder::new(db.id(customer_id))
-            .filter(filter)
-            .with_payload(true);
 
-        let response = qdrant.client.query(request).await?;
-        assert_eq!(response.result.len(), 2);
-        for point in response.result.iter() {
+        let filter = match_any("resource_uid", &resource_uids);
+        let points = qdrant.query_points(&db, customer_id, filter, 1000).await?;
+        assert_eq!(points.len(), 2);
+        for point in points.iter() {
             let payload = &point.payload;
             assert_eq!(payload.get("deleted"), Some(&Value::from(true)));
             assert_eq!(payload.get("name"), Some(&Value::from("test_name")));
