@@ -2,10 +2,12 @@
 mod tests {
     use data_intake::error::DataIntakeError;
     use data_intake::server::initialize_data_intake;
-    use data_processing::run::{run_data_processing, run_resource_processing};
-    use data_vectorizer::run::run_vectorize_resource;
+    use data_processing::run::{
+        run_customresource_processing, run_data_processing, run_resource_processing,
+    };
+    use data_vectorizer::run::{run_vectorize_customresource, run_vectorize_resource};
     use data_vectorizer::vectorize_class;
-    use qdrant_client::qdrant::Value;
+    use qdrant_client::qdrant::{ScoredPoint, Value};
     use rstest::rstest;
     use shared::connections::dbname::DbName;
     use shared::connections::greptime::connect::GreptimeConnection;
@@ -23,7 +25,7 @@ mod tests {
     use std::collections::HashSet;
     use std::path::Path;
     use std::sync::{Arc, Mutex, Once};
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
     use tracing::info;
     use uuid7::uuid4;
 
@@ -31,11 +33,10 @@ mod tests {
 
     use crate::util::read_yaml_files;
 
-    static THREAD_VECTORIZER: Once = Once::new();
-    static THREAD_PROCESSING: Once = Once::new();
+    static THREAD_LOG_PROCESSING: Once = Once::new();
 
     lazy_static::lazy_static! {
-        static ref RECEIVED_DATA: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
+        static ref RECEIVED_LOGS: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
     }
 
     #[tokio::test]
@@ -58,11 +59,10 @@ mod tests {
         assert_eq!(status.code, 200);
 
         // data processing
-        THREAD_PROCESSING.call_once(|| {
+        THREAD_LOG_PROCESSING.call_once(|| {
             run_data_processing().unwrap();
-        });
-        // data vectorizer
-        THREAD_VECTORIZER.call_once(|| {
+
+            // data vectorizer
             tokio::spawn(async move {
                 let limiter = Arc::new(RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT));
                 vectorize_class(limiter).await.unwrap();
@@ -102,14 +102,14 @@ mod tests {
             );
             if !rows.is_empty() && classes.len() == test_data.expected_class.count as usize {
                 // successfully received data
-                RECEIVED_DATA.lock().unwrap().insert(pod_name.clone());
+                RECEIVED_LOGS.lock().unwrap().insert(pod_name.clone());
                 break;
             }
             sleep(Duration::from_secs(1)).await;
         }
 
-        while RECEIVED_DATA.lock().unwrap().len() < num_cases && start_time.elapsed() < timeout {
-            let res = RECEIVED_DATA.lock().unwrap().clone();
+        while RECEIVED_LOGS.lock().unwrap().len() < num_cases && start_time.elapsed() < timeout {
+            let res = RECEIVED_LOGS.lock().unwrap().clone();
             info!("{}/{}: Received data from: {:?}", res.len(), num_cases, res);
             sleep(Duration::from_secs(1)).await;
         }
@@ -123,15 +123,15 @@ mod tests {
         let resource_uid = uuid4().to_string();
 
         for resource in resources.iter_mut() {
-            if let Some(metadata) = resource
-                .as_object_mut()
-                .and_then(|obj| obj.get_mut("metadata"))
-            {
-                if let Some(metadata_obj) = metadata.as_object_mut() {
-                    metadata_obj.insert(
-                        "uid".to_string(),
-                        serde_json::Value::String(resource_uid.clone()),
-                    );
+            if let Some(json) = resource.get_mut("json") {
+                if let Some(metadata) = json.as_object_mut().and_then(|obj| obj.get_mut("metadata"))
+                {
+                    if let Some(metadata_obj) = metadata.as_object_mut() {
+                        metadata_obj.insert(
+                            "uid".to_string(),
+                            serde_json::Value::String(resource_uid.clone()),
+                        );
+                    }
                 }
             }
         }
@@ -139,21 +139,32 @@ mod tests {
         resource_uid
     }
 
+    static THREAD_RESOURCE_PROCESSING: Once = Once::new();
+
+    lazy_static::lazy_static! {
+        static ref RECEIVED_RESOURCES: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
+    }
+
     #[tokio::test]
     #[rstest]
-    #[case(("pod-deletion", "resources", 3))]
+    #[case(("pod-deletion", "resources", DbName::Resource, 3))]
+    #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3))]
     async fn integration_pod_deletion(
-        #[case] (subdir, route, num_points): (&str, &str, usize),
+        #[case] (subdir, route, db, num_points): (&str, &str, DbName, usize),
     ) -> Result<(), DataIntakeError> {
+        let num_cases = 2;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
         let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
 
-        // TODO: add this as full test to rs/tests/src/integration_test/data_intake_processing.rs
-        run_resource_processing().unwrap();
+        THREAD_RESOURCE_PROCESSING.call_once(|| {
+            run_resource_processing().unwrap();
+            run_customresource_processing().unwrap();
 
-        let limiter = Arc::new(RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT));
-        run_vectorize_resource(limiter).unwrap();
+            let limiter = Arc::new(RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT));
+            run_vectorize_resource(limiter.clone()).unwrap();
+            run_vectorize_customresource(limiter).unwrap();
+        });
 
         let server = initialize_data_intake().await.unwrap();
 
@@ -167,23 +178,41 @@ mod tests {
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
         assert_eq!(status.code, 200);
-        sleep(Duration::from_secs(5)).await;
 
-        let db = DbName::Resource;
-        // this is be created by the insert methods
-        qdrant.create_collection(&db, &customer_id).await.unwrap();
-        let filter = match_any("resource_uid", &[resource_uid]);
+        let start_time = Instant::now();
+        let timeout = Duration::from_secs(30);
+        let mut points = Vec::<ScoredPoint>::new();
 
-        let points = qdrant
-            .query_points(&db, &customer_id, filter, 1000)
-            .await
-            .unwrap();
-        assert_eq!(points.len(), num_points);
-        for point in points.iter() {
-            let payload = &point.payload;
-            assert_eq!(payload.get("deleted"), Some(&Value::from(true)));
+        while start_time.elapsed() < timeout {
+            let filter = match_any("resource_uid", &[resource_uid.clone()]);
+            points = qdrant
+                .query_points(&db, &customer_id, filter, 1000)
+                .await
+                .unwrap();
+
+            info!("Points with deleted=true: {}/{}", points.len(), num_points);
+
+            if points.len() == num_points {
+                let all_deleted = points
+                    .iter()
+                    .all(|point| point.payload.get("deleted") == Some(&Value::from(true)));
+                if all_deleted {
+                    RECEIVED_RESOURCES
+                        .lock()
+                        .unwrap()
+                        .insert(resource_uid.clone());
+                    break;
+                }
+            }
+            sleep(Duration::from_secs(1)).await;
         }
 
+        while RECEIVED_RESOURCES.lock().unwrap().len() < 1 && start_time.elapsed() < timeout {
+            let res = RECEIVED_RESOURCES.lock().unwrap().clone();
+            info!("{}/{}: Received data from: {:?}", res.len(), num_cases, res);
+            sleep(Duration::from_secs(1)).await;
+        }
+        assert_eq!(points.len(), num_points);
         Ok(())
     }
 }

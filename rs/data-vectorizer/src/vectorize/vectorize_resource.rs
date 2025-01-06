@@ -1,7 +1,6 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use serde::Serialize;
-use serde_json::{from_str, Value};
 use shared::{
     connections::{
         dbname::DbName,
