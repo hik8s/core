@@ -1,3 +1,4 @@
+use fluvio::dataplane::record::ConsumerRecord;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::convert::TryFrom;
@@ -6,7 +7,7 @@ use std::convert::TryFrom;
 pub struct KubeApiData {
     pub timestamp: i64,
     pub event_type: String,
-    pub data: Value,
+    pub json: Value,
 }
 
 impl TryFrom<Value> for KubeApiData {
@@ -22,5 +23,15 @@ impl TryFrom<KubeApiData> for Vec<u8> {
 
     fn try_from(data: KubeApiData) -> Result<Self, Self::Error> {
         Ok(serde_json::to_string(&data)?.into_bytes())
+    }
+}
+
+impl TryFrom<ConsumerRecord> for KubeApiData {
+    type Error = serde_json::Error;
+
+    fn try_from(record: ConsumerRecord) -> Result<Self, Self::Error> {
+        let payload = record.value();
+        let data_str = String::from_utf8_lossy(payload);
+        serde_json::from_str::<KubeApiData>(&data_str)
     }
 }

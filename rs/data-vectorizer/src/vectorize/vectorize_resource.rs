@@ -15,6 +15,7 @@ use shared::{
     log_error, log_error_continue,
     types::{
         class::vectorized::{to_qdrant_points, Id},
+        kubeapidata::KubeApiData,
         tokenizer::Tokenizer,
     },
     utils::{
@@ -50,19 +51,25 @@ pub async fn vectorize_resource(
 
             let mut total_token_count = 0;
             for record in records {
-                let data_str = String::from_utf8_lossy(record.value());
-                let mut json: Value = from_str(&data_str).map_err(|e| log_error!(e))?;
-                let kind = log_error_continue!(get_as_string(&json, "kind"));
-                let metadata = json.get_mut("metadata").expect("metadata field missing");
+                let mut data: KubeApiData = log_error_continue!(record
+                    .try_into()
+                    .map_err(DataVectorizationError::DeserializationError));
+                let kind = log_error_continue!(get_as_string(&data.json, "kind"));
+                let metadata = data.json.get_mut("metadata").expect("metadata not found");
 
                 let name = log_error_continue!(get_as_string(metadata, "name"));
                 let uid = log_error_continue!(get_as_string(metadata, "uid"));
                 let deletion_ts = get_as_option_string(metadata, "deletionTimestamp");
+
                 if let Some(deletion_ts) = deletion_ts {
                     if !deletion_ts.is_empty() {
                         uids_deleted.push(uid.clone());
                         continue;
                     }
+                }
+                if data.event_type == "delete" {
+                    uids_deleted.push(uid.clone());
+                    continue;
                 }
                 let namespace = get_as_option_string(metadata, "namespace")
                     .unwrap_or("not_namespaced".to_string());
@@ -73,9 +80,9 @@ pub async fn vectorize_resource(
 
                 let metadata_map = create_metadata_map(&name, &namespace, &uid);
 
-                let spec = extract_remove_key(&mut json, &kind, &metadata_map, "spec");
-                let status = extract_remove_key(&mut json, &kind, &metadata_map, "status");
-                let metadata = serde_yaml::to_string(&json);
+                let spec = extract_remove_key(&mut data.json, &kind, &metadata_map, "spec");
+                let status = extract_remove_key(&mut data.json, &kind, &metadata_map, "status");
+                let metadata = serde_yaml::to_string(&data.json);
 
                 debug!("MARKER\n{:?}{:?}{:?}", metadata, spec, status);
                 let mut data_map = HashMap::new();
