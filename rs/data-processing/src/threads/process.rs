@@ -42,8 +42,6 @@ pub enum ProcessThreadError {
     RedisConnectionError(#[from] RedisConnectionError),
     #[error("Stream inserter error: {0}")]
     StreamInserterError(#[from] GreptimeIngestError),
-    #[error("Failed to serialize: {0}")]
-    SerializationError(#[from] serde_json::Error),
     #[error("Fluvio producer error: {0}")]
     FluvioProducerError(#[from] anyhow::Error),
     #[error("UTF-8 error: {0}")]
@@ -52,6 +50,10 @@ pub enum ProcessThreadError {
     OffsetError(#[from] OffsetError),
     #[error("Invalid json: {0}")]
     InvalidJson(String),
+    #[error("Serialization error: {0}")]
+    SerializationError(#[source] serde_json::Error),
+    #[error("Deserialization error: {0}")]
+    DeserializationError(#[source] serde_json::Error),
 }
 
 pub async fn process_logs(
@@ -64,8 +66,10 @@ pub async fn process_logs(
     while let Some(result) = consumer.next().await {
         let record = log_error_continue!(result);
 
-        let customer_id = get_record_key(&record).map_err(|e| log_error!(e))?;
-        let log = LogRecord::try_from(record)?;
+        let customer_id = log_error_continue!(get_record_key(&record));
+        let log = log_error_continue!(
+            LogRecord::try_from(record).map_err(ProcessThreadError::DeserializationError)
+        );
 
         // preprocess
         let preprocessed_message =
@@ -89,7 +93,9 @@ pub async fn process_logs(
             let class = updated_class.unwrap();
             let key = class.key.clone();
             let class_id = class.class_id.clone();
-            let serialized_record: String = class.try_into()?;
+            let serialized_record: String = log_error_continue!(class
+                .try_into()
+                .map_err(ProcessThreadError::SerializationError));
             // TODO: add truncate for class.items
             if serialized_record.len() > TOPIC_CLASS_BYTES_PER_RECORD {
                 warn!(

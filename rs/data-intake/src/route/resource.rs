@@ -20,7 +20,7 @@ pub async fn resource_intake(
         .map_err(|e| DataIntakeError::DeserializationError(log_error!(e)))?;
     let producer = fluvio.get_producer(TopicName::Resource);
 
-    let metadata = get_as_ref(&data.data, "metadata").map_err(|e| log_error!(e))?;
+    let metadata = get_as_ref(&data.json, "metadata").map_err(|e| log_error!(e))?;
     if let Some(owner_refs) = metadata.get("ownerReferences") {
         if let Some(refs) = owner_refs.as_array() {
             if refs.len() == 1 {
@@ -58,7 +58,7 @@ pub async fn resources_intake(
             .try_into()
             .map_err(|e| DataIntakeError::DeserializationError(log_error!(e)))?;
 
-        let metadata = get_as_ref(&data.data, "metadata").map_err(|e| log_error!(e))?;
+        let metadata = get_as_ref(&data.json, "metadata").map_err(|e| log_error!(e))?;
         if let Some(owner_refs) = metadata.get("ownerReferences") {
             if let Some(refs) = owner_refs.as_array() {
                 if refs.len() == 1 {

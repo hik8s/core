@@ -19,7 +19,7 @@ pub async fn customresource_intake(
         .try_into()
         .map_err(|e| DataIntakeError::DeserializationError(log_error!(e)))?;
 
-    let kind = get_as_string(&data.data, "kind")
+    let kind = get_as_string(&data.json, "kind")
         .map_err(|e| log_error!(e))?
         .to_lowercase();
     if kind == "partition"
@@ -58,7 +58,7 @@ pub async fn customresources_intake(
             .try_into()
             .map_err(|e| DataIntakeError::DeserializationError(log_error!(e)))?;
 
-        let kind = get_as_string(&data.data, "kind")
+        let kind = get_as_string(&data.json, "kind")
             .map_err(|e| log_error!(e))?
             .to_lowercase();
         if kind == "partition"
