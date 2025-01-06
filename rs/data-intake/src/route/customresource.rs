@@ -5,6 +5,7 @@ use rocket::serde::json::Json;
 use shared::fluvio::{FluvioConnection, TopicName};
 use shared::log_error;
 use shared::router::auth::guard::AuthenticatedUser;
+use shared::types::kubeapidata::KubeApiData;
 use shared::utils::get_as_string;
 
 #[post("/customresource", format = "json", data = "<customresource>")]
@@ -13,27 +14,29 @@ pub async fn customresource_intake(
     fluvio: FluvioConnection,
     customresource: Json<serde_json::Value>,
 ) -> Result<String, DataIntakeError> {
-    let cr = customresource.into_inner();
-    let kind = get_as_string(&cr, "kind").map_err(|e| log_error!(e));
+    let data: KubeApiData = customresource
+        .into_inner()
+        .try_into()
+        .map_err(|e| DataIntakeError::DeserializationError(log_error!(e)))?;
 
-    if let Ok(kind) = kind {
-        if kind.to_lowercase() == "partition" {
-            return Ok("Skip partition".to_string());
-        }
-        if kind.to_lowercase() == "kustomization" {
-            return Ok("Skip kustomization".to_string());
-        }
-        if kind.to_lowercase() == "ciliumendpoint" {
-            return Ok("Skip ciliumendpoint".to_string());
-        }
-        if kind.to_lowercase() == "ciliumidentity" {
-            return Ok("Skip ciliumidentity".to_string());
-        }
+    let kind = get_as_string(&data.data, "kind")
+        .map_err(|e| log_error!(e))?
+        .to_lowercase();
+    if kind == "partition"
+        || kind == "kustomization"
+        || kind == "ciliumendpoint"
+        || kind == "ciliumidentity"
+    {
+        return Ok(format!("Skip {}", kind));
     }
 
     let producer = fluvio.get_producer(TopicName::CustomResource);
+    let data_ser: Vec<u8> = data
+        .try_into()
+        .map_err(|e| DataIntakeError::SerializationError(log_error!(e)))?;
+
     producer
-        .send(user.customer_id.clone(), cr.to_string())
+        .send(user.customer_id.clone(), data_ser)
         .await
         .map_err(|e| log_error!(e))
         .ok();
@@ -49,30 +52,34 @@ pub async fn customresources_intake(
     customresources: Json<Vec<serde_json::Value>>,
 ) -> Result<String, DataIntakeError> {
     let producer = fluvio.get_producer(TopicName::CustomResource);
-    for cr in customresources.into_inner() {
-        let kind = get_as_string(&cr, "kind").map_err(|e| log_error!(e));
 
-        if let Ok(kind) = kind {
-            if kind.to_lowercase() == "partition" {
-                continue;
-            }
-            if kind.to_lowercase() == "kustomization" {
-                continue;
-            }
-            if kind.to_lowercase() == "ciliumendpoint" {
-                continue;
-            }
-            if kind.to_lowercase() == "ciliumidentity" {
-                continue;
-            }
+    for cr in customresources.into_inner() {
+        let data: KubeApiData = cr
+            .try_into()
+            .map_err(|e| DataIntakeError::DeserializationError(log_error!(e)))?;
+
+        let kind = get_as_string(&data.data, "kind")
+            .map_err(|e| log_error!(e))?
+            .to_lowercase();
+        if kind == "partition"
+            || kind == "kustomization"
+            || kind == "ciliumendpoint"
+            || kind == "ciliumidentity"
+        {
+            continue;
         }
+
+        let data_ser: Vec<u8> = data
+            .try_into()
+            .map_err(|e| DataIntakeError::SerializationError(log_error!(e)))?;
+
         producer
-            .send(user.customer_id.clone(), cr.to_string())
+            .send(user.customer_id.clone(), data_ser)
             .await
             .map_err(|e| log_error!(e))
             .ok();
     }
-    producer.flush().await.map_err(|e| log_error!(e)).ok();
 
+    producer.flush().await.map_err(|e| log_error!(e)).ok();
     Ok("Success".to_string())
 }
