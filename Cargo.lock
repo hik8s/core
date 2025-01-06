@@ -1011,7 +1011,7 @@ dependencies = [
 
 [[package]]
 name = "data-intake"
-version = "0.3.3"
+version = "0.4.0"
 dependencies = [
  "greptimedb-ingester",
  "multipart",
@@ -1028,7 +1028,7 @@ dependencies = [
 
 [[package]]
 name = "data-processing"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "algorithm",
  "anyhow",
@@ -1047,7 +1047,7 @@ dependencies = [
 
 [[package]]
 name = "data-vectorizer"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "futures-util",
