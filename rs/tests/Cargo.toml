@@ -7,6 +7,7 @@ version = "0.1.0"
 async-openai = {workspace = true}
 bm25 = {workspace = true}
 chat-backend = {workspace = true}
+chrono = {workspace = true}
 data-intake = {workspace = true}
 data-processing = {workspace = true}
 data-vectorizer = {workspace = true}

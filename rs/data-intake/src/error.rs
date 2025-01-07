@@ -42,6 +42,10 @@ pub enum DataIntakeError {
     RocketError(#[from] rocket::Error),
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
+    #[error("Serialization error: {0}")]
+    SerializationError(#[source] serde_json::Error),
+    #[error("Deserialization error: {0}")]
+    DeserializationError(#[source] serde_json::Error),
 }
 
 impl From<DataIntakeError> for Status {
@@ -98,6 +102,8 @@ impl From<DataIntakeError> for Status {
             }
             DataIntakeError::GreptimeError(_) => Status::InternalServerError,
             DataIntakeError::RocketError(_) => Status::InternalServerError,
+            DataIntakeError::SerializationError(_) => Status::InternalServerError,
+            DataIntakeError::DeserializationError(_) => Status::InternalServerError,
             DataIntakeError::IoError(e) => {
                 error!("Io Error: {:?}", e);
                 Status::InternalServerError

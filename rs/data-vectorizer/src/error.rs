@@ -24,4 +24,6 @@ pub enum DataVectorizationError {
     Utf8Error(#[from] Utf8Error),
     #[error("Task join error: {0}")]
     JoinError(#[from] tokio::task::JoinError),
+    #[error("Deserialization error: {0}")]
+    DeserializationError(#[source] serde_json::Error),
 }
