@@ -103,6 +103,7 @@ impl QdrantConnection {
         mut filter: Filter,
         limit: u64,
     ) -> Result<Vec<ScoredPoint>, QdrantConnectionError> {
+        self.create_collection(db, customer_id).await?;
         filter.must_not.push(Condition::matches("deleted", true));
         let request = SearchPointsBuilder::new(db.id(customer_id), array.to_vec(), limit)
             .filter(filter)
