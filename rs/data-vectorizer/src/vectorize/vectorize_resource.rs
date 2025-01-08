@@ -1,10 +1,8 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use serde::Serialize;
 use shared::{
     connections::{
         dbname::DbName,
-        openai::embeddings::request_embedding,
         qdrant::{
             connect::{update_deleted_resources, QdrantConnection},
             ResourceQdrantMetadata,
@@ -13,7 +11,6 @@ use shared::{
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
     log_error, log_error_continue,
     types::{
-        class::vectorized::{to_qdrant_points, Id},
         kubeapidata::{KubeApiData, KubeEventType},
         tokenizer::Tokenizer,
     },
@@ -22,9 +19,9 @@ use shared::{
         ratelimit::RateLimiter,
     },
 };
-use tracing::{debug, info};
+use tracing::debug;
 
-use crate::error::DataVectorizationError;
+use crate::{error::DataVectorizationError, vectorize::vectorizer::vectorize_chunk};
 
 pub async fn vectorize_resource(
     limiter: Arc<RateLimiter>,
@@ -111,18 +108,31 @@ pub async fn vectorize_resource(
 
                 if total_token_count > 100000 {
                     limiter.check_rate_limit(total_token_count).await;
-                    let chunk_len =
-                        vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &customer_id, &db)
-                            .await?;
-                    info!("Vectorized {chunk_len} {db} with {total_token_count} tokens. ID: {customer_id}");
+                    vectorize_chunk(
+                        &mut chunk,
+                        &mut metachunk,
+                        &qdrant,
+                        &customer_id,
+                        &db,
+                        total_token_count,
+                    )
+                    .await;
                     total_token_count = 0;
                 }
             }
 
             limiter.check_rate_limit(total_token_count).await;
-            let chunk_len =
-                vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &customer_id, &db).await?;
-            info!("Vectorized {chunk_len} {db} with {total_token_count} tokens. ID: {customer_id}");
+
+            vectorize_chunk(
+                &mut chunk,
+                &mut metachunk,
+                &qdrant,
+                &customer_id,
+                &db,
+                total_token_count,
+            )
+            .await;
+
             update_deleted_resources(&qdrant, &customer_id, &db, &uids_deleted).await?;
 
             chunk.clear();
@@ -132,20 +142,4 @@ pub async fn vectorize_resource(
         // commit fluvio offset
         commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
     }
-}
-
-async fn vectorize_chunk<T: Serialize + Id>(
-    chunk: &mut Vec<String>,
-    metachunk: &mut Vec<T>,
-    qdrant: &QdrantConnection,
-    customer_id: &str,
-    db: &DbName,
-) -> Result<usize, DataVectorizationError> {
-    let arrays = request_embedding(chunk).await?;
-    let qdrant_points = to_qdrant_points(metachunk, &arrays)?;
-    qdrant.upsert_points(qdrant_points, db, customer_id).await?;
-    let chunk_len = chunk.len();
-    chunk.clear();
-    metachunk.clear();
-    Ok(chunk_len)
 }
