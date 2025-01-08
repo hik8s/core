@@ -3,7 +3,7 @@ mod tests {
     use data_intake::error::DataIntakeError;
     use data_intake::server::initialize_data_intake;
     use data_processing::run::{
-        run_customresource_processing, run_data_processing, run_resource_processing,
+        run_customresource_processing, run_log_processing, run_resource_processing,
     };
     use data_vectorizer::run::{run_vectorize_customresource, run_vectorize_resource};
     use data_vectorizer::vectorize_class;
@@ -60,7 +60,7 @@ mod tests {
 
         // data processing
         THREAD_LOG_PROCESSING.call_once(|| {
-            run_data_processing().unwrap();
+            run_log_processing().unwrap();
 
             // data vectorizer
             tokio::spawn(async move {

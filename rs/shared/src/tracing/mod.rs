@@ -12,6 +12,17 @@ macro_rules! log_error {
 }
 
 #[macro_export]
+macro_rules! log_error_with_message {
+    ($msg:expr, $e:expr) => {{
+        let file_line = format!("{}:{}:{}", file!(), line!(), column!());
+        let span = tracing::span!(tracing::Level::ERROR, "error", caller = file_line);
+        let _enter = span.enter();
+        tracing::error!("{}: {:?}", $msg, $e);
+        $e
+    }};
+}
+
+#[macro_export]
 macro_rules! log_error_continue {
     ($result:expr) => {
         match $result {

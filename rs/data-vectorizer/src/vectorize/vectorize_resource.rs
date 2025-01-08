@@ -132,7 +132,6 @@ pub async fn vectorize_resource(
         // commit fluvio offset
         commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
     }
-    // Ok(())
 }
 
 async fn vectorize_chunk<T: Serialize + Id>(

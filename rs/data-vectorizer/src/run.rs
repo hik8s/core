@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use shared::{connections::dbname::DbName, fluvio::TopicName, utils::ratelimit::RateLimiter};
+use shared::{
+    connections::dbname::DbName, fluvio::TopicName, log_error_with_message,
+    utils::ratelimit::RateLimiter,
+};
 use tokio::task::JoinHandle;
 
 use crate::{
@@ -11,11 +14,12 @@ use crate::{
 pub fn run_vectorize_class(
     limiter: Arc<RateLimiter>,
 ) -> Result<Vec<JoinHandle<Result<(), DataVectorizationError>>>, DataVectorizationError> {
-    // Vector to hold all spawned threads
     let mut threads: Vec<JoinHandle<Result<(), DataVectorizationError>>> = Vec::new();
 
     threads.push(tokio::spawn(async move {
-        vectorize_class(limiter).await?;
+        vectorize_class(limiter)
+            .await
+            .map_err(|e| log_error_with_message!("Event vectorizer thread exited with error", e))?;
         Ok(())
     }));
 
@@ -30,7 +34,9 @@ pub fn run_vectorize_resource(
     threads.push(tokio::spawn(async move {
         let db = DbName::Resource;
         let topic = TopicName::ProcessedResource;
-        vectorize_resource(limiter, db, topic).await?;
+        vectorize_resource(limiter, db, topic).await.map_err(|e| {
+            log_error_with_message!("Resource vectorizer thread exited with error", e)
+        })?;
         Ok(())
     }));
 
@@ -45,7 +51,9 @@ pub fn run_vectorize_customresource(
     threads.push(tokio::spawn(async move {
         let db = DbName::CustomResource;
         let topic = TopicName::ProcessedCustomResource;
-        vectorize_resource(limiter, db, topic).await?;
+        vectorize_resource(limiter, db, topic).await.map_err(|e| {
+            log_error_with_message!("Custom resource vectorizer thread exited with error", e)
+        })?;
         Ok(())
     }));
 
@@ -60,7 +68,9 @@ pub fn run_vectorize_event(
     threads.push(tokio::spawn(async move {
         let db = DbName::Event;
         let topic = TopicName::ProcessedEvent;
-        vectorize_event(limiter, db, topic).await?;
+        vectorize_event(limiter, db, topic)
+            .await
+            .map_err(|e| log_error_with_message!("Event vectorizer thread exited with error", e))?;
         Ok(())
     }));
 
