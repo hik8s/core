@@ -14,7 +14,7 @@ use shared::{
     log_error, log_error_continue,
     types::{
         class::vectorized::{to_qdrant_points, Id},
-        kubeapidata::KubeApiData,
+        kubeapidata::{KubeApiData, KubeEventType},
         tokenizer::Tokenizer,
     },
     utils::{
@@ -66,7 +66,7 @@ pub async fn vectorize_resource(
                         continue;
                     }
                 }
-                if data.event_type == "delete" {
+                if data.event_type == KubeEventType::Delete {
                     uids_deleted.push(uid.clone());
                     continue;
                 }

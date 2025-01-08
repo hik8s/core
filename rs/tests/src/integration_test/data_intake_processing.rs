@@ -149,7 +149,7 @@ mod tests {
     #[rstest]
     #[case(("pod-deletion", "resources", DbName::Resource, 3))]
     #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3))]
-    async fn integration_pod_deletion(
+    async fn integration_data_deletion(
         #[case] (subdir, route, db, num_points): (&str, &str, DbName, usize),
     ) -> Result<(), DataIntakeError> {
         let num_cases = 2;
@@ -181,38 +181,37 @@ mod tests {
 
         let start_time = Instant::now();
         let timeout = Duration::from_secs(30);
-        let mut points = Vec::<ScoredPoint>::new();
+        let mut points_deleted = Vec::<ScoredPoint>::new();
 
         while start_time.elapsed() < timeout {
             let filter = match_any("resource_uid", &[resource_uid.clone()]);
-            points = qdrant
+            let points = qdrant
                 .query_points(&db, &customer_id, filter, 1000)
                 .await
                 .unwrap();
 
-            info!("Points with deleted=true: {}/{}", points.len(), num_points);
-
-            if points.len() == num_points {
-                let all_deleted = points
-                    .iter()
-                    .all(|point| point.payload.get("deleted") == Some(&Value::from(true)));
-                if all_deleted {
-                    RECEIVED_RESOURCES
-                        .lock()
-                        .unwrap()
-                        .insert(resource_uid.clone());
-                    break;
-                }
+            points_deleted = points
+                .into_iter()
+                .filter(|point| point.payload.get("deleted") == Some(&Value::from(true)))
+                .collect();
+            if points_deleted.len() == num_points {
+                RECEIVED_RESOURCES
+                    .lock()
+                    .unwrap()
+                    .insert(subdir.to_string());
+                break;
             }
+
             sleep(Duration::from_secs(1)).await;
         }
 
-        while RECEIVED_RESOURCES.lock().unwrap().len() < 1 && start_time.elapsed() < timeout {
+        while RECEIVED_RESOURCES.lock().unwrap().len() < num_cases && start_time.elapsed() < timeout
+        {
             let res = RECEIVED_RESOURCES.lock().unwrap().clone();
             info!("{}/{}: Received data from: {:?}", res.len(), num_cases, res);
             sleep(Duration::from_secs(1)).await;
         }
-        assert_eq!(points.len(), num_points);
+        assert_eq!(points_deleted.len(), num_points);
         Ok(())
     }
 }
