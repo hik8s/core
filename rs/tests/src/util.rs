@@ -1,23 +1,23 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use data_intake::error::DataIntakeError;
 use rocket::{http::Status, local::asynchronous::Client};
-use shared::utils::mock::mock_client::post_test_batch;
+use shared::{types::kubeapidata::KubeEventType, utils::mock::mock_client::post_test_batch};
 
 fn parse_apply_filename(filename: &str) -> String {
     if filename.starts_with("apply_") {
-        return "apply".to_string();
+        return KubeEventType::Apply.to_string();
     }
     if filename.starts_with("delete_") {
-        return "delete".to_string();
+        return KubeEventType::Delete.to_string();
     }
     if filename.starts_with("initapply_") {
-        return "initapply".to_string();
+        return KubeEventType::InitApply.to_string();
     }
     "apply".to_string()
 }
 
-pub fn read_yaml_files(path: &PathBuf) -> Result<Vec<serde_json::Value>, std::io::Error> {
+pub fn read_yaml_files(path: &Path) -> Result<Vec<serde_json::Value>, std::io::Error> {
     let pattern = format!("{}/*.yaml", path.to_str().unwrap());
     let mut json_values = Vec::new();
 

@@ -1,12 +1,32 @@
 use fluvio::dataplane::record::ConsumerRecord;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::cmp::PartialEq;
 use std::convert::TryFrom;
+use std::fmt;
+
+#[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum KubeEventType {
+    Apply,
+    InitApply,
+    Delete,
+}
+
+impl fmt::Display for KubeEventType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            KubeEventType::Apply => write!(f, "apply"),
+            KubeEventType::InitApply => write!(f, "initapply"),
+            KubeEventType::Delete => write!(f, "delete"),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct KubeApiData {
     pub timestamp: i64,
-    pub event_type: String,
+    pub event_type: KubeEventType,
     pub json: Value,
 }
 
