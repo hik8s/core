@@ -1,3 +1,4 @@
+use async_openai::error::ApiError;
 use async_openai::types::{
     ChatCompletionMessageToolCallChunk, ChatCompletionRequestMessage, ChatCompletionTool,
     CreateChatCompletionRequest, CreateChatCompletionResponse, FinishReason, ResponseFormat,
@@ -19,6 +20,13 @@ use super::tools::{EventRetrievalArgs, LogRetrievalArgs, ResourceStatusRetrieval
 
 pub struct OpenAIConnection {
     pub client: Client<OpenAIConfig>,
+}
+
+impl Default for OpenAIConnection {
+    // https://rust-lang.github.io/rust-clippy/master/index.html#new_without_default
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl OpenAIConnection {
@@ -103,16 +111,26 @@ impl OpenAIConnection {
     > {
         let mut finish_reason = Option::<FinishReason>::None;
         let mut tool_call_chunks = Vec::<ChatCompletionMessageToolCallChunk>::new();
+        let mut client_disconnected = false;
+
         while let Some(result) = stream.next().await {
             let response = result?;
-            let choice = response.choices.first().unwrap();
+            let choice = response
+                .choices
+                .first()
+                .ok_or(OpenAIError::ApiError(create_no_choice_error()))?;
+
             if let Some(ref tool_call_chunk) = choice.delta.tool_calls {
-                tool_call_chunks.extend_from_slice(&tool_call_chunk);
+                tool_call_chunks.extend_from_slice(tool_call_chunk);
             }
             if let Some(ref delta) = choice.delta.content {
-                tx.send(delta.to_owned()).unwrap();
+                // Only try sending if the client is still connected
+                if !client_disconnected && tx.send(delta.to_owned()).is_err() {
+                    tracing::warn!("Client disconnected. Will still finish reading stream.");
+                    client_disconnected = true;
+                }
             }
-            finish_reason = choice.finish_reason.clone();
+            finish_reason = choice.finish_reason;
         }
         Ok((finish_reason, tool_call_chunks))
     }
@@ -155,6 +173,15 @@ impl OpenAIConnection {
                 strict: Some(true),
             },
         }
+    }
+}
+
+fn create_no_choice_error() -> ApiError {
+    ApiError {
+        message: "No choices available in response".to_string(),
+        r#type: Some("invalid_response".to_string()),
+        param: Some("choices".to_string()),
+        code: Some("no_choices".to_string()),
     }
 }
 
