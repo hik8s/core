@@ -5,7 +5,8 @@ mod tests {
     use async_openai::{error::OpenAIError, types::ChatCompletionRequestMessage};
     use bm25::{Language, SearchEngineBuilder};
     use chat_backend::chat::process::{process_user_message, RequestOptions};
-    use data_vectorizer::{vectorize::vectorize_event::vectorize_chunk, vectorize_class_batch};
+
+    use data_vectorizer::vectorize::vectorizer::{vectorize_chunk, vectorize_class_batch};
     use rstest::rstest;
     use shared::{
         connections::{dbname::DbName, qdrant::EventQdrantMetadata},
@@ -134,23 +135,20 @@ mod tests {
     ) -> Result<(), OpenAIError> {
         setup_tracing(false);
         let qdrant = QdrantConnection::new().await.unwrap();
-        // let tokenizer = Tokenizer::new().unwrap();
-        // let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
-        tracing::info!("Testdata: {:#?}", testdata);
         // Data ingestion
 
         let event = get_event_qdrant_metadata();
         tracing::info!("Event: {:#?}", event);
         let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
-        let _len = vectorize_chunk(
+        vectorize_chunk(
             &mut vec![event.data.clone()],
             &mut vec![event],
             &qdrant,
             &customer_id,
             &db,
+            0,
         )
-        .await
-        .unwrap();
+        .await;
 
         // Prompt processing
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);

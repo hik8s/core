@@ -1,24 +1,20 @@
 use std::{sync::Arc, time::Duration};
 
-use serde::Serialize;
 use serde_json::{from_str, Value};
 use shared::{
     connections::{
         dbname::DbName,
-        openai::embeddings::request_embedding,
         qdrant::{connect::QdrantConnection, EventQdrantMetadata},
     },
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
     log_error, log_error_continue,
-    types::{
-        class::vectorized::{to_qdrant_points, Id},
-        tokenizer::Tokenizer,
-    },
+    types::tokenizer::Tokenizer,
     utils::{get_as_option_string, get_as_ref, get_as_string, ratelimit::RateLimiter},
 };
-use tracing::info;
 
 use crate::error::DataVectorizationError;
+
+use super::vectorizer::vectorize_chunk;
 
 pub async fn vectorize_event(
     limiter: Arc<RateLimiter>,
@@ -89,18 +85,29 @@ pub async fn vectorize_event(
 
                 if total_token_count > 100000 {
                     limiter.check_rate_limit(total_token_count).await;
-                    let chunk_len =
-                        vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &customer_id, &db)
-                            .await?;
-                    info!("Vectorized {chunk_len} {db} with {total_token_count} tokens. ID: {customer_id}");
+                    vectorize_chunk(
+                        &mut chunk,
+                        &mut metachunk,
+                        &qdrant,
+                        &customer_id,
+                        &db,
+                        total_token_count,
+                    )
+                    .await;
                     total_token_count = 0;
                 }
             }
 
             limiter.check_rate_limit(total_token_count).await;
-            let chunk_len =
-                vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &customer_id, &db).await?;
-            info!("Vectorized {chunk_len} {db} with {total_token_count} tokens. ID: {customer_id}");
+            vectorize_chunk(
+                &mut chunk,
+                &mut metachunk,
+                &qdrant,
+                &customer_id,
+                &db,
+                total_token_count,
+            )
+            .await;
             chunk.clear();
             metachunk.clear();
         }
@@ -108,20 +115,4 @@ pub async fn vectorize_event(
         commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
     }
     // Ok(())
-}
-
-pub async fn vectorize_chunk<T: Serialize + Id>(
-    chunk: &mut Vec<String>,
-    metachunk: &mut Vec<T>,
-    qdrant: &QdrantConnection,
-    customer_id: &str,
-    db: &DbName,
-) -> Result<usize, DataVectorizationError> {
-    let arrays = request_embedding(chunk).await?;
-    let qdrant_points = to_qdrant_points(metachunk, &arrays)?;
-    qdrant.upsert_points(qdrant_points, db, customer_id).await?;
-    let chunk_len = chunk.len();
-    chunk.clear();
-    metachunk.clear();
-    Ok(chunk_len)
 }
