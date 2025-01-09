@@ -1,6 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-use serde_json::{from_str, Value};
 use shared::{
     connections::{
         dbname::DbName,
@@ -8,7 +7,7 @@ use shared::{
     },
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
     log_error, log_error_continue,
-    types::tokenizer::Tokenizer,
+    types::{kubeapidata::KubeApiData, tokenizer::Tokenizer},
     utils::{get_as_option_string, get_as_ref, get_as_string, ratelimit::RateLimiter},
 };
 
@@ -39,15 +38,17 @@ pub async fn vectorize_event(
 
             let mut total_token_count = 0;
             for record in records {
-                let data_str = String::from_utf8_lossy(record.value());
-                let mut json: Value = from_str(&data_str).map_err(|e| log_error!(e))?;
+                let mut kube_api_data: KubeApiData = log_error_continue!(record
+                    .try_into()
+                    .map_err(DataVectorizationError::DeserializationError));
 
-                // let last_timestamp = extract_timestamp(&json, "lastTimestamp");
-                let message = get_as_option_string(&json, "message");
-                let reason = get_as_option_string(&json, "reason");
-                let event_type = get_as_option_string(&json, "type");
+                // let last_timestamp = extract_timestamp(&kube_api_data.json, "lastTimestamp");
+                let message = get_as_option_string(&kube_api_data.json, "message");
+                let reason = get_as_option_string(&kube_api_data.json, "reason");
+                let event_type = get_as_option_string(&kube_api_data.json, "type");
 
-                let resource = log_error_continue!(get_as_ref(&json, "involvedObject"));
+                let resource =
+                    log_error_continue!(get_as_ref(&kube_api_data.json, "involvedObject"));
                 let resource_apiversion =
                     log_error_continue!(get_as_string(resource, "apiVersion"));
                 let resource_name = log_error_continue!(get_as_string(resource, "name"));
@@ -56,16 +57,17 @@ pub async fn vectorize_event(
                 let resource_kind = log_error_continue!(get_as_string(resource, "kind"));
                 let resource_uid = log_error_continue!(get_as_string(resource, "uid"));
                 {
-                    let metadata = json.get_mut("metadata").expect("metadata field missing");
+                    let metadata = kube_api_data
+                        .json
+                        .get_mut("metadata")
+                        .expect("metadata field missing");
 
                     if let Some(metadata_obj) = metadata.as_object_mut() {
                         metadata_obj.remove("managedFields");
                     }
                 }
 
-                let event = serde_yaml::to_string(&json);
-
-                if let Ok(data) = event {
+                if let Ok(data) = serde_yaml::to_string(&kube_api_data.json) {
                     let (data_clip, token_count) = tokenizer.clip_tail(data.clone());
                     let resource_embedding = EventQdrantMetadata::new(
                         resource_apiversion,
