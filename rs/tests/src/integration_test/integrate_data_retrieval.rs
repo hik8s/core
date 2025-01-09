@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use data_vectorizer::vectorize_class_batch;
+    use data_vectorizer::vectorize::vectorizer::vectorize_class_batch;
     use rstest::rstest;
     use shared::{
         connections::{
@@ -30,12 +30,11 @@ mod tests {
         let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
 
         // Data ingestion
-        let points =
-            vectorize_class_batch(&vec![testdata.class.clone()], &tokenizer, &rate_limiter)
-                .await
-                .unwrap()
-                .0;
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let points = vectorize_class_batch(&[testdata.class.clone()], &tokenizer, &rate_limiter)
+            .await
+            .unwrap()
+            .0;
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
         qdrant
             .upsert_points(points, &DbName::Log, &customer_id)
             .await

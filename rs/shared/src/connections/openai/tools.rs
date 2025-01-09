@@ -117,7 +117,9 @@ pub enum Tool {
     LogRetrieval(LogRetrievalArgs),
     EventRetrieval(EventRetrievalArgs),
     ResourceStatusRetrieval(ResourceStatusRetrievalArgs),
+    ResourceSpecRetrieval(ResourceStatusRetrievalArgs),
     CustomResourceStatusRetrieval(ResourceStatusRetrievalArgs),
+    CustomResourceSpecRetrieval(ResourceStatusRetrievalArgs),
 }
 
 impl fmt::Display for Tool {
@@ -127,7 +129,9 @@ impl fmt::Display for Tool {
             Tool::LogRetrieval(_) => "log-retrieval",
             Tool::EventRetrieval(_) => "event-retrieval",
             Tool::ResourceStatusRetrieval(_) => "resource-status-retrieval",
+            Tool::ResourceSpecRetrieval(_) => "resource-spec-retrieval",
             Tool::CustomResourceStatusRetrieval(_) => "customresource-status-retrieval",
+            Tool::CustomResourceSpecRetrieval(_) => "customresource-spec-retrieval",
         };
         write!(f, "{}", tool_name)
     }
@@ -255,9 +259,65 @@ impl Tool {
                 })),
                 strict: Some(true),
             },
+            Tool::ResourceSpecRetrieval(_) => FunctionObject {
+                name: self.to_string(),
+                description: Some("Retrieve the spec key of resources from the kubernetes cluster".to_string()),
+                parameters: Some(json!({
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": ["string", "null"],
+                            "description": "Name of the resource or associated application, service, or container",
+                        },
+                        "namespace": {
+                            "type": ["string", "null"],
+                            "description": "Name of the namespace"
+                        },
+                        "kind": {
+                            "type": ["string", "null"],
+                            "description": "Resource kind"
+                        },
+                        "intention": {
+                            "type": "string",
+                            "description": "The users intention. What does the user want to achieve and what information should the resource status contain?"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["name", "namespace", "kind", "intention"]
+                })),
+                strict: Some(true),
+            },
             Tool::CustomResourceStatusRetrieval(_) => FunctionObject {
                 name: self.to_string(),
                 description: Some("Retrieve the status key of custom resources from the kubernetes cluster".to_string()),
+                parameters: Some(json!({
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": ["string", "null"],
+                            "description": "Name of the resource or associated application, service, or container",
+                        },
+                        "namespace": {
+                            "type": ["string", "null"],
+                            "description": "Name of the namespace"
+                        },
+                        "kind": {
+                            "type": ["string", "null"],
+                            "description": "Custom resource kind"
+                        },
+                        "intention": {
+                            "type": "string",
+                            "description": "The users intention. What does the user want to achieve and what information should the resource status contain?"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": ["name", "namespace", "kind", "intention"]
+                })),
+                strict: Some(true),
+            },
+            Tool::CustomResourceSpecRetrieval(_) => FunctionObject {
+                name: self.to_string(),
+                description: Some("Retrieve the Spec key of custom resources from the kubernetes cluster".to_string()),
                 parameters: Some(json!({
                     "type": "object",
                     "properties": {
@@ -329,10 +389,32 @@ impl Tool {
                     .collect::<String>();
                 Ok(result)
             }
+            Tool::ResourceSpecRetrieval(args) => {
+                let search_prompt = args.search_prompt(user_message);
+                let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
+                let filter = create_filter_with_data_type(None, None, "spec");
+                let resource_status = qdrant.search_points(&DbName::Resource, customer_id, array, filter, 10).await?;
+                let result = resource_status
+                    .into_iter()
+                    .map(|sp| format_resource_status(sp).map_err(|e| log_error!(e)).unwrap_or_default())
+                    .collect::<String>();
+                Ok(result)
+            }
             Tool::CustomResourceStatusRetrieval(args) => {
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter_with_data_type(None, None, "status");
+                let resource_status = qdrant.search_points(&DbName::CustomResource, customer_id, array, filter, 10).await?;
+                let result = resource_status
+                    .into_iter()
+                    .map(|sp| format_resource_status(sp).map_err(|e| log_error!(e)).unwrap_or_default())
+                    .collect::<String>();
+                Ok(result)
+            }
+            Tool::CustomResourceSpecRetrieval(args) => {
+                let search_prompt = args.search_prompt(user_message);
+                let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
+                let filter = create_filter_with_data_type(None, None, "spec");
                 let resource_status = qdrant.search_points(&DbName::CustomResource, customer_id, array, filter, 10).await?;
                 let result = resource_status
                     .into_iter()
@@ -349,6 +431,8 @@ impl Tool {
             Tool::EventRetrieval(_) => "message: Stopping container hello-server\nreason: Killing".to_owned(),
             Tool::ResourceStatusRetrieval(_) => "Resource status: OOMKilled exit code 137".to_owned(),
             Tool::CustomResourceStatusRetrieval(_) => "Custom resource status: certificate not ready".to_owned(),
+            Tool::ResourceSpecRetrieval(_) => "Resource spec: image abc".to_owned(),
+            Tool::CustomResourceSpecRetrieval(_) => "Custom spec: image abc".to_owned(),
         }
     }
 }

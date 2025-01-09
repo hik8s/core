@@ -72,7 +72,7 @@ mod tests {
         let greptime = GreptimeConnection::new().await?;
         let qdrant = QdrantConnection::new().await.unwrap();
         let pod_name = test_data.metadata.pod_name.clone();
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
         let db = DbName::Log;
         qdrant.create_collection(&db, &customer_id).await.unwrap();
 
@@ -155,7 +155,7 @@ mod tests {
         let num_cases = 2;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
 
         THREAD_RESOURCE_PROCESSING.call_once(|| {
             run_resource_processing().unwrap();

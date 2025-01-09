@@ -4,7 +4,7 @@ use shared::{
     connections::{
         dbname::DbName, openai::embeddings::request_embedding, qdrant::connect::QdrantConnection,
     },
-    log_error_with_message,
+    log_warn_with_message,
     types::{
         class::{
             vectorized::{to_qdrant_points, to_representations, to_vectorized_classes, Id},
@@ -49,7 +49,7 @@ pub async fn vectorize_chunk<T: Serialize + Id>(
         }
         Err(e) => {
             let message = format!("Failed to vectorize chunk for db: {db}, error");
-            log_error_with_message!(message, e);
+            log_warn_with_message!(message, e);
         }
     };
 }
