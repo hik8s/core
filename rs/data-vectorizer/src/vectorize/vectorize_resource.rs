@@ -19,7 +19,6 @@ use shared::{
         ratelimit::RateLimiter,
     },
 };
-use tracing::debug;
 
 use crate::{error::DataVectorizationError, vectorize::vectorizer::vectorize_chunk};
 
@@ -47,11 +46,14 @@ pub async fn vectorize_resource(
 
             let mut total_token_count = 0;
             for record in records {
-                let mut data: KubeApiData = log_error_continue!(record
+                let mut kube_api_data: KubeApiData = log_error_continue!(record
                     .try_into()
                     .map_err(DataVectorizationError::DeserializationError));
-                let kind = log_error_continue!(get_as_string(&data.json, "kind"));
-                let metadata = data.json.get_mut("metadata").expect("metadata not found");
+                let kind = log_error_continue!(get_as_string(&kube_api_data.json, "kind"));
+                let metadata = kube_api_data
+                    .json
+                    .get_mut("metadata")
+                    .expect("metadata not found");
 
                 let name = log_error_continue!(get_as_string(metadata, "name"));
                 let uid = log_error_continue!(get_as_string(metadata, "uid"));
@@ -63,7 +65,7 @@ pub async fn vectorize_resource(
                         continue;
                     }
                 }
-                if data.event_type == KubeEventType::Delete {
+                if kube_api_data.event_type == KubeEventType::Delete {
                     uids_deleted.push(uid.clone());
                     continue;
                 }
@@ -76,13 +78,15 @@ pub async fn vectorize_resource(
 
                 let metadata_map = create_metadata_map(&name, &namespace, &uid);
 
-                let spec = extract_remove_key(&mut data.json, &kind, &metadata_map, "spec");
-                let status = extract_remove_key(&mut data.json, &kind, &metadata_map, "status");
-                let metadata = serde_yaml::to_string(&data.json);
+                let spec =
+                    extract_remove_key(&mut kube_api_data.json, &kind, &metadata_map, "spec");
+                let status =
+                    extract_remove_key(&mut kube_api_data.json, &kind, &metadata_map, "status");
 
-                debug!("MARKER\n{:?}{:?}{:?}", metadata, spec, status);
+                let remainder = serde_yaml::to_string(&kube_api_data.json);
+
                 let mut data_map = HashMap::new();
-                if let Ok(data) = metadata {
+                if let Ok(data) = remainder {
                     data_map.insert("metadata", data);
                 }
                 if let Some(data) = spec {
