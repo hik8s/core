@@ -12,7 +12,7 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use shared::fluvio::commit_and_flush_offsets;
 use shared::types::kubeapidata::KubeApiData;
-use shared::{log_error, log_error_continue};
+use shared::{log_error, log_warn, log_warn_continue};
 
 use super::process::ProcessThreadError;
 use shared::utils::{
@@ -28,19 +28,19 @@ pub async fn process_resource(
     let greptime = GreptimeConnection::new().await?;
 
     while let Some(result) = consumer.next().await {
-        let record = log_error_continue!(result);
-        let customer_id = log_error_continue!(get_record_key(&record));
+        let record = log_warn_continue!(result);
+        let customer_id = log_warn_continue!(get_record_key(&record));
 
         greptime.create_database(&db_name, &customer_id).await?;
 
-        let data: KubeApiData = log_error_continue!(record
+        let data: KubeApiData = log_warn_continue!(record
             .try_into()
             .map_err(ProcessThreadError::DeserializationError));
 
-        let kind = log_error_continue!(get_as_string(&data.json, "kind"));
-        let apiversion = log_error_continue!(get_as_string(&data.json, "apiVersion"));
+        let kind = log_warn_continue!(get_as_string(&data.json, "kind"));
+        let apiversion = log_warn_continue!(get_as_string(&data.json, "apiVersion"));
 
-        let metadata = log_error_continue!(get_as_ref(&data.json, "metadata"));
+        let metadata = log_warn_continue!(get_as_ref(&data.json, "metadata"));
         let uid = get_as_option_string(metadata, "uid");
         let name = get_as_option_string(metadata, "name");
         let namespace = get_as_option_string(metadata, "namespace");
@@ -71,15 +71,15 @@ pub async fn process_resource(
         stream_inserter.insert(vec![insert_request]).await?;
         stream_inserter.finish().await?;
 
-        let data_serialized: Vec<u8> = log_error_continue!(data
+        let data_serialized: Vec<u8> = log_warn_continue!(data
             .try_into()
             .map_err(ProcessThreadError::SerializationError));
         producer
             .send(customer_id.clone(), data_serialized)
             .await
-            .map_err(|e| log_error!(e))
+            .map_err(|e| log_warn!(e))
             .ok();
-        producer.flush().await.map_err(|e| log_error!(e)).ok();
+        producer.flush().await.map_err(|e| log_warn!(e)).ok();
 
         commit_and_flush_offsets(&mut consumer, customer_id)
             .await

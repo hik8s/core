@@ -6,7 +6,7 @@ use shared::{
         qdrant::{connect::QdrantConnection, EventQdrantMetadata},
     },
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
-    log_error, log_error_continue,
+    log_warn_continue,
     types::{kubeapidata::KubeApiData, tokenizer::Tokenizer},
     utils::{get_as_option_string, get_as_ref, get_as_string, ratelimit::RateLimiter},
 };
@@ -38,7 +38,7 @@ pub async fn vectorize_event(
 
             let mut total_token_count = 0;
             for record in records {
-                let mut kube_api_data: KubeApiData = log_error_continue!(record
+                let mut kube_api_data: KubeApiData = log_warn_continue!(record
                     .try_into()
                     .map_err(DataVectorizationError::DeserializationError));
 
@@ -48,14 +48,13 @@ pub async fn vectorize_event(
                 let event_type = get_as_option_string(&kube_api_data.json, "type");
 
                 let resource =
-                    log_error_continue!(get_as_ref(&kube_api_data.json, "involvedObject"));
-                let resource_apiversion =
-                    log_error_continue!(get_as_string(resource, "apiVersion"));
-                let resource_name = log_error_continue!(get_as_string(resource, "name"));
+                    log_warn_continue!(get_as_ref(&kube_api_data.json, "involvedObject"));
+                let resource_apiversion = log_warn_continue!(get_as_string(resource, "apiVersion"));
+                let resource_name = log_warn_continue!(get_as_string(resource, "name"));
                 let resource_namespace = get_as_option_string(resource, "namespace")
                     .unwrap_or("not_namespaced".to_string());
-                let resource_kind = log_error_continue!(get_as_string(resource, "kind"));
-                let resource_uid = log_error_continue!(get_as_string(resource, "uid"));
+                let resource_kind = log_warn_continue!(get_as_string(resource, "kind"));
+                let resource_uid = log_warn_continue!(get_as_string(resource, "uid"));
                 {
                     let metadata = kube_api_data
                         .json

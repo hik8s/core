@@ -7,7 +7,7 @@ use shared::connections::fluvio::util::get_record_key;
 use shared::constant::TOPIC_CLASS_BYTES_PER_RECORD;
 use shared::fluvio::{commit_and_flush_offsets, OffsetError};
 use shared::preprocessing::log::preprocess_message;
-use shared::{log_error, log_error_continue};
+use shared::{log_error, log_warn_continue};
 
 use std::str::Utf8Error;
 use std::sync::Arc;
@@ -64,10 +64,10 @@ pub async fn process_logs(
     let mut classifier = Classifier::new(None, redis)?;
     let greptime = GreptimeConnection::new().await?;
     while let Some(result) = consumer.next().await {
-        let record = log_error_continue!(result);
+        let record = log_warn_continue!(result);
 
-        let customer_id = log_error_continue!(get_record_key(&record));
-        let log = log_error_continue!(
+        let customer_id = log_warn_continue!(get_record_key(&record));
+        let log = log_warn_continue!(
             LogRecord::try_from(record).map_err(ProcessThreadError::DeserializationError)
         );
 
@@ -93,7 +93,7 @@ pub async fn process_logs(
             let class = updated_class.unwrap();
             let key = class.key.clone();
             let class_id = class.class_id.clone();
-            let serialized_record: String = log_error_continue!(class
+            let serialized_record: String = log_warn_continue!(class
                 .try_into()
                 .map_err(ProcessThreadError::SerializationError));
             // TODO: add truncate for class.items
