@@ -146,7 +146,9 @@ impl TryFrom<FunctionCall> for Tool {
             "log-retrieval" => Ok(Tool::LogRetrieval(arguments.try_into().unwrap())),
             "event-retrieval" => Ok(Tool::EventRetrieval(arguments.try_into().unwrap())),
             "resource-status-retrieval" => Ok(Tool::ResourceStatusRetrieval(arguments.try_into().unwrap())),
+            "resource-spec-retrieval" => Ok(Tool::ResourceSpecRetrieval(arguments.try_into().unwrap())),
             "customresource-status-retrieval" => Ok(Tool::CustomResourceStatusRetrieval(arguments.try_into().unwrap())),
+            "customresource-spec-retrieval" => Ok(Tool::CustomResourceSpecRetrieval(arguments.try_into().unwrap())),
             _ => Err(format!("Could not parse tool name: {}", name)),
         }
     }
