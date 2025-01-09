@@ -45,7 +45,7 @@ mod tests {
             .await
             .unwrap()
             .0;
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
         qdrant
             .upsert_points(points, &db, &customer_id)
             .await
@@ -139,7 +139,7 @@ mod tests {
 
         let event = get_event_qdrant_metadata();
         tracing::info!("Event: {:#?}", event);
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
         vectorize_chunk(
             &mut vec![event.data.clone()],
             &mut vec![event],
@@ -216,7 +216,7 @@ mod tests {
         setup_tracing(false);
         let qdrant = QdrantConnection::new().await.unwrap();
 
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
 
         // Prompt processing
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
@@ -284,7 +284,7 @@ mod tests {
         setup_tracing(false);
         let qdrant = QdrantConnection::new().await.unwrap();
 
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_DEV").unwrap();
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
 
         // Prompt processing
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
