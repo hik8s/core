@@ -29,7 +29,7 @@ impl FluvioConnection {
     pub async fn new() -> Result<Self, FluvioConnectionError> {
         let fluvio = Fluvio::connect()
             .await
-            .map_err(|e| FluvioConnectionError::ClientConnection(log_error!(e).into()))?;
+            .map_err(|e| FluvioConnectionError::ClientConnection(log_error!(e)))?;
 
         let mut topics = HashMap::new();
         let mut producers = HashMap::new();
@@ -79,7 +79,7 @@ impl FluvioConnection {
                     })?,
             )
             .await
-            .map_err(|e| FluvioConnectionError::ConsumerError(log_error!(e).into()))?;
+            .map_err(|e| FluvioConnectionError::ConsumerError(log_error!(e)))?;
         Ok(consumer)
     }
 
@@ -104,9 +104,7 @@ impl FluvioConnection {
             if let Some(records_by_key) = batch.get_mut(&customer_id) {
                 records_by_key.push(record);
             } else {
-                let mut batch_by_key = Vec::new();
-                batch_by_key.push(record);
-                batch.insert(customer_id, batch_by_key);
+                batch.insert(customer_id, vec![record]);
             }
         }
         Ok(batch)
@@ -130,6 +128,6 @@ async fn setup_producer(
     let producer = fluvio
         .topic_producer_with_config(topic.name.to_owned(), topic_config)
         .await
-        .map_err(|e| FluvioConnectionError::TopicProducer(log_error!(e).into()))?;
+        .map_err(|e| FluvioConnectionError::TopicProducer(log_error!(e)))?;
     Ok(producer)
 }
