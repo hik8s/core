@@ -1,4 +1,4 @@
-use crate::{log_error, log_error_continue};
+use crate::{log_error, log_warn_continue};
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::TopicProducerConfigBuilder;
@@ -29,7 +29,7 @@ impl FluvioConnection {
     pub async fn new() -> Result<Self, FluvioConnectionError> {
         let fluvio = Fluvio::connect()
             .await
-            .map_err(|e| FluvioConnectionError::ClientConnection(log_error!(e).into()))?;
+            .map_err(|e| FluvioConnectionError::ClientConnection(log_error!(e)))?;
 
         let mut topics = HashMap::new();
         let mut producers = HashMap::new();
@@ -79,7 +79,7 @@ impl FluvioConnection {
                     })?,
             )
             .await
-            .map_err(|e| FluvioConnectionError::ConsumerError(log_error!(e).into()))?;
+            .map_err(|e| FluvioConnectionError::ConsumerError(log_error!(e)))?;
         Ok(consumer)
     }
 
@@ -98,15 +98,13 @@ impl FluvioConnection {
                 Ok(None) => continue,       // consumer stream ended (does not happen)
                 Err(_) => continue,         // no record received within the timeout
             };
-            let record = log_error_continue!(result);
+            let record = log_warn_continue!(result);
             let customer_id = get_record_key(&record).map_err(|e| log_error!(e))?;
 
             if let Some(records_by_key) = batch.get_mut(&customer_id) {
                 records_by_key.push(record);
             } else {
-                let mut batch_by_key = Vec::new();
-                batch_by_key.push(record);
-                batch.insert(customer_id, batch_by_key);
+                batch.insert(customer_id, vec![record]);
             }
         }
         Ok(batch)
@@ -130,6 +128,6 @@ async fn setup_producer(
     let producer = fluvio
         .topic_producer_with_config(topic.name.to_owned(), topic_config)
         .await
-        .map_err(|e| FluvioConnectionError::TopicProducer(log_error!(e).into()))?;
+        .map_err(|e| FluvioConnectionError::TopicProducer(log_error!(e)))?;
     Ok(producer)
 }

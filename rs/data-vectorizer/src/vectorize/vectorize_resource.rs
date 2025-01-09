@@ -9,7 +9,7 @@ use shared::{
         },
     },
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
-    log_error, log_error_continue,
+    log_warn_continue,
     types::{
         kubeapidata::{KubeApiData, KubeEventType},
         tokenizer::Tokenizer,
@@ -46,17 +46,17 @@ pub async fn vectorize_resource(
 
             let mut total_token_count = 0;
             for record in records {
-                let mut kube_api_data: KubeApiData = log_error_continue!(record
+                let mut kube_api_data: KubeApiData = log_warn_continue!(record
                     .try_into()
                     .map_err(DataVectorizationError::DeserializationError));
-                let kind = log_error_continue!(get_as_string(&kube_api_data.json, "kind"));
+                let kind = log_warn_continue!(get_as_string(&kube_api_data.json, "kind"));
                 let metadata = kube_api_data
                     .json
                     .get_mut("metadata")
                     .expect("metadata not found");
 
-                let name = log_error_continue!(get_as_string(metadata, "name"));
-                let uid = log_error_continue!(get_as_string(metadata, "uid"));
+                let name = log_warn_continue!(get_as_string(metadata, "name"));
+                let uid = log_warn_continue!(get_as_string(metadata, "uid"));
                 let deletion_ts = get_as_option_string(metadata, "deletionTimestamp");
 
                 if let Some(deletion_ts) = deletion_ts {
