@@ -16,7 +16,9 @@ use tokio::sync::mpsc;
 use crate::constant::OPENAI_CHAT_MODEL_MINI;
 
 use super::messages::create_simple_system_message;
-use super::tools::{EventRetrievalArgs, LogRetrievalArgs, ResourceStatusRetrievalArgs, Tool};
+use super::tools::{
+    CreateDeploymentArgs, EventRetrievalArgs, LogRetrievalArgs, ResourceStatusRetrievalArgs, Tool,
+};
 
 pub struct OpenAIConnection {
     pub client: Client<OpenAIConfig>,
@@ -75,10 +77,12 @@ impl OpenAIConnection {
             Tool::ResourceSpecRetrieval(ResourceStatusRetrievalArgs::default()).into();
         let customresource_spec_retrieval: ChatCompletionTool =
             Tool::CustomResourceSpecRetrieval(ResourceStatusRetrievalArgs::default()).into();
+        let create_deployment: ChatCompletionTool =
+            Tool::CreateDeployment(CreateDeploymentArgs::default()).into();
 
-        let tools = vec![
+        let tools: Vec<ChatCompletionTool> = vec![
             log_retrieval,
-            // cluster_overview,
+            create_deployment,
             event_retrieval,
             resource_status_retrieval,
             customresource_status_retrieval,

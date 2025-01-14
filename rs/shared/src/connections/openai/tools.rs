@@ -110,10 +110,26 @@ impl ResourceStatusRetrievalArgs {
         prompt
     }
 }
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct CreateDeploymentArgs {
+    pub databases: Vec<String>,
+    pub name: String,
+    pub namespace: String,
+    pub image_name: String,
+}
+
+impl TryFrom<String> for CreateDeploymentArgs {
+    type Error = serde_json::Error;
+
+    fn try_from(json_string: String) -> Result<Self, Self::Error> {
+        serde_json::from_str(&json_string)
+    }
+}
 
 #[derive(Debug)]
 pub enum Tool {
     ClusterOverview,
+    CreateDeployment(CreateDeploymentArgs),
     LogRetrieval(LogRetrievalArgs),
     EventRetrieval(EventRetrievalArgs),
     ResourceStatusRetrieval(ResourceStatusRetrievalArgs),
@@ -126,6 +142,7 @@ impl fmt::Display for Tool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let tool_name = match self {
             Tool::ClusterOverview => "cluster-overview",
+            Tool::CreateDeployment(_) => "deployment-options",
             Tool::LogRetrieval(_) => "log-retrieval",
             Tool::EventRetrieval(_) => "event-retrieval",
             Tool::ResourceStatusRetrieval(_) => "resource-status-retrieval",
@@ -143,6 +160,7 @@ impl TryFrom<FunctionCall> for Tool {
         let FunctionCall { name, arguments } = call;
         match name.as_str() {
             "cluster-overview" => Ok(Tool::ClusterOverview),
+            "deployment-options" => Ok(Tool::CreateDeployment(arguments.try_into().unwrap())),
             "log-retrieval" => Ok(Tool::LogRetrieval(arguments.try_into().unwrap())),
             "event-retrieval" => Ok(Tool::EventRetrieval(arguments.try_into().unwrap())),
             "resource-status-retrieval" => Ok(Tool::ResourceStatusRetrieval(arguments.try_into().unwrap())),
@@ -175,6 +193,40 @@ impl Tool {
                     },
                     "additionalProperties": false,
                     "required": ["resource", "namespace"]
+                })),
+                strict: Some(true),
+            },
+            Tool::CreateDeployment(_) => FunctionObject {
+                name: self.to_string(),
+                description: Some(
+                    "Retrieve deployment options. When a user requests to create a deployment (for kubernetes), you can use these options for database connections and registry secrets.".to_string(),
+                ),
+                parameters: Some(json!({
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Name of the application."
+                        },
+                        "namespace": {
+                            "type": "string",
+                            "description": "Name of the namespace for the application."
+                        },
+                        "image_name": {
+                            "type": "string",
+                            "description": "Name of the image of the application."
+                        },
+                        "databases": {
+                            "type": "array",
+                            "description": "List of available database connections",
+                            "items": {
+                                "type": "string",
+                                "description": "To what database the deployment needs to connect. Show the user what database options exist and ask what they want to use."
+                            },
+                        },
+                    },
+                    "additionalProperties": false,
+                    "required": ["databases", "name", "namespace", "image_name"]
                 })),
                 strict: Some(true),
             },
@@ -353,9 +405,35 @@ impl Tool {
         user_message: &str,
         customer_id: &str,
     ) -> Result<String, QdrantConnectionError> {
+        let tool_name = self.to_string();
         match self {
             Tool::ClusterOverview => Ok("We got a bunch of pods here and then theres this huge pile of containers in this corner of the cluster".to_string()),
+            Tool::CreateDeployment(args) => {
+                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
+                let message = format!(r###"
+These are the options for a deployment on kubernetes:
+
+# Application metadata
+Name: "{application_name}"
+Namespace: "{namespace}"
+
+# Docker registry
+Registry name: "ghcr.io/hik8s"
+Image name: "{image_name}"
+Image pull secret: "ghcr-read-token"
+
+# Database connections
+- Postgres
+POSTGRES_DB_NAME: "postgres://user:password@localhost:5432/db"
+
+- Message broker
+KAFKA_URL: "kafka://broker:9092"
+
+Create a Deployment with the provided information and without adding anything that was not asked. Provide the exact yaml."###, application_name = args.name, namespace = args.namespace, image_name = args.image_name);
+                Ok(message.to_string())
+            },
             Tool::LogRetrieval(args) => {
+                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let search_prompt = create_search_prompt(user_message, &args);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter(args.namespace.as_ref(), args.application.as_ref());
@@ -367,7 +445,8 @@ impl Tool {
                     .collect::<String>();
                 Ok(result)
             }, 
-            Tool::EventRetrieval(args) =>   { 
+            Tool::EventRetrieval(args) => {
+                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter(None, None);
@@ -381,6 +460,7 @@ impl Tool {
                 Ok(format!("{header}\n{result}"))
             }
             Tool::ResourceStatusRetrieval(args) => {
+                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter_with_data_type(None, None, "status");
@@ -392,6 +472,7 @@ impl Tool {
                 Ok(result)
             }
             Tool::ResourceSpecRetrieval(args) => {
+                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter_with_data_type(None, None, "spec");
@@ -403,6 +484,7 @@ impl Tool {
                 Ok(result)
             }
             Tool::CustomResourceStatusRetrieval(args) => {
+                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter_with_data_type(None, None, "status");
@@ -414,6 +496,7 @@ impl Tool {
                 Ok(result)
             }
             Tool::CustomResourceSpecRetrieval(args) => {
+                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter_with_data_type(None, None, "spec");
@@ -429,6 +512,7 @@ impl Tool {
     pub fn test_request(&self) -> String {
         match self {
             Tool::ClusterOverview => "We got a bunch of pods here and then theres this huge pile of containers in this corner of the cluster".to_string(),
+            Tool::CreateDeployment(_) => "Deployment Options".to_string(),
             Tool::LogRetrieval(_) => "OOMKilled exit code 137".to_owned(),
             Tool::EventRetrieval(_) => "message: Stopping container hello-server\nreason: Killing".to_owned(),
             Tool::ResourceStatusRetrieval(_) => "Resource status: OOMKilled exit code 137".to_owned(),
@@ -571,7 +655,7 @@ mod tests {
         ];
         let request =
             openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, num_choices);
-            let response = openai.create_completion(request).await.expect("Failed to create completion");
+        let response = openai.create_completion(request).await.expect("Failed to create completion");
 
         // tool processing
         let mut success_counter: f32 = 0.0;

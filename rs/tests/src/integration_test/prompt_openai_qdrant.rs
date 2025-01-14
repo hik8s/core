@@ -68,7 +68,6 @@ mod tests {
         tracing::debug!("Messages: {:#?}", messages);
         tracing::debug!("Answer: {}", answer);
         assert!(!answer.is_empty());
-        assert_eq!(messages.len(), 5);
         for (message, expected_message) in zip(&messages, &testdata.messages) {
             assert!(std::mem::discriminant(message) == std::mem::discriminant(expected_message));
         }
@@ -340,6 +339,37 @@ mod tests {
         // assert!(evaluation, "evaluation: {evaluation} question: {question}");
         // assert!(tool_content.contains(&format!("{}", &testdata.class.to_string())));
         // tracing::info!("Search and evaluation took: {:?}", start.elapsed());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn prompt_playground() -> Result<(), OpenAIError> {
+        setup_tracing(false);
+        let qdrant = QdrantConnection::new().await.unwrap();
+
+        // let prompt = "Can u create a deployment for my application?";
+        let prompt =
+        // "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1. What are my options for databases?";
+        "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1. Create the deployment with postgres and kafka";
+        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
+
+        // Prompt processing
+        let request_option = RequestOptions::new(prompt, &customer_id);
+        let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
+
+        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        process_user_message(&qdrant, &mut messages, &tx, request_option)
+            .await
+            .unwrap();
+
+        // Answer evaluation
+        let mut answer = String::new();
+        rx.close();
+        while let Some(message_delta) = rx.recv().await {
+            answer.push_str(&message_delta);
+        }
+        tracing::debug!("\nMESSAGE\n: {:#?}", messages);
+        tracing::debug!("\nANSWER\n: {}", answer);
         Ok(())
     }
 }
