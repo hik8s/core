@@ -5,6 +5,7 @@ use shared::{
         dbname::DbName, fluvio::offset::commit_and_flush_offsets, qdrant::connect::QdrantConnection,
     },
     fluvio::{FluvioConnection, TopicName},
+    log_warn_with_message,
     types::{class::Class, tokenizer::Tokenizer},
     utils::ratelimit::RateLimiter,
 };
@@ -29,14 +30,22 @@ pub async fn vectorize_class(limiter: Arc<RateLimiter>) -> Result<(), DataVector
                 .into_iter()
                 .map(|record| record.try_into())
                 .collect::<Result<Vec<Class>, _>>()?;
-            let (points, total_token_count) =
-                vectorize_class_batch(&classes, &tokenizer, &limiter).await?;
-            info!(
-                "Vectorized {} classes with {total_token_count} tokens. Total used tokens: {}, ID: {}",
-                classes.len(),
-                limiter.tokens_used.lock().await,
-                customer_id
-            );
+            let points = match vectorize_class_batch(&classes, &tokenizer, &limiter).await {
+                Ok((points, token_count)) => {
+                    info!(
+                        "Vectorized {} classes with {} tokens. Total used tokens: {}, ID: {}",
+                        classes.len(),
+                        token_count,
+                        limiter.tokens_used.lock().await,
+                        customer_id
+                    );
+                    points
+                }
+                Err(e) => {
+                    log_warn_with_message!("Failed to vectorize class batch", e);
+                    continue;
+                }
+            };
             qdrant
                 .upsert_points(points, &DbName::Log, &customer_id)
                 .await?;
