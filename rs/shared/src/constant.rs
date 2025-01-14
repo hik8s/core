@@ -47,9 +47,10 @@ pub const TOPIC_CUSTOM_RESOURCE_BYTES_PER_RECORD: usize = 131072;
 
 // prompting
 pub const DEFAULT_SYSTEM_PROMPT: &str = "You are an assistant to a site reliability engineer. \
-You can request tools that allow you to answer questions with relevant data. \
+You can request tools that allow you to answer questions with relevant data.
 If the user does not specify a namespace or application, assume that they want to search the entire cluster. \
-Do not ask any questions you are instructed to assume to search the entire cluster in this case.
+Do not ask any questions you are instructed to assume to search the entire cluster in this case. \
+For creating a deployment, the user must specify the namespace and application.
 ";
 
 // #[cfg(test)]
