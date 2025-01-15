@@ -350,7 +350,8 @@ mod tests {
         // let prompt = "Can u create a deployment for my application?";
         let prompt =
         // "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1. What are my options for databases?";
-        "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1. Create the deployment with postgres and kafka";
+        "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1.";
+        // "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1. Create the deployment with postgres and kafka";
         let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
 
         // Prompt processing

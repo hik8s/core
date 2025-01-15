@@ -429,7 +429,9 @@ POSTGRES_DB_NAME: "postgres://user:password@localhost:5432/db"
 - Message broker
 KAFKA_URL: "kafka://broker:9092"
 
-Create a Deployment with the provided information and without adding anything that was not asked. Provide the exact yaml."###, application_name = args.name, namespace = args.namespace, image_name = args.image_name);
+Create a Deployment with the provided information and without adding anything that was not asked.
+If the user did not specify any databases, ask wheter they want to add a database connection or, 
+if a databases are specified provide the exact yaml."###, application_name = args.name, namespace = args.namespace, image_name = args.image_name);
                 Ok(message.to_string())
             },
             Tool::LogRetrieval(args) => {
