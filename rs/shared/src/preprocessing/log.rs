@@ -10,13 +10,25 @@ pub fn preprocess_message(
 
     // Check if the input string contains a JSON object
     if let (Some(start_index), Some(end_index)) = (message.find('{'), message.rfind('}')) {
-        // Process the part of the input string before the JSON object
+        // Validate indices before slicing
+        if start_index >= end_index {
+            tracing::warn!(
+                "Invalid JSON bounds: start={}, end={}, message='{}', id={}, key={}, record={}",
+                start_index,
+                end_index,
+                message,
+                customer_id,
+                key,
+                record_id
+            );
+            return split_string(message);
+        }
+
+        // Process the part before JSON
         result.extend(split_string(&message[0..start_index]));
 
-        // Extract the JSON object from the string
+        // Extract and parse JSON
         let json_str = &message[start_index..=end_index];
-
-        // Parse the JSON object
         match serde_json::from_str::<Value>(json_str) {
             Ok(json) => {
                 result.extend(flatten_json(&json));
@@ -37,7 +49,7 @@ pub fn preprocess_message(
         result.extend(split_string(&message[end_index + 1..]));
     } else {
         // If the input string does not contain a JSON object, process it as a non-JSON string
-        result.extend(split_string(&message));
+        result.extend(split_string(message));
     }
     result
 }
