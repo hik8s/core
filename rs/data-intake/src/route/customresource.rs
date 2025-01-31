@@ -24,8 +24,12 @@ pub async fn customresource_intake(
         .to_lowercase();
     if kind == "partition"
         || kind == "kustomization"
+        || kind == "gitrepository"
+        || kind == "helmchart"
         || kind == "ciliumendpoint"
         || kind == "ciliumidentity"
+        || kind == "policyreport"
+        || kind == "ephemeralreport"
     {
         return Ok(format!("Skip {}", kind));
     }
