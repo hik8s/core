@@ -14,7 +14,7 @@ use shared::{
     },
     utils::ratelimit::RateLimiter,
 };
-use tracing::info;
+use tracing::{error, info};
 
 use crate::error::DataVectorizationError;
 
@@ -27,7 +27,11 @@ async fn try_vectorize_chunk<T: Serialize + Id>(
 ) -> Result<usize, DataVectorizationError> {
     let arrays = request_embedding(chunk).await?;
     let qdrant_points = to_qdrant_points(metachunk, &arrays)?;
-    qdrant.upsert_points(qdrant_points, db, customer_id).await?;
+    qdrant
+        .upsert_points(qdrant_points, db, customer_id)
+        .await
+        .inspect_err(|e| error!("{e}"))
+        .ok();
     let chunk_len = chunk.len();
     chunk.clear();
     metachunk.clear();
