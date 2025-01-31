@@ -12,15 +12,7 @@ pub fn preprocess_message(
     if let (Some(start_index), Some(end_index)) = (message.find('{'), message.rfind('}')) {
         // Validate indices before slicing
         if start_index >= end_index {
-            tracing::warn!(
-                "Invalid JSON bounds: start={}, end={}, message='{}', id={}, key={}, record={}",
-                start_index,
-                end_index,
-                message,
-                customer_id,
-                key,
-                record_id
-            );
+            tracing::warn!("Invalid JSON bounds. Skipping");
             return split_string(message);
         }
 
