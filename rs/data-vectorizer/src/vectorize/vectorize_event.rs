@@ -6,7 +6,7 @@ use shared::{
         qdrant::{connect::QdrantConnection, EventQdrantMetadata},
     },
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
-    log_error, log_error_continue, log_warn_continue,
+    log_error_continue, log_warn_continue,
     types::{kubeapidata::KubeApiData, tokenizer::Tokenizer},
     utils::{get_as_option_string, get_as_ref, get_as_string, ratelimit::RateLimiter},
 };

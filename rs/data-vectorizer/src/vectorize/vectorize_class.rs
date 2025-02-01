@@ -5,7 +5,7 @@ use shared::{
         dbname::DbName, fluvio::offset::commit_and_flush_offsets, qdrant::connect::QdrantConnection,
     },
     fluvio::{FluvioConnection, TopicName},
-    log_error, log_error_continue,
+    log_error_continue,
     types::{class::Class, tokenizer::Tokenizer},
     utils::ratelimit::RateLimiter,
 };

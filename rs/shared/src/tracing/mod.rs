@@ -28,7 +28,10 @@ macro_rules! log_error_continue {
         match $result {
             Ok(value) => value,
             Err(e) => {
-                log_error!(e);
+                let file_line = format!("{}:{}:{}", file!(), line!(), column!());
+                let span = tracing::span!(tracing::Level::ERROR, "error", caller = file_line);
+                let _enter = span.enter();
+                tracing::warn!("{:?}", e);
                 continue;
             }
         }
