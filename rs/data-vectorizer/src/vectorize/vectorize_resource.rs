@@ -9,7 +9,7 @@ use shared::{
         },
     },
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
-    log_warn_continue,
+    log_error_continue, log_warn_continue,
     types::{
         kubeapidata::{KubeApiData, KubeEventType},
         tokenizer::Tokenizer,
@@ -137,13 +137,15 @@ pub async fn vectorize_resource(
             )
             .await;
 
-            update_deleted_resources(&qdrant, &customer_id, &db, &uids_deleted).await?;
+            log_error_continue!(
+                update_deleted_resources(&qdrant, &customer_id, &db, &uids_deleted).await
+            );
 
             chunk.clear();
             metachunk.clear();
             uids_deleted.clear();
         }
         // commit fluvio offset
-        commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
+        log_error_continue!(commit_and_flush_offsets(&mut consumer, "".to_string()).await);
     }
 }
