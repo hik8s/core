@@ -19,7 +19,7 @@ pub fn run_vectorize_class(
     threads.push(tokio::spawn(async move {
         vectorize_class(limiter)
             .await
-            .map_err(|e| log_error_with_message!("Event vectorizer thread exited with error", e))?;
+            .map_err(|e| log_error_with_message!("Class vectorizer thread exited with error", e))?;
         Ok(())
     }));
 

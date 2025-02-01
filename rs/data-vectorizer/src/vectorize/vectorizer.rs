@@ -4,7 +4,7 @@ use shared::{
     connections::{
         dbname::DbName, openai::embeddings::request_embedding, qdrant::connect::QdrantConnection,
     },
-    log_warn_with_message,
+    log_error_with_message,
     types::{
         class::{
             vectorized::{to_qdrant_points, to_representations, to_vectorized_classes, Id},
@@ -14,7 +14,7 @@ use shared::{
     },
     utils::ratelimit::RateLimiter,
 };
-use tracing::{error, info};
+use tracing::info;
 
 use crate::error::DataVectorizationError;
 
@@ -26,12 +26,9 @@ async fn try_vectorize_chunk<T: Serialize + Id>(
     db: &DbName,
 ) -> Result<usize, DataVectorizationError> {
     let arrays = request_embedding(chunk).await?;
-    let qdrant_points = to_qdrant_points(metachunk, &arrays)?;
-    qdrant
-        .upsert_points(qdrant_points, db, customer_id)
-        .await
-        .inspect_err(|e| error!("{e}"))
-        .ok();
+    let qdrant_points = to_qdrant_points(metachunk, &arrays)
+        .map_err(DataVectorizationError::QdrantPointsConversion)?;
+    qdrant.upsert_points(qdrant_points, db, customer_id).await?;
     let chunk_len = chunk.len();
     chunk.clear();
     metachunk.clear();
@@ -52,8 +49,8 @@ pub async fn vectorize_chunk<T: Serialize + Id>(
             info!("Vectorized {chunk_len} {db} with {count} tokens. ID: {customer_id}")
         }
         Err(e) => {
-            let message = format!("Failed to vectorize chunk for db: {db}, error");
-            log_warn_with_message!(message, e);
+            let message = format!("Failed to vectorize chunk for db: {db} with error");
+            log_error_with_message!(message, e);
         }
     };
 }
@@ -74,7 +71,8 @@ pub async fn vectorize_class_batch(
     let arrays = request_embedding(&representations).await?;
 
     // Create qdrant points
-    let qdrant_points = to_qdrant_points(&vectorized_classes, &arrays)?;
+    let qdrant_points = to_qdrant_points(&vectorized_classes, &arrays)
+        .map_err(DataVectorizationError::QdrantPointsConversion)?;
 
     Ok((qdrant_points, total_token_count_cut))
 }

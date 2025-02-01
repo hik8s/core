@@ -5,7 +5,7 @@ use shared::{
         dbname::DbName, fluvio::offset::commit_and_flush_offsets, qdrant::connect::QdrantConnection,
     },
     fluvio::{FluvioConnection, TopicName},
-    log_warn_with_message,
+    log_error_continue,
     types::{class::Class, tokenizer::Tokenizer},
     utils::ratelimit::RateLimiter,
 };
@@ -29,28 +29,27 @@ pub async fn vectorize_class(limiter: Arc<RateLimiter>) -> Result<(), DataVector
             let classes: Vec<Class> = records
                 .into_iter()
                 .map(|record| record.try_into())
-                .collect::<Result<Vec<Class>, _>>()?;
-            let points = match vectorize_class_batch(&classes, &tokenizer, &limiter).await {
-                Ok((points, token_count)) => {
-                    info!(
-                        "Vectorized {} classes with {} tokens. Total used tokens: {}, ID: {}",
-                        classes.len(),
-                        token_count,
-                        limiter.tokens_used.lock().await,
-                        customer_id
-                    );
-                    points
-                }
-                Err(e) => {
-                    log_warn_with_message!("Failed to vectorize class batch", e);
-                    continue;
-                }
-            };
-            qdrant
-                .upsert_points(points, &DbName::Log, &customer_id)
-                .await?;
+                .collect::<Result<Vec<Class>, _>>()
+                .map_err(DataVectorizationError::ClassDeserialization)?;
+
+            let (points, token_count) =
+                log_error_continue!(vectorize_class_batch(&classes, &tokenizer, &limiter).await);
+
+            log_error_continue!(
+                qdrant
+                    .upsert_points(points, &DbName::Log, &customer_id)
+                    .await
+            );
+
+            info!(
+                "Vectorized {} classes with {} tokens. Total used tokens: {}, ID: {}",
+                classes.len(),
+                token_count,
+                limiter.tokens_used.lock().await,
+                customer_id
+            );
         }
         // commit fluvio offset
-        commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
+        log_error_continue!(commit_and_flush_offsets(&mut consumer, "".to_string()).await);
     }
 }

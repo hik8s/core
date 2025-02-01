@@ -6,7 +6,7 @@ use shared::{
         qdrant::{connect::QdrantConnection, EventQdrantMetadata},
     },
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
-    log_warn_continue,
+    log_error_continue, log_warn_continue,
     types::{kubeapidata::KubeApiData, tokenizer::Tokenizer},
     utils::{get_as_option_string, get_as_ref, get_as_string, ratelimit::RateLimiter},
 };
@@ -24,7 +24,7 @@ pub async fn vectorize_event(
     let qdrant = QdrantConnection::new().await?;
     let mut consumer = fluvio.create_consumer(0, topic).await?;
     let tokenizer = Tokenizer::new()?;
-    let polling_interval = Duration::from_millis(100);
+    let polling_interval = Duration::from_millis(10);
     loop {
         // Accumulate batch
         let mut batch = fluvio.next_batch(&mut consumer, polling_interval).await?;
@@ -113,7 +113,6 @@ pub async fn vectorize_event(
             metachunk.clear();
         }
         // commit fluvio offset
-        commit_and_flush_offsets(&mut consumer, "".to_string()).await?;
+        log_error_continue!(commit_and_flush_offsets(&mut consumer, "".to_string()).await);
     }
-    // Ok(())
 }

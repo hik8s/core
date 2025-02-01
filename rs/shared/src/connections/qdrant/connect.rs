@@ -58,15 +58,17 @@ impl QdrantConnection {
             )
             .await
         {
-            Ok(_) => (),
-            Err(QdrantError::ResponseError { status }) if status.code() == Code::AlreadyExists => {
-                return Ok(())
+            Ok(_) => {
+                info!("Collection {} created", db);
+                Ok(())
             }
-            Err(e) => return Err(e.into()),
-        };
-        info!("Collection {} created", db);
-        Ok(())
+            Err(QdrantError::ResponseError { status }) if status.code() == Code::AlreadyExists => {
+                Ok(())
+            }
+            Err(e) => Err(QdrantConnectionError::CreateCollection(e)),
+        }
     }
+
     pub async fn upsert_points(
         &self,
         qdrant_point: Vec<PointStruct>,
@@ -75,25 +77,25 @@ impl QdrantConnection {
     ) -> Result<PointsOperationResponse, QdrantConnectionError> {
         self.create_collection(db, customer_id).await?;
         let request = UpsertPointsBuilder::new(db.id(customer_id), qdrant_point).wait(false);
-        let response = self.client.upsert_points(request).await?;
-        Ok(response)
+        self.client
+            .upsert_points(request)
+            .await
+            .map_err(QdrantConnectionError::UpsertPoints)
     }
-    pub async fn update_points(
+    pub async fn set_payload(
         &self,
         db: &DbName,
         customer_id: &str,
         filter: Filter,
         new_payload: Payload,
-    ) -> Result<PointsOperationResponse, QdrantConnectionError> {
-        let response = self
-            .client
+    ) -> Result<PointsOperationResponse, QdrantError> {
+        self.client
             .set_payload(
                 SetPayloadPointsBuilder::new(db.id(customer_id), new_payload)
                     .points_selector(filter)
                     .wait(true),
             )
-            .await?;
-        Ok(response)
+            .await
     }
     pub async fn search_points(
         &self,
@@ -184,8 +186,9 @@ pub async fn update_deleted_resources(
 
     // Update points in batch
     qdrant
-        .update_points(db, customer_id, filter, payload)
-        .await?;
+        .set_payload(db, customer_id, filter, payload)
+        .await
+        .map_err(QdrantConnectionError::SetPayload)?;
 
     Ok(())
 }
