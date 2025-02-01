@@ -24,7 +24,7 @@ pub async fn vectorize_event(
     let qdrant = QdrantConnection::new().await?;
     let mut consumer = fluvio.create_consumer(0, topic).await?;
     let tokenizer = Tokenizer::new()?;
-    let polling_interval = Duration::from_millis(100);
+    let polling_interval = Duration::from_millis(10);
     loop {
         // Accumulate batch
         let mut batch = fluvio.next_batch(&mut consumer, polling_interval).await?;
