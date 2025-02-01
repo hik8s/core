@@ -34,6 +34,10 @@ pub async fn process_event(
             .try_into()
             .map_err(ProcessThreadError::DeserializationError));
 
+        let event_type = log_warn_continue!(get_as_string(&data.json, "type"));
+        if event_type == "Normal" {
+            continue;
+        }
         let apiversion = log_warn_continue!(get_as_string(&data.json, "apiVersion"));
         let last_timestamp = extract_timestamp(&data.json, "lastTimestamp");
         let message = get_as_option_string(&data.json, "message");

@@ -3,9 +3,12 @@ mod tests {
     use data_intake::error::DataIntakeError;
     use data_intake::server::initialize_data_intake;
     use data_processing::run::{
-        run_customresource_processing, run_log_processing, run_resource_processing,
+        run_customresource_processing, run_event_processing, run_log_processing,
+        run_resource_processing,
     };
-    use data_vectorizer::run::{run_vectorize_customresource, run_vectorize_resource};
+    use data_vectorizer::run::{
+        run_vectorize_customresource, run_vectorize_event, run_vectorize_resource,
+    };
     use data_vectorizer::vectorize_class;
     use qdrant_client::qdrant::{ScoredPoint, Value};
     use rstest::rstest;
@@ -119,13 +122,18 @@ mod tests {
         Ok(())
     }
 
-    fn replace_resource_uids(resources: &mut [serde_json::Value]) -> String {
+    fn replace_resource_uids(resources: &mut [serde_json::Value], db: &DbName) -> String {
         let resource_uid = uuid4().to_string();
 
         for resource in resources.iter_mut() {
             if let Some(json) = resource.get_mut("json") {
-                if let Some(metadata) = json.as_object_mut().and_then(|obj| obj.get_mut("metadata"))
-                {
+                let key = match db {
+                    DbName::Resource => "metadata",
+                    DbName::CustomResource => "metadata",
+                    DbName::Event => "involvedObject",
+                    _ => "",
+                };
+                if let Some(metadata) = json.as_object_mut().and_then(|obj| obj.get_mut(key)) {
                     if let Some(metadata_obj) = metadata.as_object_mut() {
                         metadata_obj.insert(
                             "uid".to_string(),
@@ -149,10 +157,11 @@ mod tests {
     #[rstest]
     #[case(("pod-deletion", "resources", DbName::Resource, 3))]
     #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3))]
+    #[case(("event-filter", "events", DbName::Event, 1))]
     async fn integration_data_deletion(
         #[case] (subdir, route, db, num_points): (&str, &str, DbName, usize),
     ) -> Result<(), DataIntakeError> {
-        let num_cases = 2;
+        let num_cases = 3;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
         let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
@@ -160,10 +169,12 @@ mod tests {
         THREAD_RESOURCE_PROCESSING.call_once(|| {
             run_resource_processing().unwrap();
             run_customresource_processing().unwrap();
+            run_event_processing().unwrap();
 
             let limiter = Arc::new(RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT));
             run_vectorize_resource(limiter.clone()).unwrap();
-            run_vectorize_customresource(limiter).unwrap();
+            run_vectorize_customresource(limiter.clone()).unwrap();
+            run_vectorize_event(limiter).unwrap();
         });
 
         let server = initialize_data_intake().await.unwrap();
@@ -174,7 +185,7 @@ mod tests {
         let mut json = read_yaml_files(&path).unwrap();
 
         // this assumes that the same resource uid is being sent
-        let resource_uid = replace_resource_uids(&mut json);
+        let resource_uid = replace_resource_uids(&mut json, &db);
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
         assert_eq!(status.code, 200);
@@ -190,6 +201,13 @@ mod tests {
                 .await
                 .unwrap();
 
+            if route == "events" && points.len() == num_points {
+                RECEIVED_RESOURCES
+                    .lock()
+                    .unwrap()
+                    .insert(subdir.to_string());
+                break;
+            }
             points_deleted = points
                 .into_iter()
                 .filter(|point| point.payload.get("deleted") == Some(&Value::from(true)))
@@ -211,7 +229,9 @@ mod tests {
             info!("{}/{}: Received data from: {:?}", res.len(), num_cases, res);
             sleep(Duration::from_secs(1)).await;
         }
-        assert_eq!(points_deleted.len(), num_points);
+        if route != "events" {
+            assert_eq!(points_deleted.len(), num_points);
+        }
         Ok(())
     }
 }
