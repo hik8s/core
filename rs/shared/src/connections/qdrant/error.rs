@@ -11,4 +11,10 @@ pub enum QdrantConnectionError {
     ConfigError(#[from] ConfigError),
     #[error("Serde json error: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
+    #[error("Qdrant create collection error: {0}")]
+    CreateCollection(#[source] QdrantError),
+    #[error("Qdrant upsert points error: {0}")]
+    UpsertPoints(#[source] QdrantError),
+    #[error("Qdrant set payload error: {0}")]
+    SetPayload(#[source] QdrantError),
 }
