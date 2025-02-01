@@ -17,9 +17,11 @@ pub enum DataVectorizationError {
     #[error("Anyhow error: {0}")]
     AnyhowError(#[from] anyhow::Error),
     #[error("OpenAI API error: {0}")]
-    OpenAIError(#[from] RequestEmbeddingError),
-    #[error("Json error: {0}")]
-    JsonError(#[from] serde_json::Error),
+    RequestEmbedding(#[from] RequestEmbeddingError),
+    #[error("Error converting to qdrant points: {0}")]
+    QdrantPointsConversion(#[source] serde_json::Error),
+    #[error("Class deserialization error: {0}")]
+    ClassDeserialization(#[source] serde_json::Error),
     #[error("UTF-8 error: {0}")]
     Utf8Error(#[from] Utf8Error),
     #[error("Task join error: {0}")]
