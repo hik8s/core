@@ -188,7 +188,7 @@ mod tests {
 
         // this assumes that the same resource uid is being sent
         let resource_uid = replace_resource_uids(&mut json, &db);
-        tracing::info!("Resource UID: {}", resource_uid);
+        // tracing::info!("Resource UID: {}", resource_uid);
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
         assert_eq!(status.code, 200);
@@ -212,7 +212,12 @@ mod tests {
                     .insert(subdir.to_string());
                 break;
             }
-            tracing::info!("subdir: {} len: {}", subdir, points.len());
+            // tracing::info!(
+            //     "subdir: {} len: {}, expected: {}",
+            //     subdir,
+            //     points.len(),
+            //     num_points
+            // );
             if subdir == "skiplist-customresource" && points.len() == num_points {
                 RECEIVED_RESOURCES
                     .lock()
