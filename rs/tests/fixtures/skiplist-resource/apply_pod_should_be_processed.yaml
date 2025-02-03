@@ -1,0 +1,218 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: 2025-01-09T10:45:34Z
+  generateName: test1-656b95f57-
+  labels:
+    app: test1
+    pod-template-hash: 656b95f57
+  managedFields:
+  - apiVersion: v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:generateName: {}
+        f:labels:
+          .: {}
+          f:app: {}
+          f:pod-template-hash: {}
+        f:ownerReferences:
+          .: {}
+          k:{"uid":"b086c2eb-f7c8-4188-991f-ec513a8a6122"}: {}
+      f:spec:
+        f:containers:
+          k:{"name":"test1"}:
+            .: {}
+            f:image: {}
+            f:imagePullPolicy: {}
+            f:name: {}
+            f:resources:
+              .: {}
+              f:limits:
+                .: {}
+                f:memory: {}
+              f:requests:
+                .: {}
+                f:memory: {}
+            f:terminationMessagePath: {}
+            f:terminationMessagePolicy: {}
+        f:dnsPolicy: {}
+        f:enableServiceLinks: {}
+        f:imagePullSecrets:
+          .: {}
+          k:{"name":"hik8s-bot-ghcr-read-token"}: {}
+        f:restartPolicy: {}
+        f:schedulerName: {}
+        f:securityContext: {}
+        f:terminationGracePeriodSeconds: {}
+    manager: kube-controller-manager
+    operation: Update
+    time: 2025-01-09T10:45:34Z
+  - apiVersion: v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:status:
+        f:conditions:
+          k:{"type":"ContainersReady"}:
+            .: {}
+            f:lastProbeTime: {}
+            f:lastTransitionTime: {}
+            f:message: {}
+            f:reason: {}
+            f:status: {}
+            f:type: {}
+          k:{"type":"Initialized"}:
+            .: {}
+            f:lastProbeTime: {}
+            f:lastTransitionTime: {}
+            f:status: {}
+            f:type: {}
+          k:{"type":"PodReadyToStartContainers"}:
+            .: {}
+            f:lastProbeTime: {}
+            f:lastTransitionTime: {}
+            f:status: {}
+            f:type: {}
+          k:{"type":"Ready"}:
+            .: {}
+            f:lastProbeTime: {}
+            f:lastTransitionTime: {}
+            f:message: {}
+            f:reason: {}
+            f:status: {}
+            f:type: {}
+        f:containerStatuses: {}
+        f:hostIP: {}
+        f:hostIPs: {}
+        f:phase: {}
+        f:podIP: {}
+        f:podIPs:
+          .: {}
+          k:{"ip":"10.244.1.15"}:
+            .: {}
+            f:ip: {}
+        f:startTime: {}
+    manager: kubelet
+    operation: Update
+    subresource: status
+    time: 2025-01-09T16:18:53Z
+  name: test1-656b95f57-wltvh
+  namespace: examples
+  ownerReferences:
+  - apiVersion: apps/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: ReplicaSet
+    name: test1-656b95f57
+    uid: b086c2eb-f7c8-4188-991f-ec513a8a6122
+  resourceVersion: '180091926'
+  uid: 9dcbd3f5-5f4f-4929-8c42-8a4b9b30ee5d
+spec:
+  containers:
+  - image: ghcr.io/hik8s/killed-oom:0.1.0
+    imagePullPolicy: IfNotPresent
+    name: test1
+    resources:
+      limits:
+        memory: 1Gi
+      requests:
+        memory: 256Mi
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-ml9qz
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  imagePullSecrets:
+  - name: hik8s-bot-ghcr-read-token
+  nodeName: prod1-node1
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: Always
+  schedulerName: default-scheduler
+  securityContext: {}
+  serviceAccount: default
+  serviceAccountName: default
+  terminationGracePeriodSeconds: 30
+  tolerations:
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
+  volumes:
+  - name: kube-api-access-ml9qz
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+status:
+  conditions:
+  - lastTransitionTime: 2025-01-09T10:45:37Z
+    status: 'True'
+    type: PodReadyToStartContainers
+  - lastTransitionTime: 2025-01-09T10:45:34Z
+    status: 'True'
+    type: Initialized
+  - lastTransitionTime: 2025-01-09T16:18:53Z
+    message: 'containers with unready status: [test1]'
+    reason: ContainersNotReady
+    status: 'False'
+    type: Ready
+  - lastTransitionTime: 2025-01-09T16:18:53Z
+    message: 'containers with unready status: [test1]'
+    reason: ContainersNotReady
+    status: 'False'
+    type: ContainersReady
+  - lastTransitionTime: 2025-01-09T10:45:34Z
+    status: 'True'
+    type: PodScheduled
+  containerStatuses:
+  - containerID: containerd://fc66cabbc07b46d04937f72dec55dbefd487852fc0bfc501d3da602aa08a59a9
+    image: ghcr.io/hik8s/killed-oom:0.1.0
+    imageID: ghcr.io/hik8s/killed-oom@sha256:8eed681b3f6105258de3c10704973b18d355f1845a949bf7495d1cda22b25c5c
+    lastState:
+      terminated:
+        containerID: containerd://9e549a3dd00e12c10a5139649d7a31a2d0b8991967caaf51d44bc92c3c3e3dba
+        exitCode: 137
+        finishedAt: 2025-01-09T16:13:43Z
+        reason: OOMKilled
+        startedAt: 2025-01-09T16:13:42Z
+    name: test1
+    ready: false
+    restartCount: 70
+    started: false
+    state:
+      terminated:
+        containerID: containerd://fc66cabbc07b46d04937f72dec55dbefd487852fc0bfc501d3da602aa08a59a9
+        exitCode: 137
+        finishedAt: 2025-01-09T16:18:53Z
+        reason: OOMKilled
+        startedAt: 2025-01-09T16:18:52Z
+  hostIP: 142.132.214.164
+  hostIPs:
+  - ip: 142.132.214.164
+  phase: Running
+  podIP: 10.244.1.15
+  podIPs:
+  - ip: 10.244.1.15
+  qosClass: Burstable
+  startTime: 2025-01-09T10:45:34Z

@@ -1,0 +1,100 @@
+apiVersion: cilium.io/v2
+kind: CiliumEndpoint
+metadata:
+  creationTimestamp: 2024-12-03T15:14:15Z
+  generation: 1
+  labels:
+    app.kubernetes.io/component: master
+    app.kubernetes.io/instance: redis
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/version: 7.4.0
+    apps.kubernetes.io/pod-index: '0'
+    controller-revision-hash: redis-master-77d74f4694
+    helm.sh/chart: redis-20.0.3
+    statefulset.kubernetes.io/pod-name: redis-master-0
+  managedFields:
+  - apiVersion: cilium.io/v2
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:labels:
+          .: {}
+          f:app.kubernetes.io/component: {}
+          f:app.kubernetes.io/instance: {}
+          f:app.kubernetes.io/managed-by: {}
+          f:app.kubernetes.io/name: {}
+          f:app.kubernetes.io/version: {}
+          f:apps.kubernetes.io/pod-index: {}
+          f:controller-revision-hash: {}
+          f:helm.sh/chart: {}
+          f:statefulset.kubernetes.io/pod-name: {}
+        f:ownerReferences:
+          .: {}
+          k:{"uid":"2c0e423c-62e9-41cf-afaf-d81e58ab3d4c"}: {}
+      f:status:
+        .: {}
+        f:encryption: {}
+        f:external-identifiers:
+          .: {}
+          f:cni-attachment-id: {}
+          f:container-id: {}
+          f:k8s-namespace: {}
+          f:k8s-pod-name: {}
+          f:pod-name: {}
+        f:id: {}
+        f:identity:
+          .: {}
+          f:id: {}
+          f:labels: {}
+        f:named-ports: {}
+        f:networking:
+          .: {}
+          f:addressing: {}
+          f:node: {}
+        f:state: {}
+    manager: cilium-agent
+    operation: Update
+    time: 2024-12-03T15:14:15Z
+  name: redis-master-0
+  namespace: redis-dev
+  ownerReferences:
+  - apiVersion: v1
+    kind: Pod
+    name: redis-master-0
+    uid: 2c0e423c-62e9-41cf-afaf-d81e58ab3d4c
+  resourceVersion: '131170305'
+  uid: dbb76575-bd31-4e26-b401-118ac82e8870
+status:
+  encryption: {}
+  external-identifiers:
+    cni-attachment-id: e151fb7c581161609c1a9b95270db3e3e969f17ee6cb558d832e5f2854ca7ac9:eth0
+    container-id: e151fb7c581161609c1a9b95270db3e3e969f17ee6cb558d832e5f2854ca7ac9
+    k8s-namespace: redis-dev
+    k8s-pod-name: redis-master-0
+    pod-name: redis-dev/redis-master-0
+  id: 949
+  identity:
+    id: 17980
+    labels:
+    - k8s:app.kubernetes.io/component=master
+    - k8s:app.kubernetes.io/instance=redis
+    - k8s:app.kubernetes.io/managed-by=Helm
+    - k8s:app.kubernetes.io/name=redis
+    - k8s:app.kubernetes.io/version=7.4.0
+    - k8s:helm.sh/chart=redis-20.0.3
+    - k8s:io.cilium.k8s.namespace.labels.kubernetes.io/metadata.name=redis-dev
+    - k8s:io.cilium.k8s.namespace.labels.kustomize.toolkit.fluxcd.io/name=app
+    - k8s:io.cilium.k8s.namespace.labels.kustomize.toolkit.fluxcd.io/namespace=flux-system
+    - k8s:io.cilium.k8s.policy.cluster=default
+    - k8s:io.cilium.k8s.policy.serviceaccount=redis-master
+    - k8s:io.kubernetes.pod.namespace=redis-dev
+  named-ports:
+  - name: redis
+    port: 6379
+    protocol: TCP
+  networking:
+    addressing:
+    - ipv4: 10.244.1.167
+    node: 142.132.214.164
+  state: ready

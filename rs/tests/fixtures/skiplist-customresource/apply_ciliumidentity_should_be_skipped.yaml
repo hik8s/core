@@ -1,0 +1,64 @@
+apiVersion: cilium.io/v2
+kind: CiliumIdentity
+metadata:
+  creationTimestamp: 2024-12-02T10:30:29Z
+  generation: 1
+  labels:
+    app.kubernetes.io/component: replica
+    app.kubernetes.io/instance: redis
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/version: 7.4.0
+    helm.sh/chart: redis-20.0.3
+    io.cilium.k8s.policy.cluster: default
+    io.cilium.k8s.policy.serviceaccount: redis-replica
+    io.kubernetes.pod.namespace: redis-stag
+  managedFields:
+  - apiVersion: cilium.io/v2
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:labels:
+          .: {}
+          f:app.kubernetes.io/component: {}
+          f:app.kubernetes.io/instance: {}
+          f:app.kubernetes.io/managed-by: {}
+          f:app.kubernetes.io/name: {}
+          f:app.kubernetes.io/version: {}
+          f:helm.sh/chart: {}
+          f:io.cilium.k8s.policy.cluster: {}
+          f:io.cilium.k8s.policy.serviceaccount: {}
+          f:io.kubernetes.pod.namespace: {}
+      f:security-labels:
+        .: {}
+        f:k8s:app.kubernetes.io/component: {}
+        f:k8s:app.kubernetes.io/instance: {}
+        f:k8s:app.kubernetes.io/managed-by: {}
+        f:k8s:app.kubernetes.io/name: {}
+        f:k8s:app.kubernetes.io/version: {}
+        f:k8s:helm.sh/chart: {}
+        f:k8s:io.cilium.k8s.namespace.labels.kubernetes.io/metadata.name: {}
+        f:k8s:io.cilium.k8s.namespace.labels.kustomize.toolkit.fluxcd.io/name: {}
+        f:k8s:io.cilium.k8s.namespace.labels.kustomize.toolkit.fluxcd.io/namespace: {}
+        f:k8s:io.cilium.k8s.policy.cluster: {}
+        f:k8s:io.cilium.k8s.policy.serviceaccount: {}
+        f:k8s:io.kubernetes.pod.namespace: {}
+    manager: cilium-agent
+    operation: Update
+    time: 2024-12-02T10:30:29Z
+  name: '62617'
+  resourceVersion: '129305975'
+  uid: 0b4aff3f-31bd-4d50-98f2-437e57d9711d
+security-labels:
+  k8s:app.kubernetes.io/component: replica
+  k8s:app.kubernetes.io/instance: redis
+  k8s:app.kubernetes.io/managed-by: Helm
+  k8s:app.kubernetes.io/name: redis
+  k8s:app.kubernetes.io/version: 7.4.0
+  k8s:helm.sh/chart: redis-20.0.3
+  k8s:io.cilium.k8s.namespace.labels.kubernetes.io/metadata.name: redis-stag
+  k8s:io.cilium.k8s.namespace.labels.kustomize.toolkit.fluxcd.io/name: app
+  k8s:io.cilium.k8s.namespace.labels.kustomize.toolkit.fluxcd.io/namespace: flux-system
+  k8s:io.cilium.k8s.policy.cluster: default
+  k8s:io.cilium.k8s.policy.serviceaccount: redis-replica
+  k8s:io.kubernetes.pod.namespace: redis-stag

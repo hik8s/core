@@ -1,0 +1,88 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  creationTimestamp: 2024-12-05T07:44:24Z
+  generation: 1
+  labels:
+    kustomize.toolkit.fluxcd.io/name: app
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
+  managedFields:
+  - apiVersion: cert-manager.io/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:status:
+        .: {}
+        f:conditions:
+          .: {}
+          k:{"type":"Ready"}:
+            .: {}
+            f:lastTransitionTime: {}
+            f:message: {}
+            f:observedGeneration: {}
+            f:reason: {}
+            f:status: {}
+            f:type: {}
+        f:notAfter: {}
+        f:notBefore: {}
+        f:renewalTime: {}
+    manager: cert-manager-certificates-readiness
+    operation: Update
+    subresource: status
+    time: 2024-12-05T07:44:24Z
+  - apiVersion: cert-manager.io/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:labels:
+          .: {}
+          f:kustomize.toolkit.fluxcd.io/name: {}
+          f:kustomize.toolkit.fluxcd.io/namespace: {}
+        f:ownerReferences:
+          .: {}
+          k:{"uid":"8fbb4c6b-8a5b-4772-8a64-d48f32b9e23f"}: {}
+      f:spec:
+        .: {}
+        f:dnsNames: {}
+        f:issuerRef:
+          .: {}
+          f:group: {}
+          f:kind: {}
+          f:name: {}
+        f:secretName: {}
+        f:usages: {}
+    manager: cert-manager-ingress-shim
+    operation: Update
+    time: 2024-12-05T07:44:24Z
+  name: dashboard-ingress-tls
+  namespace: qdrant-dev
+  ownerReferences:
+  - apiVersion: networking.k8s.io/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Ingress
+    name: dashboard
+    uid: 8fbb4c6b-8a5b-4772-8a64-d48f32b9e23f
+  resourceVersion: '134084304'
+  uid: 0f57c8a1-671c-4f46-aa3f-adb54724f799
+spec:
+  dnsNames:
+  - dev.qdrant.hik8s.ai
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-production
+  secretName: dashboard-ingress-tls
+  usages:
+  - digital signature
+  - key encipherment
+status:
+  conditions:
+  - lastTransitionTime: 2024-12-05T07:44:24Z
+    message: Certificate is up to date and has not expired
+    observedGeneration: 1
+    reason: Ready
+    status: 'True'
+    type: Ready
+  notAfter: 2025-02-01T10:15:00Z
+  notBefore: 2024-11-03T10:15:01Z
+  renewalTime: 2025-01-02T10:15:00Z
