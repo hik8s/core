@@ -4,7 +4,7 @@ use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use super::error::OffsetError;
 
 pub async fn commit_and_flush_offsets(
-    consumer: &mut (impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin),
+    consumer: &mut impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>>,
     key: String,
 ) -> Result<(), OffsetError> {
     consumer
