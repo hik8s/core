@@ -20,7 +20,7 @@ async fn main() -> Result<(), DataVectorizationError> {
     let mut threads = run_vectorize_class(Arc::clone(&rate_limiter))?;
     threads.extend(run_vectorize_resource(Arc::clone(&rate_limiter))?);
     threads.extend(run_vectorize_customresource(Arc::clone(&rate_limiter))?);
-    threads.extend(run_vectorize_event(rate_limiter)?);
+    // threads.extend(run_vectorize_event(rate_limiter)?);
 
     for thread in threads {
         thread.await??;
