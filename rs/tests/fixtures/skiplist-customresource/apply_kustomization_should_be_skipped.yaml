@@ -1,0 +1,573 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  annotations:
+    reconcile.fluxcd.io/requestedAt: 2024-12-15T19:50:54.370678+01:00
+  creationTimestamp: 2024-09-05T15:33:51Z
+  finalizers:
+  - finalizers.fluxcd.io
+  generation: 1
+  labels:
+    kustomize.toolkit.fluxcd.io/name: system
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
+  managedFields:
+  - apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:labels:
+          f:kustomize.toolkit.fluxcd.io/name: {}
+          f:kustomize.toolkit.fluxcd.io/namespace: {}
+      f:spec:
+        f:decryption:
+          f:provider: {}
+          f:secretRef:
+            f:name: {}
+        f:interval: {}
+        f:path: {}
+        f:prune: {}
+        f:sourceRef:
+          f:kind: {}
+          f:name: {}
+    manager: kustomize-controller
+    operation: Apply
+    time: 2024-09-10T13:19:49Z
+  - apiVersion: kustomize.toolkit.fluxcd.io/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:finalizers:
+          .: {}
+          v:"finalizers.fluxcd.io": {}
+    manager: gotk-kustomize-controller
+    operation: Update
+    time: 2024-09-05T15:36:28Z
+  - apiVersion: kustomize.toolkit.fluxcd.io/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:annotations:
+          f:reconcile.fluxcd.io/requestedAt: {}
+    manager: flux
+    operation: Update
+    time: 2024-12-15T18:50:54Z
+  - apiVersion: kustomize.toolkit.fluxcd.io/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:status:
+        f:conditions: {}
+        f:inventory:
+          .: {}
+          f:entries: {}
+        f:lastAppliedRevision: {}
+        f:lastAttemptedRevision: {}
+        f:lastHandledReconcileAt: {}
+        f:observedGeneration: {}
+    manager: gotk-kustomize-controller
+    operation: Update
+    subresource: status
+    time: 2024-12-15T20:19:39Z
+  name: system
+  namespace: flux-system
+  resourceVersion: '146330832'
+  uid: 4d383599-3850-4091-95eb-d886f5d48f21
+spec:
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-gpg
+  force: false
+  interval: 10m
+  path: ./source-of-truth/prod1/system
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: internal-infrastructure
+status:
+  conditions:
+  - lastTransitionTime: 2024-12-15T20:19:39Z
+    message: Detecting drift for revision main@sha1:3fcd541ce6143496bc9d81749b9700e80586e2f1 with a timeout of 9m30s
+    observedGeneration: 1
+    reason: Progressing
+    status: 'True'
+    type: Reconciling
+  - lastTransitionTime: 2024-12-15T20:19:36Z
+    message: Reconciliation in progress
+    observedGeneration: 1
+    reason: Progressing
+    status: Unknown
+    type: Ready
+  inventory:
+    entries:
+    - id: _admissionreports.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _alerts.notification.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _backgroundscanreports.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _buckets.source.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _certificaterequests.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _certificates.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _challenges.acme.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _cleanuppolicies.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _clusteradmissionreports.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _clusterbackgroundscanreports.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _clustercleanuppolicies.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _clusterephemeralreports.reports.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _clusterissuers.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _clusterpolicies.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _clusterpolicyreports.wgpolicyk8s.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _ephemeralreports.reports.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _gitrepositories.source.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _globalcontextentries.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _helmcharts.source.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _helmreleases.helm.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _helmrepositories.source.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _imagepolicies.image.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _imagerepositories.image.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _imageupdateautomations.image.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _issuers.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _kustomizations.kustomize.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _mirrors.fluvio.infinyon.com_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _ocirepositories.source.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _orders.acme.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _partitions.fluvio.infinyon.com_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _policies.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _policyexceptions.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _policyreports.wgpolicyk8s.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _providers.notification.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _receivers.notification.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _smartmodules.fluvio.infinyon.com_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _spugroups.fluvio.infinyon.com_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _spus.fluvio.infinyon.com_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _tableformats.fluvio.infinyon.com_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _topics.fluvio.infinyon.com_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _updaterequests.kyverno.io_apiextensions.k8s.io_CustomResourceDefinition
+      v: v1
+    - id: _cert-manager__Namespace
+      v: v1
+    - id: _cilium-secrets__Namespace
+      v: v1
+    - id: _external-dns__Namespace
+      v: v1
+    - id: _flux-system__Namespace
+      v: v1
+    - id: _kyverno__Namespace
+      v: v1
+    - id: _local-path-storage__Namespace
+      v: v1
+    - id: _local-path_storage.k8s.io_StorageClass
+      v: v1
+    - id: _cilium_networking.k8s.io_IngressClass
+      v: v1
+    - id: flux-system_critical-pods__ResourceQuota
+      v: v1
+    - id: cert-manager_cert-manager__ServiceAccount
+      v: v1
+    - id: cert-manager_cert-manager-cainjector__ServiceAccount
+      v: v1
+    - id: cert-manager_cert-manager-webhook__ServiceAccount
+      v: v1
+    - id: external-dns_external-dns__ServiceAccount
+      v: v1
+    - id: flux-system_helm-controller__ServiceAccount
+      v: v1
+    - id: flux-system_image-automation-controller__ServiceAccount
+      v: v1
+    - id: flux-system_image-reflector-controller__ServiceAccount
+      v: v1
+    - id: flux-system_kustomize-controller__ServiceAccount
+      v: v1
+    - id: flux-system_notification-controller__ServiceAccount
+      v: v1
+    - id: flux-system_source-controller__ServiceAccount
+      v: v1
+    - id: kube-system_cilium__ServiceAccount
+      v: v1
+    - id: kube-system_cilium-envoy__ServiceAccount
+      v: v1
+    - id: kube-system_cilium-operator__ServiceAccount
+      v: v1
+    - id: kube-system_hubble-relay__ServiceAccount
+      v: v1
+    - id: kube-system_hubble-ui__ServiceAccount
+      v: v1
+    - id: kube-system_metrics-server__ServiceAccount
+      v: v1
+    - id: kyverno_kyverno-admission-controller__ServiceAccount
+      v: v1
+    - id: kyverno_kyverno-background-controller__ServiceAccount
+      v: v1
+    - id: kyverno_kyverno-cleanup-controller__ServiceAccount
+      v: v1
+    - id: kyverno_kyverno-cleanup-jobs__ServiceAccount
+      v: v1
+    - id: kyverno_kyverno-reports-controller__ServiceAccount
+      v: v1
+    - id: local-path-storage_local-path-provisioner-service-account__ServiceAccount
+      v: v1
+    - id: cert-manager_cert-manager-webhook__dynamic-serving_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: cilium-secrets_cilium-ingress-secrets_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: cilium-secrets_cilium-operator-ingress-secrets_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: flux-system_internal-infrastructure-read_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: flux-system_sops-gpg_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: kube-system_cert-manager-cainjector__leaderelection_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: kube-system_cert-manager__leaderelection_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: kube-system_cilium-bgp-control-plane-secrets_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: kube-system_cilium-config-agent_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: kyverno_kyverno__admission-controller_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: kyverno_kyverno__background-controller_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: kyverno_kyverno__cleanup-controller_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: kyverno_kyverno__reports-controller_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: local-path-storage_local-path-provisioner-role_rbac.authorization.k8s.io_Role
+      v: v1
+    - id: _cert-manager-cainjector_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-cluster-view_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-controller-approve__cert-manager-io_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-controller-certificates_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-controller-certificatesigningrequests_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-controller-challenges_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-controller-clusterissuers_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-controller-ingress-shim_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-controller-issuers_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-controller-orders_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-edit_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-view_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cert-manager-webhook__subjectaccessreviews_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cilium_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _cilium-operator_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _crd-controller_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _external-dns_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _flux-edit_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _flux-view_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _hubble-ui_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__admission-controller_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__admission-controller__core_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__background-controller_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__background-controller__core_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__cleanup-controller_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__cleanup-controller__core_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__cleanup-jobs_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__rbac__admin__policies_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__rbac__admin__policyreports_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__rbac__admin__reports_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__rbac__admin__updaterequests_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__rbac__view__policies_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__rbac__view__policyreports_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__rbac__view__reports_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__rbac__view__updaterequests_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__reports-controller_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _kyverno__reports-controller__core_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _local-path-provisioner-role_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _system__aggregated-metrics-reader_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: _system__metrics-server_rbac.authorization.k8s.io_ClusterRole
+      v: v1
+    - id: cert-manager_cert-manager-webhook__dynamic-serving_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: cilium-secrets_cilium-operator-ingress-secrets_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: cilium-secrets_cilium-secrets_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: flux-system_internal-infrastructure-read-source_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: flux-system_sops-gpg-kustomize_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: kube-system_cert-manager-cainjector__leaderelection_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: kube-system_cert-manager__leaderelection_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: kube-system_cilium-bgp-control-plane-secrets_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: kube-system_cilium-config-agent_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: kube-system_metrics-server-auth-reader_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: kyverno_kyverno__admission-controller_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: kyverno_kyverno__background-controller_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: kyverno_kyverno__cleanup-controller_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: kyverno_kyverno__reports-controller_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: local-path-storage_local-path-provisioner-bind_rbac.authorization.k8s.io_RoleBinding
+      v: v1
+    - id: _cert-manager-cainjector_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cert-manager-controller-approve__cert-manager-io_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cert-manager-controller-certificates_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cert-manager-controller-certificatesigningrequests_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cert-manager-controller-challenges_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cert-manager-controller-clusterissuers_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cert-manager-controller-ingress-shim_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cert-manager-controller-issuers_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cert-manager-controller-orders_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cert-manager-webhook__subjectaccessreviews_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cilium_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cilium-operator_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _cluster-reconciler_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _crd-controller_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _external-dns-viewer_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _hubble-ui_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _kyverno__admission-controller_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _kyverno__background-controller_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _kyverno__cleanup-controller_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _kyverno__cleanup-jobs_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _kyverno__reports-controller_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _local-path-provisioner-bind_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _metrics-server__system__auth-delegator_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: _system__metrics-server_rbac.authorization.k8s.io_ClusterRoleBinding
+      v: v1
+    - id: kube-system_cilium-config__ConfigMap
+      v: v1
+    - id: kube-system_cilium-envoy-config__ConfigMap
+      v: v1
+    - id: kube-system_hubble-relay-config__ConfigMap
+      v: v1
+    - id: kube-system_hubble-ui-nginx__ConfigMap
+      v: v1
+    - id: kyverno_kyverno__ConfigMap
+      v: v1
+    - id: kyverno_kyverno-metrics__ConfigMap
+      v: v1
+    - id: local-path-storage_local-path-config__ConfigMap
+      v: v1
+    - id: cert-manager_hik8s-cloudflare-api-token__Secret
+      v: v1
+    - id: external-dns_hik8s-cloudflare-api-token__Secret
+      v: v1
+    - id: kube-system_cilium-ca__Secret
+      v: v1
+    - id: kube-system_hubble-relay-client-certs__Secret
+      v: v1
+    - id: kube-system_hubble-server-certs__Secret
+      v: v1
+    - id: cert-manager_cert-manager__Service
+      v: v1
+    - id: cert-manager_cert-manager-webhook__Service
+      v: v1
+    - id: flux-system_notification-controller__Service
+      v: v1
+    - id: flux-system_source-controller__Service
+      v: v1
+    - id: flux-system_webhook-receiver__Service
+      v: v1
+    - id: kube-system_hubble-peer__Service
+      v: v1
+    - id: kube-system_hubble-relay__Service
+      v: v1
+    - id: kube-system_hubble-ui__Service
+      v: v1
+    - id: kube-system_metrics-server__Service
+      v: v1
+    - id: kyverno_kyverno-background-controller-metrics__Service
+      v: v1
+    - id: kyverno_kyverno-cleanup-controller__Service
+      v: v1
+    - id: kyverno_kyverno-cleanup-controller-metrics__Service
+      v: v1
+    - id: kyverno_kyverno-reports-controller-metrics__Service
+      v: v1
+    - id: kyverno_kyverno-svc__Service
+      v: v1
+    - id: kyverno_kyverno-svc-metrics__Service
+      v: v1
+    - id: cert-manager_cert-manager_apps_Deployment
+      v: v1
+    - id: cert-manager_cert-manager-cainjector_apps_Deployment
+      v: v1
+    - id: cert-manager_cert-manager-webhook_apps_Deployment
+      v: v1
+    - id: external-dns_external-dns_apps_Deployment
+      v: v1
+    - id: flux-system_helm-controller_apps_Deployment
+      v: v1
+    - id: flux-system_image-automation-controller_apps_Deployment
+      v: v1
+    - id: flux-system_image-reflector-controller_apps_Deployment
+      v: v1
+    - id: flux-system_kustomize-controller_apps_Deployment
+      v: v1
+    - id: flux-system_notification-controller_apps_Deployment
+      v: v1
+    - id: flux-system_source-controller_apps_Deployment
+      v: v1
+    - id: kube-system_cilium-operator_apps_Deployment
+      v: v1
+    - id: kube-system_hubble-relay_apps_Deployment
+      v: v1
+    - id: kube-system_hubble-ui_apps_Deployment
+      v: v1
+    - id: kube-system_metrics-server_apps_Deployment
+      v: v1
+    - id: kyverno_kyverno-admission-controller_apps_Deployment
+      v: v1
+    - id: kyverno_kyverno-background-controller_apps_Deployment
+      v: v1
+    - id: kyverno_kyverno-cleanup-controller_apps_Deployment
+      v: v1
+    - id: kyverno_kyverno-reports-controller_apps_Deployment
+      v: v1
+    - id: local-path-storage_local-path-provisioner_apps_Deployment
+      v: v1
+    - id: kyverno_kyverno-cleanup-admission-reports_batch_CronJob
+      v: v1
+    - id: kyverno_kyverno-cleanup-cluster-admission-reports_batch_CronJob
+      v: v1
+    - id: kyverno_kyverno-cleanup-cluster-ephemeral-reports_batch_CronJob
+      v: v1
+    - id: kyverno_kyverno-cleanup-ephemeral-reports_batch_CronJob
+      v: v1
+    - id: kyverno_kyverno-cleanup-update-requests_batch_CronJob
+      v: v1
+    - id: _v1beta1.metrics.k8s.io_apiregistration.k8s.io_APIService
+      v: v1
+    - id: kube-system_cilium_apps_DaemonSet
+      v: v1
+    - id: kube-system_cilium-envoy_apps_DaemonSet
+      v: v1
+    - id: _letsencrypt-production_cert-manager.io_ClusterIssuer
+      v: v1
+    - id: _control-plane-network-policy_cilium.io_CiliumClusterwideNetworkPolicy
+      v: v2
+    - id: _l2-announcement_cilium.io_CiliumL2AnnouncementPolicy
+      v: v2alpha1
+    - id: _external-https-allowed_cilium.io_CiliumLoadBalancerIPPool
+      v: v2alpha1
+    - id: _firewall-protected_cilium.io_CiliumLoadBalancerIPPool
+      v: v2alpha1
+    - id: _internal-https-allowed_cilium.io_CiliumLoadBalancerIPPool
+      v: v2alpha1
+    - id: flux-system_app_kustomize.toolkit.fluxcd.io_Kustomization
+      v: v1beta2
+    - id: flux-system_system_kustomize.toolkit.fluxcd.io_Kustomization
+      v: v1beta2
+    - id: _add-label-for-ippool_kyverno.io_ClusterPolicy
+      v: v1
+    - id: flux-system_allow-egress_networking.k8s.io_NetworkPolicy
+      v: v1
+    - id: flux-system_allow-scraping_networking.k8s.io_NetworkPolicy
+      v: v1
+    - id: flux-system_allow-webhooks_networking.k8s.io_NetworkPolicy
+      v: v1
+    - id: flux-system_internal-infrastructure_source.toolkit.fluxcd.io_GitRepository
+      v: v1
+    - id: _cert-manager-webhook_admissionregistration.k8s.io_MutatingWebhookConfiguration
+      v: v1
+    - id: _cert-manager-webhook_admissionregistration.k8s.io_ValidatingWebhookConfiguration
+      v: v1
+  lastAppliedRevision: main@sha1:3fcd541ce6143496bc9d81749b9700e80586e2f1
+  lastAttemptedRevision: main@sha1:3fcd541ce6143496bc9d81749b9700e80586e2f1
+  lastHandledReconcileAt: 2024-12-15T19:50:54.370678+01:00
+  observedGeneration: 1

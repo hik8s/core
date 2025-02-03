@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use shared::{
-    connections::dbname::DbName, fluvio::TopicName, log_error_with_message,
+    connections::{dbname::DbName, get_env_var_as_vec},
+    fluvio::TopicName,
+    log_error_with_message,
     utils::ratelimit::RateLimiter,
 };
 use tokio::task::JoinHandle;
@@ -31,12 +33,16 @@ pub fn run_vectorize_resource(
 ) -> Result<Vec<JoinHandle<Result<(), DataVectorizationError>>>, DataVectorizationError> {
     let mut threads: Vec<JoinHandle<Result<(), DataVectorizationError>>> = Vec::new();
 
+    let skiplist = get_env_var_as_vec("RESOURCE_SKIPLIST");
     threads.push(tokio::spawn(async move {
         let db = DbName::Resource;
         let topic = TopicName::ProcessedResource;
-        vectorize_resource(limiter, db, topic).await.map_err(|e| {
-            log_error_with_message!("Resource vectorizer thread exited with error", e)
-        })?;
+        // TODO process inital replicaset
+        vectorize_resource(limiter, db, topic, skiplist)
+            .await
+            .map_err(|e| {
+                log_error_with_message!("Resource vectorizer thread exited with error", e)
+            })?;
         Ok(())
     }));
 
@@ -48,12 +54,15 @@ pub fn run_vectorize_customresource(
 ) -> Result<Vec<JoinHandle<Result<(), DataVectorizationError>>>, DataVectorizationError> {
     let mut threads: Vec<JoinHandle<Result<(), DataVectorizationError>>> = Vec::new();
 
+    let skiplist = get_env_var_as_vec("CUSTOMRESOURCE_SKIPLIST");
     threads.push(tokio::spawn(async move {
         let db = DbName::CustomResource;
         let topic = TopicName::ProcessedCustomResource;
-        vectorize_resource(limiter, db, topic).await.map_err(|e| {
-            log_error_with_message!("Custom resource vectorizer thread exited with error", e)
-        })?;
+        vectorize_resource(limiter, db, topic, skiplist)
+            .await
+            .map_err(|e| {
+                log_error_with_message!("Custom resource vectorizer thread exited with error", e)
+            })?;
         Ok(())
     }));
 

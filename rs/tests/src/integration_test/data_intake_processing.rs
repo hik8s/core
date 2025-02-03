@@ -158,10 +158,12 @@ mod tests {
     #[case(("pod-deletion", "resources", DbName::Resource, 3))]
     #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3))]
     #[case(("event-filter", "events", DbName::Event, 1))]
+    #[case(("skiplist-resource", "resources", DbName::Resource, 6))]
+    #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3))]
     async fn integration_data_deletion(
         #[case] (subdir, route, db, num_points): (&str, &str, DbName, usize),
     ) -> Result<(), DataIntakeError> {
-        let num_cases = 3;
+        let num_cases = 5;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
         let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
@@ -186,6 +188,7 @@ mod tests {
 
         // this assumes that the same resource uid is being sent
         let resource_uid = replace_resource_uids(&mut json, &db);
+        // tracing::info!("Resource UID: {}", resource_uid);
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
         assert_eq!(status.code, 200);
@@ -194,9 +197,10 @@ mod tests {
         let timeout = Duration::from_secs(30);
         let mut points_deleted = Vec::<ScoredPoint>::new();
 
+        let mut points = Vec::<ScoredPoint>::new();
         while start_time.elapsed() < timeout {
             let filter = match_any("resource_uid", &[resource_uid.clone()]);
-            let points = qdrant
+            points = qdrant
                 .query_points(&db, &customer_id, filter, 1000)
                 .await
                 .unwrap();
@@ -208,7 +212,29 @@ mod tests {
                     .insert(subdir.to_string());
                 break;
             }
+            // tracing::info!(
+            //     "subdir: {} len: {}, expected: {}",
+            //     subdir,
+            //     points.len(),
+            //     num_points
+            // );
+            if subdir == "skiplist-customresource" && points.len() == num_points {
+                RECEIVED_RESOURCES
+                    .lock()
+                    .unwrap()
+                    .insert(subdir.to_string());
+                break;
+            }
+            if subdir == "skiplist-resource" && points.len() == num_points {
+                RECEIVED_RESOURCES
+                    .lock()
+                    .unwrap()
+                    .insert(subdir.to_string());
+                break;
+            }
+
             points_deleted = points
+                .clone()
                 .into_iter()
                 .filter(|point| point.payload.get("deleted") == Some(&Value::from(true)))
                 .collect();
@@ -220,7 +246,7 @@ mod tests {
                 break;
             }
 
-            sleep(Duration::from_secs(1)).await;
+            sleep(Duration::from_secs(3)).await;
         }
 
         while RECEIVED_RESOURCES.lock().unwrap().len() < num_cases && start_time.elapsed() < timeout
@@ -229,7 +255,10 @@ mod tests {
             info!("{}/{}: Received data from: {:?}", res.len(), num_cases, res);
             sleep(Duration::from_secs(1)).await;
         }
-        if route != "events" {
+        if route == "events" || subdir == "skiplist-customresource" || subdir == "skiplist-resource"
+        {
+            assert_eq!(points.len(), num_points);
+        } else {
             assert_eq!(points_deleted.len(), num_points);
         }
         Ok(())

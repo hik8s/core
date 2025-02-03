@@ -1,0 +1,76 @@
+apiVersion: reports.kyverno.io/v1
+kind: EphemeralReport
+metadata:
+  creationTimestamp: 2024-09-10T17:49:25Z
+  finalizers:
+  - partitions.finalizer.fluvio.infinyon.com
+  generation: 1
+  managedFields:
+  - apiVersion: fluvio.infinyon.com/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:finalizers:
+          .: {}
+          v:"partitions.finalizer.fluvio.infinyon.com": {}
+        f:ownerReferences:
+          .: {}
+          k:{"uid":"7f3b0bb1-ac1b-41fa-8737-c7e025828748"}: {}
+      f:spec:
+        .: {}
+        f:compressionType: {}
+        f:deduplication: {}
+        f:leader: {}
+        f:replicas: {}
+        f:system: {}
+    manager: unknown
+    operation: Update
+    time: 2024-09-10T17:49:25Z
+  - apiVersion: fluvio.infinyon.com/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:status:
+        .: {}
+        f:baseOffset: {}
+        f:isBeingDeleted: {}
+        f:leader:
+          .: {}
+          f:hw: {}
+          f:leo: {}
+          f:spu: {}
+        f:lsr: {}
+        f:replicas: {}
+        f:resolution: {}
+        f:size: {}
+    manager: unknown
+    operation: Update
+    subresource: status
+    time: 2024-12-15T20:01:38Z
+  name: logs-0
+  namespace: fluvio-prod
+  ownerReferences:
+  - apiVersion: fluvio.infinyon.com/v2
+    blockOwnerDeletion: true
+    kind: Topic
+    name: logs
+    uid: 7f3b0bb1-ac1b-41fa-8737-c7e025828748
+  resourceVersion: '146314772'
+  uid: 98c450ad-0c6c-4b6e-8d17-5f3a2f4ff766
+spec:
+  compressionType: Zstd
+  deduplication: null
+  leader: 1000
+  replicas:
+  - 1000
+  system: false
+status:
+  baseOffset: 0
+  isBeingDeleted: false
+  leader:
+    hw: 105909774
+    leo: 105909774
+    spu: 1000
+  lsr: 0
+  replicas: []
+  resolution: Online
+  size: 372796056
