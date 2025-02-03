@@ -26,12 +26,14 @@ pub async fn vectorize_resource(
     limiter: Arc<RateLimiter>,
     db: DbName,
     topic: TopicName,
+    skiplist: Vec<String>,
 ) -> Result<(), DataVectorizationError> {
     let fluvio = FluvioConnection::new().await?;
     let qdrant = QdrantConnection::new().await?;
     let mut consumer = fluvio.create_consumer(0, topic).await?;
     let tokenizer = Tokenizer::new()?;
     let polling_interval = Duration::from_millis(100);
+
     loop {
         // Accumulate batch
         let mut batch = fluvio.next_batch(&mut consumer, polling_interval).await?;
@@ -56,8 +58,7 @@ pub async fn vectorize_resource(
                 }
                 let kind_lowercase = kind.to_lowercase();
 
-                if kind_lowercase == "replicaset" {
-                    // TODO process inital replicaset
+                if skiplist.contains(&kind_lowercase) {
                     continue;
                 }
 
