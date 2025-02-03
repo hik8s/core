@@ -15,7 +15,7 @@ use shared::{
         tokenizer::Tokenizer,
     },
     utils::{
-        create_metadata_map, extract_remove_key, get_as_option_string, get_as_string,
+        create_metadata_map, extract_remove_key, get_as_option_string, get_as_string, get_uid,
         ratelimit::RateLimiter,
     },
 };
@@ -49,15 +49,20 @@ pub async fn vectorize_resource(
                     .map_err(DataVectorizationError::DeserializationError));
                 let kind = log_warn_continue!(get_as_string(&kube_api_data.json, "kind"));
 
-                if kind.to_lowercase() == "replicaset" {
+                let uid = log_warn_continue!(get_uid(&kube_api_data.json));
+                if kube_api_data.event_type == KubeEventType::Delete {
+                    uids_deleted.push(uid.clone());
+                    continue;
+                }
+                let kind_lowercase = kind.to_lowercase();
+
+                if kind_lowercase == "replicaset" {
                     // TODO process inital replicaset
                     continue;
                 }
 
-                let mut requires_embedding = true;
-
-                if kind.to_lowercase() == "pod" || kind.to_lowercase() == "deployment" {
-                    requires_embedding = kube_api_data
+                if kind_lowercase == "pod" || kind_lowercase == "deployment" {
+                    let requires_embedding = kube_api_data
                         .json
                         .get("status")
                         .and_then(|status| status.get("conditions"))
@@ -72,6 +77,9 @@ pub async fn vectorize_resource(
                             })
                         })
                         .unwrap_or(false);
+                    if !requires_embedding {
+                        continue;
+                    }
                 }
 
                 let metadata = kube_api_data
@@ -80,16 +88,6 @@ pub async fn vectorize_resource(
                     .expect("metadata not found");
 
                 let name = log_warn_continue!(get_as_string(metadata, "name"));
-                let uid = log_warn_continue!(get_as_string(metadata, "uid"));
-
-                if kube_api_data.event_type == KubeEventType::Delete {
-                    uids_deleted.push(uid.clone());
-                    continue;
-                }
-
-                if !requires_embedding {
-                    continue;
-                }
 
                 let namespace = get_as_option_string(metadata, "namespace")
                     .unwrap_or("not_namespaced".to_string());

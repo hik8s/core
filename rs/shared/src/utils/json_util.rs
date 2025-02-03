@@ -7,6 +7,12 @@ fn clean_json_string(s: &str) -> String {
     s.trim_matches('"').to_string()
 }
 
+pub fn get_uid(value: &Value) -> Result<String, io::Error> {
+    let error = io::Error::new(io::ErrorKind::InvalidData, "Metadata not found");
+    let metadata = value.get("metadata").ok_or(error)?;
+    get_as_string(metadata, "uid")
+}
+
 pub fn get_as_string(value: &Value, key: &str) -> Result<String, io::Error> {
     let msg = format!("Missing or invalid {key}");
     let error = io::Error::new(io::ErrorKind::InvalidData, msg);
