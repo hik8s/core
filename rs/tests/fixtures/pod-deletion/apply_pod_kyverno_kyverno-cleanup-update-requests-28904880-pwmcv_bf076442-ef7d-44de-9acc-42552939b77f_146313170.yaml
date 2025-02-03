@@ -146,5 +146,47 @@ spec:
               fieldPath: metadata.namespace
             path: namespace
 status:
-  phase: Pending
+  conditions:
+  - lastTransitionTime: 2024-12-15T20:00:04Z
+    status: 'False'
+    type: PodReadyToStartContainers
+  - lastTransitionTime: 2024-12-15T20:00:00Z
+    reason: PodCompleted
+    status: 'True'
+    type: Initialized
+  - lastTransitionTime: 2024-12-15T20:00:00Z
+    reason: PodCompleted
+    status: 'False'
+    type: Ready
+  - lastTransitionTime: 2024-12-15T20:00:00Z
+    reason: PodCompleted
+    status: 'False'
+    type: ContainersReady
+  - lastTransitionTime: 2024-12-15T20:00:00Z
+    status: 'True'
+    type: PodScheduled
+  containerStatuses:
+  - containerID: containerd://d0f50c8d88a19b4b1e0745ce1b9a309efd5a7dcdbbfd9f7c89ce6fb06bdc895c
+    image: docker.io/bitnami/kubectl:1.28.5
+    imageID: docker.io/bitnami/kubectl@sha256:cfd03da61658004f1615e5401ba8bde3cc4ba3f87afff0ed8875c5d1b0b09e4a
+    lastState: {}
+    name: cleanup
+    ready: false
+    restartCount: 0
+    started: false
+    state:
+      terminated:
+        containerID: containerd://d0f50c8d88a19b4b1e0745ce1b9a309efd5a7dcdbbfd9f7c89ce6fb06bdc895c
+        exitCode: 0
+        finishedAt: 2024-12-15T20:00:01Z
+        reason: Completed
+        startedAt: 2024-12-15T20:00:01Z
+  hostIP: 142.132.214.164
+  hostIPs:
+  - ip: 142.132.214.164
+  phase: Succeeded
+  podIP: 10.244.1.148
+  podIPs:
+  - ip: 10.244.1.148
   qosClass: BestEffort
+  startTime: 2024-12-15T20:00:00Z

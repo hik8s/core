@@ -38,8 +38,6 @@ pub async fn vectorize_resource(
 
         // Process batch
         for (customer_id, records) in batch.drain() {
-            // tracing::info!("ID {} | resources: {}", customer_id, records.len());
-
             let mut chunk: Vec<String> = vec![];
             let mut metachunk: Vec<ResourceQdrantMetadata> = vec![];
             let mut uids_deleted: Vec<String> = vec![];
@@ -50,6 +48,32 @@ pub async fn vectorize_resource(
                     .try_into()
                     .map_err(DataVectorizationError::DeserializationError));
                 let kind = log_warn_continue!(get_as_string(&kube_api_data.json, "kind"));
+
+                if kind.to_lowercase() == "replicaset" {
+                    // TODO process inital replicaset
+                    continue;
+                }
+
+                let mut requires_embedding = true;
+
+                if kind.to_lowercase() == "pod" || kind.to_lowercase() == "deployment" {
+                    requires_embedding = kube_api_data
+                        .json
+                        .get("status")
+                        .and_then(|status| status.get("conditions"))
+                        .and_then(|conditions| conditions.as_array())
+                        .map(|conditions| {
+                            conditions.iter().any(|condition| {
+                                condition
+                                    .get("status")
+                                    .and_then(|status| status.as_str())
+                                    .map(|s| s == "False")
+                                    .unwrap_or(false)
+                            })
+                        })
+                        .unwrap_or(false);
+                }
+
                 let metadata = kube_api_data
                     .json
                     .get_mut("metadata")
@@ -57,18 +81,16 @@ pub async fn vectorize_resource(
 
                 let name = log_warn_continue!(get_as_string(metadata, "name"));
                 let uid = log_warn_continue!(get_as_string(metadata, "uid"));
-                let deletion_ts = get_as_option_string(metadata, "deletionTimestamp");
 
-                if let Some(deletion_ts) = deletion_ts {
-                    if !deletion_ts.is_empty() {
-                        uids_deleted.push(uid.clone());
-                        continue;
-                    }
-                }
                 if kube_api_data.event_type == KubeEventType::Delete {
                     uids_deleted.push(uid.clone());
                     continue;
                 }
+
+                if !requires_embedding {
+                    continue;
+                }
+
                 let namespace = get_as_option_string(metadata, "namespace")
                     .unwrap_or("not_namespaced".to_string());
 

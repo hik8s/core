@@ -44,6 +44,9 @@ pub async fn vectorize_chunk<T: Serialize + Id>(
     count: usize,
 ) {
     // unify chunk and metachunk
+    if chunk.is_empty() {
+        return;
+    }
     match try_vectorize_chunk(chunk, metachunk, qdrant, customer_id, db).await {
         Ok(chunk_len) => {
             info!("Vectorized {chunk_len} {db} with {count} tokens. ID: {customer_id}")
