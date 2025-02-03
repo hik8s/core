@@ -10,7 +10,7 @@ fn clean_json_string(s: &str) -> String {
 pub fn get_as_string(value: &Value, key: &str) -> Result<String, io::Error> {
     let msg = format!("Missing or invalid {key}");
     let error = io::Error::new(io::ErrorKind::InvalidData, msg);
-    get_as_option_string(value, key).ok_or_else(|| error)
+    get_as_option_string(value, key).ok_or(error)
 }
 
 pub fn get_as_option_string(value: &Value, key: &str) -> Option<String> {
@@ -23,7 +23,7 @@ pub fn get_as_option_string(value: &Value, key: &str) -> Option<String> {
 pub fn get_as_ref<'a>(value: &'a Value, key: &str) -> Result<&'a Value, io::Error> {
     let msg = format!("Missing or invalid {key}");
     let error = io::Error::new(io::ErrorKind::InvalidData, msg);
-    value.get(key).ok_or_else(|| error)
+    value.get(key).ok_or(error)
 }
 
 pub fn extract_managed_field_timestamps(metadata: &Value) -> Vec<i64> {
