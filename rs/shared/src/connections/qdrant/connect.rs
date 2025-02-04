@@ -117,13 +117,17 @@ impl QdrantConnection {
         &self,
         db: &DbName,
         customer_id: &str,
-        filter: Filter,
+        filter: Option<Filter>,
         limit: u64,
+        with_payload: bool,
     ) -> Result<Vec<ScoredPoint>, QdrantConnectionError> {
-        let request = QueryPointsBuilder::new(db.id(customer_id))
-            .filter(filter)
+        let mut request = QueryPointsBuilder::new(db.id(customer_id))
             .limit(limit)
-            .with_payload(true);
+            .with_payload(with_payload);
+
+        if let Some(filter) = filter {
+            request = request.filter(filter);
+        }
         let response = self.client.query(request).await?;
         Ok(response.result)
     }
@@ -238,4 +242,8 @@ pub fn string_filter(key: &str, value: &str) -> Filter {
 }
 pub fn bool_filter(key: &str) -> Filter {
     Filter::must([Condition::matches(key, true)])
+}
+
+pub fn string_condition(key: &str, value: &str) -> Condition {
+    Condition::matches(key, value.to_owned())
 }

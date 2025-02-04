@@ -64,7 +64,7 @@ mod tests {
 
         let filter_uid12 = match_any("resource_uid", &resource_uids);
         let points = qdrant
-            .query_points(&db, customer_id, filter_uid12, 1000)
+            .query_points(&db, customer_id, Some(filter_uid12), 1000, false)
             .await?;
         assert_eq!(points.len(), 2);
         for point in points.iter() {

@@ -93,7 +93,7 @@ mod tests {
             // check qdrant
             let filter = string_filter("key", &pod_name);
             let points = qdrant
-                .query_points(&db, &customer_id, filter, 1000)
+                .query_points(&db, &customer_id, Some(filter), 1000, false)
                 .await
                 .unwrap();
             classes = from_scored_point(points).unwrap();
@@ -201,7 +201,7 @@ mod tests {
         while start_time.elapsed() < timeout {
             let filter = match_any("resource_uid", &[resource_uid.clone()]);
             points = qdrant
-                .query_points(&db, &customer_id, filter, 1000)
+                .query_points(&db, &customer_id, Some(filter), 1000, false)
                 .await
                 .unwrap();
 
