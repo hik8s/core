@@ -3,3 +3,4 @@
 .vscode
 qdrant_storage
 .testdata*
+.giant-yaml
