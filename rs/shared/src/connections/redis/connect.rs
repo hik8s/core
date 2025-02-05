@@ -70,10 +70,6 @@ impl RedisConnection {
         Ok(())
     }
 
-    pub async fn get_json(&mut self, key: &str) -> Result<Option<String>, RedisConnectionError> {
-        self.get_with_retry::<String>(key).await
-    }
-
     pub async fn retry<T, F>(
         &mut self,
         mut f: F,
@@ -108,5 +104,15 @@ impl RedisConnection {
             return Ok(None);
         }
         self.retry(|conn| conn.connection.get(key), 3).await
+    }
+    pub async fn set_with_retry<T>(
+        &mut self,
+        key: &str,
+        value: &T,
+    ) -> Result<(), RedisConnectionError>
+    where
+        T: Serialize + ToRedisArgs,
+    {
+        self.retry(|conn| conn.connection.set(key, value), 3).await
     }
 }
