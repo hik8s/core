@@ -3,7 +3,8 @@ use std::time::Duration;
 use crate::{connections::ConfigError, types::classifier::state::ClassifierState};
 
 use super::config::RedisConfig;
-use redis::{Client, Commands, Connection, FromRedisValue, RedisError};
+use redis::{Client, Commands, Connection, FromRedisValue, RedisError, ToRedisArgs};
+use serde::Serialize;
 use thiserror::Error;
 use tracing::info;
 
@@ -69,12 +70,8 @@ impl RedisConnection {
         Ok(())
     }
 
-    pub async fn get_json(
-        &mut self,
-        customer_id: &str,
-        key: &str,
-    ) -> Result<Option<String>, RedisConnectionError> {
-        self.get_with_retry::<String>(customer_id, key).await
+    pub async fn get_json(&mut self, key: &str) -> Result<Option<String>, RedisConnectionError> {
+        self.get_with_retry::<String>(key).await
     }
 
     pub async fn retry<T, F>(
@@ -103,28 +100,13 @@ impl RedisConnection {
             }
         }
     }
-    pub async fn get_with_retry<T>(
-        &mut self,
-        customer_id: &str,
-        key: &str,
-    ) -> Result<Option<T>, RedisConnectionError>
+    pub async fn get_with_retry<T>(&mut self, key: &str) -> Result<Option<T>, RedisConnectionError>
     where
         T: FromRedisValue + serde::de::DeserializeOwned,
     {
-        self.retry(
-            |conn| {
-                let identifier = format!("{customer_id}:{key}");
-                let exists: bool = conn.connection.exists(&identifier)?;
-                match exists {
-                    true => {
-                        let value: T = conn.connection.get(&identifier)?;
-                        Ok(Some(value))
-                    }
-                    false => Ok(None),
-                }
-            },
-            3,
-        )
-        .await
+        if !self.connection.exists(key)? {
+            return Ok(None);
+        }
+        self.retry(|conn| conn.connection.get(key), 3).await
     }
 }
