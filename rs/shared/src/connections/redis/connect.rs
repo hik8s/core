@@ -64,4 +64,23 @@ impl RedisConnection {
             .map_err(RedisConnectionError::SetError)?;
         Ok(())
     }
+
+    pub fn get_json(
+        &mut self,
+        customer_id: &str,
+        key: &str,
+    ) -> Result<Option<String>, RedisConnectionError> {
+        let identifier = format!("{customer_id}:{key}");
+        let exists: bool = self.connection.exists(&identifier)?;
+        match exists {
+            true => {
+                let json_str: String = self
+                    .connection
+                    .get(&identifier)
+                    .map_err(RedisConnectionError::GetError)?;
+                Ok(Some(json_str))
+            }
+            false => Ok(None),
+        }
+    }
 }
