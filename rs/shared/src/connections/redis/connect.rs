@@ -1,7 +1,9 @@
+use std::time::Duration;
+
 use crate::{connections::ConfigError, types::classifier::state::ClassifierState};
 
 use super::config::RedisConfig;
-use redis::{Client, Commands, Connection, RedisError};
+use redis::{Client, Commands, Connection, FromRedisValue, RedisError};
 use thiserror::Error;
 use tracing::info;
 
@@ -18,6 +20,8 @@ pub enum RedisConnectionError {
     GetError(#[source] RedisError),
     #[error("Failed to set value in Redis: {0}")]
     SetError(#[source] RedisError),
+    #[error("Max retries reached, failed after {0} attempts: {1}")]
+    RetryError(u32, RedisError),
 }
 
 impl RedisConnection {
@@ -65,22 +69,62 @@ impl RedisConnection {
         Ok(())
     }
 
-    pub fn get_json(
+    pub async fn get_json(
         &mut self,
         customer_id: &str,
         key: &str,
     ) -> Result<Option<String>, RedisConnectionError> {
-        let identifier = format!("{customer_id}:{key}");
-        let exists: bool = self.connection.exists(&identifier)?;
-        match exists {
-            true => {
-                let json_str: String = self
-                    .connection
-                    .get(&identifier)
-                    .map_err(RedisConnectionError::GetError)?;
-                Ok(Some(json_str))
+        self.get_with_retry::<String>(customer_id, key).await
+    }
+
+    pub async fn retry<T, F>(
+        &mut self,
+        mut f: F,
+        max_retries: u32,
+    ) -> Result<T, RedisConnectionError>
+    where
+        F: FnMut(&mut Self) -> Result<T, RedisError>,
+    {
+        let mut attempts = 0;
+        let mut delay = Duration::from_millis(100);
+
+        loop {
+            match f(self) {
+                Ok(value) => return Ok(value),
+                Err(e) => {
+                    attempts += 1;
+                    if attempts >= max_retries {
+                        return Err(RedisConnectionError::RetryError(attempts, e));
+                    }
+                    tracing::warn!("Attempt {} failed: {:?}, retrying...", attempts, e);
+                    tokio::time::sleep(delay).await;
+                    delay *= 2;
+                }
             }
-            false => Ok(None),
         }
+    }
+    pub async fn get_with_retry<T>(
+        &mut self,
+        customer_id: &str,
+        key: &str,
+    ) -> Result<Option<T>, RedisConnectionError>
+    where
+        T: FromRedisValue + serde::de::DeserializeOwned,
+    {
+        self.retry(
+            |conn| {
+                let identifier = format!("{customer_id}:{key}");
+                let exists: bool = conn.connection.exists(&identifier)?;
+                match exists {
+                    true => {
+                        let value: T = conn.connection.get(&identifier)?;
+                        Ok(Some(value))
+                    }
+                    false => Ok(None),
+                }
+            },
+            3,
+        )
+        .await
     }
 }
