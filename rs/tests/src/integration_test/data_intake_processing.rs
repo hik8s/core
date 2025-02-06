@@ -99,7 +99,7 @@ mod tests {
             // check qdrant
             let filter = string_filter("key", &pod_name);
             let points = qdrant
-                .query_points(&db, &customer_id, Some(filter), 1000, false)
+                .query_points(&db, &customer_id, Some(filter), 1000, true)
                 .await
                 .unwrap();
             classes = from_scored_point(points).unwrap();

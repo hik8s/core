@@ -80,9 +80,17 @@ mod tests {
         let start = Instant::now();
         let openai = OpenAIConnection::new();
         let match_str = "OOM killed exit code 137";
+
+        let truncated_answer = if answer.len() > 300 {
+            format!("{}...", &answer[..300])
+        } else {
+            answer.to_string()
+        };
+
         let question = format!(
-            "Does the following answer definitely conclude that the pod was {match_str}? {answer}"
+            "Does the following answer definitely conclude that the pod was {match_str}? {truncated_answer}"
         );
+
         let evaluation = openai.ask_atomic_question(&question).await.unwrap();
         tracing::info!("Atomic question took: {:?}", start.elapsed());
 
@@ -137,7 +145,6 @@ mod tests {
         // Data ingestion
 
         let event = get_event_qdrant_metadata();
-        tracing::info!("Event: {:#?}", event);
         let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
         vectorize_chunk(
             &mut vec![event.data.clone()],
