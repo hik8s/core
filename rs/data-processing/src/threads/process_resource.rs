@@ -44,10 +44,10 @@ pub async fn process_resource(
 
         if kind == "Deployment" {
             let mut requires_vectorization = false;
-            let mut incoming_resource: Deployment = serde_json::from_value(data.json.clone())
+            let mut new_state: Deployment = serde_json::from_value(data.json.clone())
                 .map_err(ProcessThreadError::DeserializationError)?;
-            incoming_resource.metadata.managed_fields = None;
-            let uid = log_error_continue!(incoming_resource
+            new_state.metadata.managed_fields = None;
+            let uid = log_error_continue!(new_state
                 .metadata
                 .uid
                 .to_owned()
@@ -60,7 +60,7 @@ pub async fn process_resource(
             {
                 None => {
                     // Serialize
-                    let json = serde_json::to_string(&incoming_resource)
+                    let json = serde_json::to_string(&new_state)
                         .map_err(ProcessThreadError::SerializationError)?;
 
                     // Set redis
@@ -68,7 +68,6 @@ pub async fn process_resource(
                         .set_with_retry::<String>(&key, &json)
                         .await
                         .map_err(ProcessThreadError::RedisSet)?;
-
                     requires_vectorization = true;
                 }
                 Some(json) => {
@@ -78,25 +77,25 @@ pub async fn process_resource(
                     let init_num_conditions = get_conditions_len(&current_state);
 
                     let mut conditions = get_conditions(&current_state);
-                    conditions.extend_from_slice(&get_conditions(&incoming_resource));
+                    conditions.extend_from_slice(&get_conditions(&new_state));
                     let aggregated_conditions = unique_deployment_conditions(conditions);
 
-                    if let Some(status) = incoming_resource.status.as_mut() {
+                    if let Some(status) = new_state.status.as_mut() {
                         status.conditions = Some(aggregated_conditions)
                     }
 
-                    let json = serde_json::to_string(&incoming_resource)
+                    let json = serde_json::to_string(&new_state)
                         .map_err(ProcessThreadError::SerializationError)?;
                     redis
                         .set_with_retry::<String>(&key, &json)
                         .await
                         .map_err(ProcessThreadError::RedisSet)?;
 
-                    let new_num_conditions = get_conditions_len(&incoming_resource);
+                    let new_num_conditions = get_conditions_len(&new_state);
                     if new_num_conditions > init_num_conditions {
                         requires_vectorization = true;
                     }
-                    data.json = serde_json::to_value(incoming_resource)
+                    data.json = serde_json::to_value(new_state)
                         .map_err(ProcessThreadError::SerializationError)?;
                 }
             }
