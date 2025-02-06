@@ -5,7 +5,7 @@ use k8s_openapi::api::apps::v1::{Deployment, DeploymentCondition};
 pub fn unique_deployment_conditions(
     conditions: Vec<DeploymentCondition>,
 ) -> Vec<DeploymentCondition> {
-    let mut condition_map: HashMap<String, DeploymentCondition> = HashMap::new();
+    let mut map: HashMap<String, DeploymentCondition> = HashMap::new();
 
     for condition in conditions {
         let hash = format!(
@@ -16,19 +16,19 @@ pub fn unique_deployment_conditions(
             condition.type_
         );
 
-        match condition_map.get(&hash) {
+        match map.get(&hash) {
             Some(existing) => {
                 if condition.last_update_time > existing.last_update_time {
-                    condition_map.insert(hash, condition);
+                    map.insert(hash, condition);
                 }
             }
             None => {
-                condition_map.insert(hash, condition);
+                map.insert(hash, condition);
             }
         }
     }
 
-    let mut unique_conditions: Vec<DeploymentCondition> = condition_map.into_values().collect();
+    let mut unique_conditions: Vec<DeploymentCondition> = map.into_values().collect();
     unique_conditions.sort_by(|a, b| b.last_update_time.cmp(&a.last_update_time));
     unique_conditions
 }
