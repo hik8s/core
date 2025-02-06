@@ -1,4 +1,4 @@
-use crate::threads::process::ProcessThreadError;
+use crate::threads::error::ProcessThreadError;
 use shared::fluvio::FluvioConnectionError;
 
 use thiserror::Error;

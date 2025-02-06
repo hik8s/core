@@ -34,6 +34,12 @@ mod tests {
 
     use tokio::time::sleep;
 
+    #[derive(PartialEq)]
+    enum TestType {
+        Delete,
+        Update,
+    }
+
     use crate::util::read_yaml_files;
 
     static THREAD_LOG_PROCESSING: Once = Once::new();
@@ -93,7 +99,7 @@ mod tests {
             // check qdrant
             let filter = string_filter("key", &pod_name);
             let points = qdrant
-                .query_points(&db, &customer_id, Some(filter), 1000, false)
+                .query_points(&db, &customer_id, Some(filter), 1000, true)
                 .await
                 .unwrap();
             classes = from_scored_point(points).unwrap();
@@ -155,15 +161,16 @@ mod tests {
 
     #[tokio::test]
     #[rstest]
-    #[case(("pod-deletion", "resources", DbName::Resource, 3))]
-    #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3))]
-    #[case(("event-filter", "events", DbName::Event, 1))]
-    #[case(("skiplist-resource", "resources", DbName::Resource, 6))]
-    #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3))]
-    async fn integration_data_deletion(
-        #[case] (subdir, route, db, num_points): (&str, &str, DbName, usize),
+    #[case(("pod-deletion", "resources", DbName::Resource, 3, TestType::Delete))]
+    #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3, TestType::Delete))]
+    #[case(("deployment-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
+    #[case(("event-filter", "events", DbName::Event, 1,TestType::Update))]
+    #[case(("skiplist-resource", "resources", DbName::Resource, 6, TestType::Update))]
+    #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3, TestType::Update))]
+    async fn test_e2e_integration(
+        #[case] (subdir, route, db, num_points, test_type): (&str, &str, DbName, usize, TestType),
     ) -> Result<(), DataIntakeError> {
-        let num_cases = 5;
+        let num_cases = 6;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
         let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
@@ -195,22 +202,16 @@ mod tests {
 
         let start_time = Instant::now();
         let timeout = Duration::from_secs(30);
-        let mut points_deleted = Vec::<ScoredPoint>::new();
 
         let mut points = Vec::<ScoredPoint>::new();
         while start_time.elapsed() < timeout {
             let filter = match_any("resource_uid", &[resource_uid.clone()]);
             points = qdrant
-                .query_points(&db, &customer_id, Some(filter), 1000, false)
+                .query_points(&db, &customer_id, Some(filter), 1000, true)
                 .await
                 .unwrap();
-
-            if route == "events" && points.len() == num_points {
-                RECEIVED_RESOURCES
-                    .lock()
-                    .unwrap()
-                    .insert(subdir.to_string());
-                break;
+            if test_type == TestType::Delete {
+                points.retain(|point| point.payload.get("deleted") == Some(&Value::from(true)));
             }
             // tracing::info!(
             //     "subdir: {} len: {}, expected: {}",
@@ -218,27 +219,7 @@ mod tests {
             //     points.len(),
             //     num_points
             // );
-            if subdir == "skiplist-customresource" && points.len() == num_points {
-                RECEIVED_RESOURCES
-                    .lock()
-                    .unwrap()
-                    .insert(subdir.to_string());
-                break;
-            }
-            if subdir == "skiplist-resource" && points.len() == num_points {
-                RECEIVED_RESOURCES
-                    .lock()
-                    .unwrap()
-                    .insert(subdir.to_string());
-                break;
-            }
-
-            points_deleted = points
-                .clone()
-                .into_iter()
-                .filter(|point| point.payload.get("deleted") == Some(&Value::from(true)))
-                .collect();
-            if points_deleted.len() == num_points {
+            if points.len() == num_points {
                 RECEIVED_RESOURCES
                     .lock()
                     .unwrap()
@@ -255,12 +236,7 @@ mod tests {
             info!("{}/{}: Received data from: {:?}", res.len(), num_cases, res);
             sleep(Duration::from_secs(1)).await;
         }
-        if route == "events" || subdir == "skiplist-customresource" || subdir == "skiplist-resource"
-        {
-            assert_eq!(points.len(), num_points);
-        } else {
-            assert_eq!(points_deleted.len(), num_points);
-        }
+        assert_eq!(points.len(), num_points);
         Ok(())
     }
 }

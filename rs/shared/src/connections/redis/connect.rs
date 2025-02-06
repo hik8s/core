@@ -1,7 +1,10 @@
+use std::time::Duration;
+
 use crate::{connections::ConfigError, types::classifier::state::ClassifierState};
 
 use super::config::RedisConfig;
-use redis::{Client, Commands, Connection, RedisError};
+use redis::{Client, Commands, Connection, FromRedisValue, RedisError, ToRedisArgs};
+use serde::Serialize;
 use thiserror::Error;
 use tracing::info;
 
@@ -18,6 +21,8 @@ pub enum RedisConnectionError {
     GetError(#[source] RedisError),
     #[error("Failed to set value in Redis: {0}")]
     SetError(#[source] RedisError),
+    #[error("Max retries reached, failed after {0} attempts: {1}")]
+    RetryError(u32, RedisError),
 }
 
 impl RedisConnection {
@@ -63,5 +68,51 @@ impl RedisConnection {
             .set(format!("{customer_id}:{key}"), serialized_value)
             .map_err(RedisConnectionError::SetError)?;
         Ok(())
+    }
+
+    pub async fn retry<T, F>(
+        &mut self,
+        mut f: F,
+        max_retries: u32,
+    ) -> Result<T, RedisConnectionError>
+    where
+        F: FnMut(&mut Self) -> Result<T, RedisError>,
+    {
+        let mut attempts = 0;
+        let mut delay = Duration::from_millis(100);
+
+        loop {
+            match f(self) {
+                Ok(value) => return Ok(value),
+                Err(e) => {
+                    attempts += 1;
+                    if attempts >= max_retries {
+                        return Err(RedisConnectionError::RetryError(attempts, e));
+                    }
+                    tracing::warn!("Attempt {} failed: {:?}, retrying...", attempts, e);
+                    tokio::time::sleep(delay).await;
+                    delay *= 2;
+                }
+            }
+        }
+    }
+    pub async fn get_with_retry<T>(&mut self, key: &str) -> Result<Option<T>, RedisConnectionError>
+    where
+        T: FromRedisValue + serde::de::DeserializeOwned,
+    {
+        if !self.connection.exists(key)? {
+            return Ok(None);
+        }
+        self.retry(|conn| conn.connection.get(key), 3).await
+    }
+    pub async fn set_with_retry<T>(
+        &mut self,
+        key: &str,
+        value: &T,
+    ) -> Result<(), RedisConnectionError>
+    where
+        T: Serialize + ToRedisArgs,
+    {
+        self.retry(|conn| conn.connection.set(key, value), 3).await
     }
 }
