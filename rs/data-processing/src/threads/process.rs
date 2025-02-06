@@ -66,7 +66,7 @@ pub async fn process_logs(
     mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
     producer: Arc<TopicProducer<SpuSocketPool>>,
 ) -> Result<(), ProcessThreadError> {
-    let redis = RedisConnection::new()?;
+    let redis = RedisConnection::new().map_err(ProcessThreadError::RedisInit)?;
     let mut classifier = Classifier::new(None, redis)?;
     let greptime = GreptimeConnection::new().await?;
     while let Some(result) = consumer.next().await {
