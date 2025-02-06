@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: '1'
+  creationTimestamp: 2024-11-11T18:44:38Z
+  generation: 1
+  labels:
+    kustomize.toolkit.fluxcd.io/name: app
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
+  managedFields:
+  - apiVersion: apps/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:labels:
+          f:kustomize.toolkit.fluxcd.io/name: {}
+          f:kustomize.toolkit.fluxcd.io/namespace: {}
+      f:spec:
+        f:replicas: {}
+        f:selector: {}
+        f:strategy: {}
+        f:template:
+          f:metadata:
+            f:creationTimestamp: {}
+            f:labels:
+              f:app: {}
+          f:spec:
+            f:containers:
+              k:{"name":"test1"}:
+                .: {}
+                f:image: {}
+                f:name: {}
+                f:resources:
+                  f:limits:
+                    f:memory: {}
+                  f:requests:
+                    f:memory: {}
+            f:imagePullSecrets:
+              k:{"name":"hik8s-bot-ghcr-read-token"}: {}
+    manager: kustomize-controller
+    operation: Apply
+    time: 2024-11-11T18:44:38Z
+  - apiVersion: apps/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:annotations:
+          .: {}
+          f:deployment.kubernetes.io/revision: {}
+      f:status:
+        f:availableReplicas: {}
+        f:conditions:
+          .: {}
+          k:{"type":"Available"}:
+            .: {}
+            f:lastTransitionTime: {}
+            f:lastUpdateTime: {}
+            f:message: {}
+            f:reason: {}
+            f:status: {}
+            f:type: {}
+          k:{"type":"Progressing"}:
+            .: {}
+            f:lastTransitionTime: {}
+            f:lastUpdateTime: {}
+            f:message: {}
+            f:reason: {}
+            f:status: {}
+            f:type: {}
+        f:observedGeneration: {}
+        f:readyReplicas: {}
+        f:replicas: {}
+        f:updatedReplicas: {}
+    manager: kube-controller-manager
+    operation: Update
+    subresource: status
+    time: 2024-12-11T17:09:55Z
+  name: test1
+  namespace: examples
+  resourceVersion: '141517099'
+  uid: 88533c87-a26e-4b13-bd81-a056ecce5b93
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: test1
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: test1
+    spec:
+      containers:
+      - image: ghcr.io/hik8s/killed-oom:0.1.0
+        imagePullPolicy: IfNotPresent
+        name: test1
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: hik8s-bot-ghcr-read-token
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: 2024-11-11T18:44:38Z
+    lastUpdateTime: 2024-11-11T18:44:42Z
+    message: ReplicaSet "test1-656b95f57" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: 'True'
+    type: Progressing
+  - lastTransitionTime: 2024-12-11T17:09:55Z
+    lastUpdateTime: 2024-12-11T17:09:55Z
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: 'True'
+    type: Available
+  observedGeneration: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1

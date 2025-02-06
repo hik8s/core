@@ -163,13 +163,14 @@ mod tests {
     #[rstest]
     #[case(("pod-deletion", "resources", DbName::Resource, 3, TestType::Delete))]
     #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3, TestType::Delete))]
+    #[case(("deployment-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
     #[case(("event-filter", "events", DbName::Event, 1,TestType::Update))]
     #[case(("skiplist-resource", "resources", DbName::Resource, 6, TestType::Update))]
     #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3, TestType::Update))]
     async fn test_e2e_integration(
         #[case] (subdir, route, db, num_points, test_type): (&str, &str, DbName, usize, TestType),
     ) -> Result<(), DataIntakeError> {
-        let num_cases = 5;
+        let num_cases = 6;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
         let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
