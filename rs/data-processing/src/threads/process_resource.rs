@@ -85,7 +85,7 @@ pub async fn process_resource(
                         status.conditions = Some(aggregated_conditions)
                     }
 
-                    let json = serde_json::to_string(&current_state)
+                    let json = serde_json::to_string(&incoming_resource)
                         .map_err(ProcessThreadError::SerializationError)?;
                     redis
                         .set_with_retry::<String>(&key, &json)
