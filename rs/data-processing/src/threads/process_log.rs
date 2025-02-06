@@ -28,7 +28,7 @@ use algorithm::classification::deterministic::classifier::Classifier;
 use super::error::ProcessThreadError;
 
 pub async fn process_logs(
-    mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
+    mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>>,
     producer: Arc<TopicProducer<SpuSocketPool>>,
 ) -> Result<(), ProcessThreadError> {
     let redis = RedisConnection::new().map_err(ProcessThreadError::RedisInit)?;
