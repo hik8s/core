@@ -38,8 +38,12 @@ pub enum ProcessThreadError {
     ClassifierError(#[from] ClassifierError),
     #[error("Greptime connection error: {0}")]
     GreptimeConnectionError(#[from] GreptimeConnectionError),
-    #[error("Redis connection error: {0}")]
-    RedisConnectionError(#[from] RedisConnectionError),
+    #[error("Redis get error: {0}")]
+    RedisGet(#[source] RedisConnectionError),
+    #[error("Redis set error: {0}")]
+    RedisSet(#[source] RedisConnectionError),
+    #[error("Redis init error: {0}")]
+    RedisInit(#[source] RedisConnectionError),
     #[error("Stream inserter error: {0}")]
     StreamInserterError(#[from] GreptimeIngestError),
     #[error("Fluvio producer error: {0}")]
@@ -54,6 +58,8 @@ pub enum ProcessThreadError {
     SerializationError(#[source] serde_json::Error),
     #[error("Deserialization error: {0}")]
     DeserializationError(#[source] serde_json::Error),
+    #[error("Resource misses field: {0}")]
+    MissingField(String),
 }
 
 pub async fn process_logs(

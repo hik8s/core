@@ -11,6 +11,7 @@ dotenv = {workspace = true}
 fluvio = {workspace = true}
 futures-util = {workspace = true}
 greptimedb-ingester = {workspace = true}
+k8s-openapi = {workspace = true}
 rstest = {workspace = true}
 serde_json = {workspace = true}
 shared = {workspace = true}

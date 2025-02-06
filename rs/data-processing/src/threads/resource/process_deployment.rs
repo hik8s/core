@@ -40,3 +40,13 @@ pub fn get_conditions(deployment: &Deployment) -> Vec<DeploymentCondition> {
         .and_then(|status| status.conditions.to_owned())
         .unwrap_or_default()
 }
+
+pub fn get_conditions_len(deployment: &Deployment) -> usize {
+    match deployment.status.as_ref() {
+        Some(status) => match status.conditions.as_ref() {
+            Some(conds) => conds.len(),
+            None => 0,
+        },
+        None => 0,
+    }
+}
