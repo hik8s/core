@@ -201,7 +201,7 @@ mod tests {
         while start_time.elapsed() < timeout {
             let filter = match_any("resource_uid", &[resource_uid.clone()]);
             points = qdrant
-                .query_points(&db, &customer_id, Some(filter), 1000, false)
+                .query_points(&db, &customer_id, Some(filter), 1000, true)
                 .await
                 .unwrap();
 
