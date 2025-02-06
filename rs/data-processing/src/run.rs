@@ -1,6 +1,6 @@
 use crate::error::DataProcessingError;
-use crate::threads::process::process_logs;
 use crate::threads::process_event::process_event;
+use crate::threads::process_log::process_logs;
 use crate::threads::process_resource::process_resource;
 
 use shared::connections::dbname::DbName;
