@@ -14,8 +14,9 @@ use shared::fluvio::commit_and_flush_offsets;
 use shared::types::kubeapidata::KubeApiData;
 use shared::{log_error, log_warn_continue};
 
-use super::process::ProcessThreadError;
 use shared::utils::{extract_timestamp, get_as_option_string, get_as_ref, get_as_string};
+
+use super::error::ProcessThreadError;
 
 pub async fn process_event(
     mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>>,

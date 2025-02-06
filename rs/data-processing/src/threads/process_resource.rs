@@ -16,7 +16,7 @@ use shared::fluvio::commit_and_flush_offsets;
 use shared::types::kubeapidata::KubeApiData;
 use shared::{log_error, log_error_continue, log_warn, log_warn_continue};
 
-use super::process::ProcessThreadError;
+use super::error::ProcessThreadError;
 use super::resource::process_deployment::{
     get_conditions, get_conditions_len, unique_deployment_conditions,
 };
