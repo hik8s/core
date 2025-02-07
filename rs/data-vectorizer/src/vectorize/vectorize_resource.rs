@@ -87,6 +87,8 @@ pub async fn vectorize_resource(
                     .json
                     .get_mut("metadata")
                     .expect("metadata not found");
+                let resource_version =
+                    get_as_string(metadata, "resourceVersion").unwrap_or("-1".to_string());
 
                 let name = log_warn_continue!(get_as_string(metadata, "name"));
 
@@ -97,7 +99,7 @@ pub async fn vectorize_resource(
                     metadata_obj.remove("managedFields");
                 }
 
-                let metadata_map = create_metadata_map(&name, &namespace, &uid);
+                let metadata_map = create_metadata_map(&name, &namespace, &uid, &resource_version);
 
                 let spec =
                     extract_remove_key(&mut kube_api_data.json, &kind, &metadata_map, "spec");

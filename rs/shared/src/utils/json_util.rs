@@ -83,6 +83,7 @@ pub fn create_metadata_map(
     name: &str,
     namespace: &str,
     uid: &str,
+    resource_version: &str,
 ) -> serde_json::Map<String, Value> {
     let mut metadata_map = serde_json::Map::new();
     metadata_map.insert("name".to_string(), Value::String(name.to_string()));
@@ -91,5 +92,9 @@ pub fn create_metadata_map(
         Value::String(namespace.to_string()),
     );
     metadata_map.insert("uid".to_string(), Value::String(uid.to_string()));
+    metadata_map.insert(
+        "resource_version".to_string(),
+        Value::String(resource_version.to_string()),
+    );
     metadata_map
 }
