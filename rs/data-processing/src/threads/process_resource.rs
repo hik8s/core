@@ -52,7 +52,7 @@ pub async fn process_resource(
                 .uid
                 .to_owned()
                 .ok_or(ProcessThreadError::MissingField("uid".to_string())));
-            let key = format!("{customer_id}:{uid}");
+            let key = format!("{customer_id}:{kind}:{uid}");
             match log_error_continue!(redis
                 .get_with_retry::<String>(&key)
                 .await
@@ -114,7 +114,7 @@ pub async fn process_resource(
                 .uid
                 .to_owned()
                 .ok_or(ProcessThreadError::MissingField("uid".to_string())));
-            let key = format!("{customer_id}:{uid}");
+            let key = format!("{customer_id}:{kind}:{uid}");
 
             match log_error_continue!(redis
                 .get_with_retry::<String>(&key)
