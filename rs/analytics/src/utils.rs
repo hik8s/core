@@ -48,6 +48,7 @@ pub fn write_yaml_files(points: &[ScoredPoint], output_dir: &Path) -> Result<(),
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
 
+        // TODO: add resourceVersion as tag and use that here
         let observed_generation = json_value
             .get("status")
             .and_then(|s| s.get("observedGeneration"))
@@ -63,15 +64,15 @@ pub fn write_yaml_files(points: &[ScoredPoint], output_dir: &Path) -> Result<(),
     Ok(())
 }
 
-pub async fn write_deployment_status_yaml(
+pub async fn write_resource_status_yaml(
     dir: &str,
     name: &str,
+    kind: &str,
     qdrant: &QdrantConnection,
     customer_id: &str,
     limit: u64,
 ) -> Result<(), std::io::Error> {
     let db = DbName::Resource;
-    let kind = "Deployment";
     let data_type = "status";
     let subdir = format!(
         "{}_{}_{}",
