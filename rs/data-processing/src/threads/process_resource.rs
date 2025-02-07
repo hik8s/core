@@ -5,6 +5,7 @@ use k8s_openapi::api::apps::v1::Deployment;
 use fluvio::spu::SpuSocketPool;
 use fluvio::TopicProducer;
 use futures_util::StreamExt;
+use k8s_openapi::api::core::v1::Pod;
 use shared::connections::dbname::DbName;
 use shared::connections::fluvio::util::get_record_key;
 use shared::connections::greptime::connect::GreptimeConnection;
@@ -18,6 +19,7 @@ use shared::{log_error, log_error_continue, log_warn, log_warn_continue};
 
 use super::error::ProcessThreadError;
 use super::resource::process_deployment as deployment;
+use super::resource::process_pod as pod;
 use shared::utils::get_as_string;
 
 pub async fn process_resource(
@@ -90,6 +92,68 @@ pub async fn process_resource(
                         .map_err(ProcessThreadError::RedisSet)?;
 
                     let new_num_conditions = deployment::get_conditions_len(&new_state);
+                    if new_num_conditions > init_num_conditions {
+                        requires_vectorization = true;
+                    }
+                    data.json = serde_json::to_value(new_state)
+                        .map_err(ProcessThreadError::SerializationError)?;
+                }
+            }
+            if !requires_vectorization {
+                continue;
+            }
+        }
+
+        if kind == "Pod" {
+            let mut requires_vectorization = false;
+            let mut new_state: Pod = serde_json::from_value(data.json.clone())
+                .map_err(ProcessThreadError::DeserializationError)?;
+            new_state.metadata.managed_fields = None;
+            let uid = log_error_continue!(new_state
+                .metadata
+                .uid
+                .to_owned()
+                .ok_or(ProcessThreadError::MissingField("uid".to_string())));
+            let key = format!("{customer_id}:{uid}");
+
+            match log_error_continue!(redis
+                .get_with_retry::<String>(&key)
+                .await
+                .map_err(ProcessThreadError::RedisGet))
+            {
+                None => {
+                    // Serialize
+                    let json = serde_json::to_string(&new_state)
+                        .map_err(ProcessThreadError::SerializationError)?;
+
+                    // Set redis
+                    redis
+                        .set_with_retry::<String>(&key, &json)
+                        .await
+                        .map_err(ProcessThreadError::RedisSet)?;
+                    requires_vectorization = true;
+                }
+                Some(json) => {
+                    // update incoming resource from state
+                    let current_state: Pod = log_error_continue!(serde_json::from_str(&json));
+                    let init_num_conditions = pod::get_conditions_len(&current_state);
+
+                    let mut conditions = pod::get_conditions(&current_state);
+                    conditions.extend_from_slice(&pod::get_conditions(&new_state));
+                    let aggregated_conditions = pod::unique_conditions(conditions);
+
+                    if let Some(status) = new_state.status.as_mut() {
+                        status.conditions = Some(aggregated_conditions)
+                    }
+
+                    let json = serde_json::to_string(&new_state)
+                        .map_err(ProcessThreadError::SerializationError)?;
+                    redis
+                        .set_with_retry::<String>(&key, &json)
+                        .await
+                        .map_err(ProcessThreadError::RedisSet)?;
+
+                    let new_num_conditions = pod::get_conditions_len(&new_state);
                     if new_num_conditions > init_num_conditions {
                         requires_vectorization = true;
                     }
