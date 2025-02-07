@@ -2,9 +2,7 @@ use std::collections::HashMap;
 
 use k8s_openapi::api::apps::v1::{Deployment, DeploymentCondition};
 
-pub fn unique_deployment_conditions(
-    conditions: Vec<DeploymentCondition>,
-) -> Vec<DeploymentCondition> {
+pub fn unique_conditions(conditions: Vec<DeploymentCondition>) -> Vec<DeploymentCondition> {
     let mut map: HashMap<String, DeploymentCondition> = HashMap::new();
 
     for condition in conditions {
