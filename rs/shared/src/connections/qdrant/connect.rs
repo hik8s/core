@@ -247,3 +247,17 @@ pub fn bool_filter(key: &str) -> Filter {
 pub fn string_condition(key: &str, value: &str) -> Condition {
     Condition::matches(key, value.to_owned())
 }
+
+pub fn parse_qdrant_value(
+    data: &qdrant_client::qdrant::Value,
+) -> (serde_yaml::Value, serde_json::Value) {
+    let content = data.as_str().unwrap();
+
+    // Parse YAML first
+    let yaml: serde_yaml::Value = serde_yaml::from_str(content).unwrap();
+
+    // Convert to JSON without re-parsing
+    let json = serde_json::to_value(&yaml).unwrap();
+
+    (yaml, json)
+}

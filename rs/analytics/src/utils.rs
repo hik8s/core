@@ -3,7 +3,7 @@ use std::{collections::HashSet, path::Path};
 use qdrant_client::qdrant::ScoredPoint;
 use shared::connections::{
     dbname::DbName,
-    qdrant::connect::{string_condition, string_filter, QdrantConnection},
+    qdrant::connect::{parse_qdrant_value, string_condition, string_filter, QdrantConnection},
 };
 
 pub fn unique_values(key: &str, points: &[ScoredPoint]) -> HashSet<String> {
@@ -18,24 +18,12 @@ pub fn unique_values(key: &str, points: &[ScoredPoint]) -> HashSet<String> {
         .collect()
 }
 
-fn parse_data(data: &qdrant_client::qdrant::Value) -> (serde_yaml::Value, serde_json::Value) {
-    let content = data.as_str().unwrap();
-
-    // Parse YAML first
-    let yaml: serde_yaml::Value = serde_yaml::from_str(content).unwrap();
-
-    // Convert to JSON without re-parsing
-    let json = serde_json::to_value(&yaml).unwrap();
-
-    (yaml, json)
-}
-
 pub fn write_yaml_files(points: &[ScoredPoint], output_dir: &Path) -> Result<(), std::io::Error> {
     std::fs::create_dir_all(output_dir)?;
 
     for (counter, point) in points.iter().enumerate() {
         let data = point.payload.get("data").unwrap();
-        let (yaml_value, json_value) = parse_data(data);
+        let (yaml_value, json_value) = parse_qdrant_value(data);
 
         let kind = json_value
             .get("kind")

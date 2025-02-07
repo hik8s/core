@@ -1062,7 +1062,7 @@ dependencies = [
 
 [[package]]
 name = "data-processing"
-version = "0.4.9"
+version = "0.4.10"
 dependencies = [
  "algorithm",
  "anyhow",
@@ -1082,7 +1082,7 @@ dependencies = [
 
 [[package]]
 name = "data-vectorizer"
-version = "0.4.14"
+version = "0.4.15"
 dependencies = [
  "anyhow",
  "futures-util",
