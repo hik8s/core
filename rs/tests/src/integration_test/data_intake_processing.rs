@@ -164,6 +164,7 @@ mod tests {
     #[case(("pod-deletion", "resources", DbName::Resource, 3, TestType::Delete))]
     #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3, TestType::Delete))]
     #[case(("deployment-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
+    #[case(("pod-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
     #[case(("event-filter", "events", DbName::Event, 1,TestType::Update))]
     #[case(("skiplist-resource", "resources", DbName::Resource, 6, TestType::Update))]
     #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3, TestType::Update))]
