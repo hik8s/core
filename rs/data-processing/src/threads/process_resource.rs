@@ -14,7 +14,7 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use shared::connections::redis::connect::RedisConnection;
 use shared::fluvio::commit_and_flush_offsets;
-use shared::types::kubeapidata::KubeApiData;
+use shared::types::kubeapidata::{KubeApiData, KubeEventType};
 use shared::{log_error, log_error_continue, log_warn, log_warn_continue};
 
 use super::error::ProcessThreadError;
@@ -95,6 +95,10 @@ pub async fn process_resource(
                     if new_num_conditions > init_num_conditions {
                         requires_vectorization = true;
                     }
+                    if data.event_type == KubeEventType::Delete {
+                        // TODO: make more consistend
+                        requires_vectorization = true;
+                    }
                     data.json = serde_json::to_value(new_state)
                         .map_err(ProcessThreadError::SerializationError)?;
                 }
@@ -157,6 +161,12 @@ pub async fn process_resource(
                     if new_num_conditions > init_num_conditions {
                         requires_vectorization = true;
                     }
+
+                    if data.event_type == KubeEventType::Delete {
+                        // TODO: make more consistend
+                        requires_vectorization = true;
+                    }
+
                     data.json = serde_json::to_value(new_state)
                         .map_err(ProcessThreadError::SerializationError)?;
                 }
