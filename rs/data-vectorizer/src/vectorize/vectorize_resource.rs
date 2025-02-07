@@ -62,27 +62,6 @@ pub async fn vectorize_resource(
                     continue;
                 }
 
-                if kind_lowercase == "pod" || kind_lowercase == "deployment" {
-                    let requires_embedding = kube_api_data
-                        .json
-                        .get("status")
-                        .and_then(|status| status.get("conditions"))
-                        .and_then(|conditions| conditions.as_array())
-                        .map(|conditions| {
-                            conditions.iter().any(|condition| {
-                                condition
-                                    .get("status")
-                                    .and_then(|status| status.as_str())
-                                    .map(|s| s == "False")
-                                    .unwrap_or(false)
-                            })
-                        })
-                        .unwrap_or(false);
-                    if !requires_embedding {
-                        continue;
-                    }
-                }
-
                 let metadata = kube_api_data
                     .json
                     .get_mut("metadata")
