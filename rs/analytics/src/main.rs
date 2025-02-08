@@ -10,7 +10,7 @@ use shared::{
     tracing::setup::setup_tracing,
 };
 
-use utils::write_resource_status_yaml;
+use utils::write_resource_yaml;
 
 #[tokio::main]
 async fn main() {
@@ -37,20 +37,22 @@ async fn main() {
     // write deployment
     let write = false;
     if write {
-        write_resource_status_yaml(
+        write_resource_yaml(
             ".giant-yaml",
             "policy-meta-operator",
             "Deployment",
+            &["status"],
             &qdrant,
             &customer_id,
             10000,
         )
         .await
         .unwrap();
-        write_resource_status_yaml(
+        write_resource_yaml(
             ".giant-yaml",
             "policy-meta-operator-7496ffdfdb-hfzqk",
             "Pod",
+            &["status", "metadata", "spec"],
             &qdrant,
             &customer_id,
             10000,
@@ -60,7 +62,7 @@ async fn main() {
     }
 
     // histograms
-    resource_histograms(kinds, &qdrant, &DbName::Resource, &customer_id, 150000, 10)
+    resource_histograms(kinds, &qdrant, &DbName::Resource, &customer_id, 10000, 10)
         .await
         .unwrap();
 }

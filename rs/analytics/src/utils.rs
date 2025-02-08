@@ -36,15 +36,25 @@ pub fn write_yaml_files(points: &[ScoredPoint], output_dir: &Path) -> Result<(),
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
 
-        // TODO: add resourceVersion as tag and use that here
+        // TODO: replace uid and observed_generation with resourceVersion
+        let uid = json_value
+            .get("metadata")
+            .and_then(|m| m.get("uid"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
+
         let observed_generation = json_value
             .get("status")
             .and_then(|s| s.get("observedGeneration"))
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0);
+            .and_then(|v| v.as_u64());
 
         let yaml_string = serde_yaml::to_string(&yaml_value).unwrap();
-        let file_name = format!("{}-{}-{}-{}.yaml", kind, name, observed_generation, counter);
+
+        let file_name = if let Some(gen) = observed_generation {
+            format!("{}-{}-{}-{}-{}.yaml", kind, name, gen, uid, counter)
+        } else {
+            format!("{}-{}-{}-{}.yaml", kind, name, uid, counter)
+        };
         let file_path = output_dir.join(file_name);
 
         std::fs::write(file_path, yaml_string)?;
@@ -52,35 +62,37 @@ pub fn write_yaml_files(points: &[ScoredPoint], output_dir: &Path) -> Result<(),
     Ok(())
 }
 
-pub async fn write_resource_status_yaml(
+pub async fn write_resource_yaml(
     dir: &str,
     name: &str,
     kind: &str,
+    data_types: &[&str],
     qdrant: &QdrantConnection,
     customer_id: &str,
     limit: u64,
 ) -> Result<(), std::io::Error> {
     let db = DbName::Resource;
-    let data_type = "status";
-    let subdir = format!(
-        "{}_{}_{}",
-        kind.to_lowercase(),
-        name.to_lowercase(),
-        data_type.to_lowercase()
-    );
-    let output_dir = Path::new(dir).join(subdir);
-    std::fs::create_dir_all(&output_dir).unwrap();
+    for data_type in data_types {
+        let subdir = format!(
+            "{}_{}_{}",
+            kind.to_lowercase(),
+            name.to_lowercase(),
+            data_type.to_lowercase()
+        );
+        let output_dir = Path::new(dir).join(subdir);
+        std::fs::create_dir_all(&output_dir).unwrap();
 
-    let mut filter = string_filter("kind", kind);
-    filter.must.push(string_condition("name", name));
-    filter.must.push(string_condition("data_type", data_type));
+        let mut filter = string_filter("kind", kind);
+        filter.must.push(string_condition("name", name));
+        filter.must.push(string_condition("data_type", data_type));
 
-    let points = qdrant
-        .query_points(&db, customer_id, Some(filter), limit, true)
-        .await
-        .unwrap();
+        let points = qdrant
+            .query_points(&db, customer_id, Some(filter), limit, true)
+            .await
+            .unwrap();
 
-    write_yaml_files(&points, &output_dir).unwrap();
+        write_yaml_files(&points, &output_dir).unwrap();
+    }
 
     Ok(())
 }
