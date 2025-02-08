@@ -62,7 +62,7 @@ async fn main() {
     }
 
     // histograms
-    resource_histograms(kinds, &qdrant, &DbName::Resource, &customer_id, 150000, 10)
+    resource_histograms(kinds, &qdrant, &DbName::Resource, &customer_id, 10000, 10)
         .await
         .unwrap();
 }
