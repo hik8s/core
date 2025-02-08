@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use data_vectorizer::{
     error::DataVectorizationError,
-    run::{
-        run_vectorize_class, run_vectorize_customresource, run_vectorize_event,
-        run_vectorize_resource,
-    },
+    run::{run_vectorize_class, run_vectorize_customresource, run_vectorize_resource},
 };
 use shared::{
     constant::OPENAI_EMBEDDING_TOKEN_LIMIT, tracing::setup::setup_tracing,
