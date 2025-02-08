@@ -10,7 +10,7 @@ use shared::{
     tracing::setup::setup_tracing,
 };
 
-use utils::write_resource_status_yaml;
+use utils::write_resource_yaml;
 
 #[tokio::main]
 async fn main() {
@@ -37,7 +37,7 @@ async fn main() {
     // write deployment
     let write = false;
     if write {
-        write_resource_status_yaml(
+        write_resource_yaml(
             ".giant-yaml",
             "policy-meta-operator",
             "Deployment",
@@ -48,7 +48,7 @@ async fn main() {
         )
         .await
         .unwrap();
-        write_resource_status_yaml(
+        write_resource_yaml(
             ".giant-yaml",
             "policy-meta-operator-7496ffdfdb-hfzqk",
             "Pod",

@@ -62,7 +62,7 @@ pub fn write_yaml_files(points: &[ScoredPoint], output_dir: &Path) -> Result<(),
     Ok(())
 }
 
-pub async fn write_resource_status_yaml(
+pub async fn write_resource_yaml(
     dir: &str,
     name: &str,
     kind: &str,
