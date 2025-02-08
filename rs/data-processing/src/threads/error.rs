@@ -21,8 +21,8 @@ pub enum ProcessThreadError {
     RedisSet(#[source] RedisConnectionError),
     #[error("Redis init error: {0}")]
     RedisInit(#[source] RedisConnectionError),
-    #[error("Stream inserter error: {0}")]
-    StreamInserter(#[from] greptimedb_ingester::Error),
+    // #[error("Stream inserter error: {0}")]
+    // StreamInserter(#[from] greptimedb_ingester::Error),
     #[error("Fluvio producer error: {0}")]
     FluvioProducer(#[from] anyhow::Error),
     #[error("UTF-8 error: {0}")]

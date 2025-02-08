@@ -2,7 +2,6 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::spu::SpuSocketPool;
 use fluvio::TopicProducer;
-use shared::connections::dbname::DbName;
 use shared::connections::fluvio::util::get_record_key;
 use shared::constant::TOPIC_CLASS_BYTES_PER_RECORD;
 use shared::fluvio::commit_and_flush_offsets;
@@ -13,12 +12,7 @@ use std::sync::Arc;
 
 use futures_util::StreamExt;
 use shared::{
-    connections::{
-        greptime::{
-            connect::GreptimeConnection, middleware::insert::classified_log_to_insert_request,
-        },
-        redis::connect::RedisConnection,
-    },
+    connections::redis::connect::RedisConnection,
     types::record::{log::LogRecord, preprocessed::PreprocessedLogRecord},
 };
 use tracing::warn;
@@ -33,7 +27,6 @@ pub async fn process_logs(
 ) -> Result<(), ProcessThreadError> {
     let redis = RedisConnection::new().map_err(ProcessThreadError::RedisInit)?;
     let mut classifier = Classifier::new(None, redis)?;
-    let greptime = GreptimeConnection::new().await?;
     while let Some(result) = consumer.next().await {
         let record = log_warn_continue!(result);
 
@@ -48,16 +41,8 @@ pub async fn process_logs(
         let preprocessed_log = PreprocessedLogRecord::from((log, preprocessed_message));
 
         // classify
-        let (updated_class, classified_log) =
+        let (updated_class, _classified_log) =
             classifier.classify(&preprocessed_log, &customer_id)?;
-
-        // insert into greptimedb
-        let insert_request = classified_log_to_insert_request(classified_log);
-        let stream_inserter = greptime.streaming_inserter(&DbName::Log, &customer_id)?;
-        stream_inserter
-            .insert(vec![insert_request])
-            .await
-            .map_err(|e| log_error!(e))?;
 
         // produce to fluvio
         if updated_class.is_some() {
