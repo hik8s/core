@@ -56,12 +56,13 @@ pub async fn write_resource_status_yaml(
     dir: &str,
     name: &str,
     kind: &str,
+    data_types: &[&str],
     qdrant: &QdrantConnection,
     customer_id: &str,
     limit: u64,
 ) -> Result<(), std::io::Error> {
     let db = DbName::Resource;
-    let data_type = "status";
+    for data_type in data_types {
     let subdir = format!(
         "{}_{}_{}",
         kind.to_lowercase(),
@@ -81,6 +82,7 @@ pub async fn write_resource_status_yaml(
         .unwrap();
 
     write_yaml_files(&points, &output_dir).unwrap();
+    }
 
     Ok(())
 }
