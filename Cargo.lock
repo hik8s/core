@@ -1070,7 +1070,6 @@ dependencies = [
  "dotenv",
  "fluvio",
  "futures-util",
- "greptimedb-ingester",
  "k8s-openapi",
  "rstest",
  "serde_json",
