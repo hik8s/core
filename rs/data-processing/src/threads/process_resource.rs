@@ -103,6 +103,20 @@ pub async fn process_resource(
         }
 
         if kind == "Pod" {
+            /*
+            TODO:
+            - get replicaset / owner
+            - redis: populate state with owner key
+            - qdrant(embedding): reembed if condition state changed
+            - qdrant(payload): condition state updated or payload fields execpt data updated
+                - case: new pod without problems will have conditions with problems embeded.
+                    That is ok, as the same replicaset had pod with problems. However, we must
+                    provide the actual conditions of the pod to the model and should indicate
+                    the problems of previous pods of that replicaset. this data should ideally
+                    be retrieved from greptime
+                - case: old entry in qdrant should be updated and not deleted. currently we would set
+                    delete=true
+            */
             let mut requires_vectorization = false;
             let mut new_state: Pod = serde_json::from_value(data.json.clone())
                 .map_err(ProcessThreadError::DeserializationError)?;
