@@ -25,7 +25,7 @@ mod tests {
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
     use shared::utils::ratelimit::RateLimiter;
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashSet;
     use std::path::Path;
     use std::sync::{Arc, Mutex, Once};
     use std::time::{Duration, Instant};
@@ -139,13 +139,14 @@ mod tests {
     #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3, TestType::Delete))]
     #[case(("deployment-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
     #[case(("pod-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
+    #[case(("pod-aggregation-by-replicaset", "resources", DbName::Resource, 9, TestType::Update))]
     #[case(("event-filter", "events", DbName::Event, 1,TestType::Update))]
     #[case(("skiplist-resource", "resources", DbName::Resource, 9, TestType::Update))]
     #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3, TestType::Update))]
     async fn test_e2e_integration(
         #[case] (subdir, route, db, num_points, test_type): (&str, &str, DbName, usize, TestType),
     ) -> Result<(), DataIntakeError> {
-        let num_cases = 7;
+        let num_cases = 8;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
         let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
