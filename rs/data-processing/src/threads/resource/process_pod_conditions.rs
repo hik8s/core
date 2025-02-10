@@ -17,6 +17,18 @@ pub fn unique_conditions(conditions: Vec<PodCondition>) -> Vec<PodCondition> {
         match map.get(&hash) {
             Some(existing) => {
                 if condition.last_transition_time > existing.last_transition_time {
+                    // if condition.status == "True" && condition.type_ == "Ready" {
+                    //     tracing::info!(
+                    //         "time: {:#?} | {}",
+                    //         condition
+                    //             .last_transition_time
+                    //             .clone()
+                    //             .unwrap()
+                    //             .0
+                    //             .to_string(),
+                    //         hash
+                    //     );
+                    // }
                     map.insert(hash, condition.clone());
                 }
             }
@@ -24,6 +36,9 @@ pub fn unique_conditions(conditions: Vec<PodCondition>) -> Vec<PodCondition> {
                 map.insert(hash, condition.clone());
             }
         }
+        // if condition.status == "True" && condition.type_ == "Ready" {
+        //     tracing::info!("{:#?}", map.get("::True:Ready"))
+        // }
     }
 
     let mut unique_conditions: Vec<PodCondition> = map.into_values().collect();

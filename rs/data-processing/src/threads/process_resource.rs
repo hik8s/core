@@ -16,8 +16,8 @@ use shared::types::kubeapidata::{KubeApiData, KubeEventType};
 use shared::{log_error, log_error_continue, log_warn, log_warn_continue};
 
 use super::error::ProcessThreadError;
-use super::resource::process_deployment as deployment;
-use super::resource::process_pod as pod;
+use super::resource::process_deployment_conditions as deployment;
+use super::resource::process_pod_conditions as pod;
 use shared::utils::get_as_string;
 
 pub async fn process_resource(
