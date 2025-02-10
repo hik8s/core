@@ -15,7 +15,9 @@ mod tests {
     use shared::connections::dbname::DbName;
     use shared::connections::greptime::connect::GreptimeConnection;
     use shared::connections::greptime::middleware::query::read_records;
-    use shared::connections::qdrant::connect::{match_any, string_filter, QdrantConnection};
+    use shared::connections::qdrant::connect::{
+        match_any, parse_qdrant_value, string_filter, QdrantConnection,
+    };
     use shared::constant::OPENAI_EMBEDDING_TOKEN_LIMIT;
     use shared::get_env_var;
     use shared::mock::rocket::get_test_client;
@@ -30,7 +32,6 @@ mod tests {
     use std::sync::{Arc, Mutex, Once};
     use std::time::{Duration, Instant};
     use tracing::info;
-    use uuid7::uuid4;
 
     use tokio::time::sleep;
 
@@ -40,7 +41,7 @@ mod tests {
         Update,
     }
 
-    use crate::util::read_yaml_files;
+    use crate::util::{read_yaml_files, replace_resource_uids};
 
     static THREAD_LOG_PROCESSING: Once = Once::new();
 
@@ -128,31 +129,6 @@ mod tests {
         Ok(())
     }
 
-    fn replace_resource_uids(resources: &mut [serde_json::Value], db: &DbName) -> String {
-        let resource_uid = uuid4().to_string();
-
-        for resource in resources.iter_mut() {
-            if let Some(json) = resource.get_mut("json") {
-                let key = match db {
-                    DbName::Resource => "metadata",
-                    DbName::CustomResource => "metadata",
-                    DbName::Event => "involvedObject",
-                    _ => "",
-                };
-                if let Some(metadata) = json.as_object_mut().and_then(|obj| obj.get_mut(key)) {
-                    if let Some(metadata_obj) = metadata.as_object_mut() {
-                        metadata_obj.insert(
-                            "uid".to_string(),
-                            serde_json::Value::String(resource_uid.clone()),
-                        );
-                    }
-                }
-            }
-        }
-
-        resource_uid
-    }
-
     static THREAD_RESOURCE_PROCESSING: Once = Once::new();
 
     lazy_static::lazy_static! {
@@ -165,13 +141,14 @@ mod tests {
     #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3, TestType::Delete))]
     #[case(("deployment-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
     #[case(("pod-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
+    #[case(("pod-aggregation-by-replicaset", "resources", DbName::Resource, 9, TestType::Update))]
     #[case(("event-filter", "events", DbName::Event, 1,TestType::Update))]
     #[case(("skiplist-resource", "resources", DbName::Resource, 9, TestType::Update))]
     #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3, TestType::Update))]
     async fn test_e2e_integration(
         #[case] (subdir, route, db, num_points, test_type): (&str, &str, DbName, usize, TestType),
     ) -> Result<(), DataIntakeError> {
-        let num_cases = 7;
+        let num_cases = 8;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
         let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
@@ -196,7 +173,7 @@ mod tests {
 
         // this assumes that the same resource uid is being sent
         let resource_uid = replace_resource_uids(&mut json, &db);
-        // tracing::info!("Resource UID: {}", resource_uid);
+        tracing::debug!("Resource UID: {}", resource_uid);
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
         assert_eq!(status.code, 200);
@@ -214,12 +191,12 @@ mod tests {
             if test_type == TestType::Delete {
                 points.retain(|point| point.payload.get("deleted") == Some(&Value::from(true)));
             }
-            // tracing::info!(
-            //     "subdir: {} len: {}, expected: {}",
-            //     subdir,
-            //     points.len(),
-            //     num_points
-            // );
+            tracing::debug!(
+                "subdir: {} len: {}, expected: {}",
+                subdir,
+                points.len(),
+                num_points
+            );
             if points.len() == num_points {
                 RECEIVED_RESOURCES
                     .lock()
@@ -230,13 +207,12 @@ mod tests {
 
             sleep(Duration::from_secs(3)).await;
         }
-        // for point in points.clone() {
-        //     if point.payload.get("data_type") == Some(&Value::from("status")) {
-        //         let (yaml, _json) = parse_qdrant_value(point.payload.get("data").unwrap());
-        //         tracing::info!("status: {:#?}", yaml);
-        //     }
-        // }
-        // tracing::info!("points: {:#?}", points);
+        for point in points.clone() {
+            if point.payload.get("data_type") == Some(&Value::from("status")) {
+                let (yaml, _json) = parse_qdrant_value(point.payload.get("data").unwrap());
+                tracing::debug!("status: {:#?}", yaml);
+            }
+        }
 
         while RECEIVED_RESOURCES.lock().unwrap().len() < num_cases && start_time.elapsed() < timeout
         {
