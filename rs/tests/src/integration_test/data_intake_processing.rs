@@ -25,7 +25,7 @@ mod tests {
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
     use shared::utils::ratelimit::RateLimiter;
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet};
     use std::path::Path;
     use std::sync::{Arc, Mutex, Once};
     use std::time::{Duration, Instant};
@@ -131,6 +131,8 @@ mod tests {
     fn replace_resource_uids(resources: &mut [serde_json::Value], db: &DbName) -> String {
         let resource_uid = uuid4().to_string();
 
+        let mut owner_uids_map: HashMap<String, String> = HashMap::new();
+
         for resource in resources.iter_mut() {
             if let Some(json) = resource.get_mut("json") {
                 let key = match db {
@@ -145,6 +147,31 @@ mod tests {
                             "uid".to_string(),
                             serde_json::Value::String(resource_uid.clone()),
                         );
+                        if db == &DbName::Resource {
+                            if let Some(owner_refs) = metadata_obj.get_mut("ownerReferences") {
+                                if let Some(owner_refs_array) = owner_refs.as_array_mut() {
+                                    for owner_ref in owner_refs_array {
+                                        if let Some(owner_ref_obj) = owner_ref.as_object_mut() {
+                                            let original_owner_uid = owner_ref_obj
+                                                .get("uid")
+                                                .and_then(|v| v.as_str())
+                                                .unwrap_or("")
+                                                .to_string();
+
+                                            let owner_uid = owner_uids_map
+                                                .entry(original_owner_uid)
+                                                .or_insert_with(|| uuid4().to_string())
+                                                .clone();
+
+                                            owner_ref_obj.insert(
+                                                "uid".to_string(),
+                                                serde_json::Value::String(owner_uid),
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
