@@ -105,9 +105,6 @@ pub async fn process_resource(
         if kind == "Pod" {
             /*
             TODO:
-            - get replicaset / owner
-            - redis: populate state with owner key
-            - qdrant(embedding): reembed if condition state changed
             - qdrant(payload): condition state updated or payload fields execpt data updated
                 - case: new pod without problems will have conditions with problems embeded.
                     That is ok, as the same replicaset had pod with problems. However, we must
@@ -121,12 +118,23 @@ pub async fn process_resource(
             let mut new_state: Pod = serde_json::from_value(data.json.clone())
                 .map_err(ProcessThreadError::DeserializationError)?;
             new_state.metadata.managed_fields = None;
-            let uid = log_error_continue!(new_state
-                .metadata
-                .uid
-                .to_owned()
-                .ok_or(ProcessThreadError::MissingField("uid".to_string())));
-            let key = format!("{customer_id}:{kind}:{uid}");
+
+            let owner_uids = new_state.metadata.owner_references.as_ref().map(|refs| {
+                refs.iter()
+                    .map(|owner| owner.uid.as_ref())
+                    .collect::<Vec<&str>>()
+                    .join("_")
+            });
+            let redis_uid = if let Some(owner_uids) = owner_uids {
+                owner_uids
+            } else {
+                log_error_continue!(new_state
+                    .metadata
+                    .uid
+                    .to_owned()
+                    .ok_or(ProcessThreadError::MissingField("uid".to_string())))
+            };
+            let key = format!("{customer_id}:{kind}:{redis_uid}");
 
             match log_error_continue!(redis
                 .get_with_retry::<String>(&key)
