@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use k8s_openapi::api::apps::v1::{Deployment, DeploymentCondition};
 
+use crate::threads::error::ProcessThreadError;
+
 pub fn unique_conditions(conditions: Vec<DeploymentCondition>) -> Vec<DeploymentCondition> {
     let mut map: HashMap<String, DeploymentCondition> = HashMap::new();
 
@@ -64,4 +66,12 @@ pub fn update_deployment_conditions(
 
     let updated_conditions = get_conditions_len(&new_state) > previous_num_conditions;
     (new_state, updated_conditions)
+}
+
+pub fn get_deployment_uid(deploy: &Deployment) -> Result<String, ProcessThreadError> {
+    deploy
+        .metadata
+        .uid
+        .to_owned()
+        .ok_or(ProcessThreadError::MissingField("uid".to_string()))
 }

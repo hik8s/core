@@ -16,8 +16,10 @@ use shared::types::kubeapidata::KubeApiData;
 use shared::{log_error, log_error_continue, log_warn, log_warn_continue};
 
 use super::error::ProcessThreadError;
-use super::resource::process_deployment_conditions::update_deployment_conditions;
-use super::resource::process_pod_conditions::update_pod_conditions;
+use super::resource::process_deployment_conditions::{
+    get_deployment_uid, update_deployment_conditions,
+};
+use super::resource::process_pod_conditions::{get_pod_key, update_pod_conditions};
 use super::resource::update_state::update_resource_state;
 use shared::utils::get_as_string;
 
@@ -41,11 +43,7 @@ pub async fn process_resource(
             let mut new_state: Deployment = serde_json::from_value(data.json.clone())
                 .map_err(ProcessThreadError::DeserializationError)?;
             new_state.metadata.managed_fields = None;
-            let uid = log_error_continue!(new_state
-                .metadata
-                .uid
-                .to_owned()
-                .ok_or(ProcessThreadError::MissingField("uid".to_string())));
+            let uid = log_error_continue!(get_deployment_uid(&new_state));
             let key = format!("{customer_id}:{kind}:{uid}");
             let requires_vectorization = log_error_continue!(
                 update_resource_state(
@@ -78,22 +76,7 @@ pub async fn process_resource(
             let mut new_state: Pod = serde_json::from_value(data.json.clone())
                 .map_err(ProcessThreadError::DeserializationError)?;
             new_state.metadata.managed_fields = None;
-
-            let owner_uids = new_state.metadata.owner_references.as_ref().map(|refs| {
-                refs.iter()
-                    .map(|owner| owner.uid.as_ref())
-                    .collect::<Vec<&str>>()
-                    .join("_")
-            });
-            let redis_uid = if let Some(owner_uids) = owner_uids {
-                owner_uids
-            } else {
-                log_error_continue!(new_state
-                    .metadata
-                    .uid
-                    .to_owned()
-                    .ok_or(ProcessThreadError::MissingField("uid".to_string())))
-            };
+            let redis_uid = log_error_continue!(get_pod_key(&new_state));
             let key = format!("{customer_id}:{kind}:{redis_uid}");
 
             let requires_vectorization = log_error_continue!(
