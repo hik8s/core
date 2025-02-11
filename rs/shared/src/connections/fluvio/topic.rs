@@ -101,7 +101,7 @@ pub async fn create_topic(
     let topics = admin
         .list::<TopicSpec, String>(vec![])
         .await
-        .map_err(|e| FluvioConnectionError::AdminList(log_error!(e).into()))?;
+        .map_err(|e| FluvioConnectionError::AdminList(log_error!(e)))?;
     if topics.iter().any(|t| t.name == topic.name) {
         info!("Topic '{}' already exists", topic.name);
         return Ok(());
@@ -112,7 +112,7 @@ pub async fn create_topic(
     admin
         .create(topic.name.to_owned(), false, topic_spec)
         .await
-        .map_err(|e| FluvioConnectionError::AdminCreate(log_error!(e).into()))?;
+        .map_err(|e| FluvioConnectionError::AdminCreate(log_error!(e)))?;
     info!("Topic '{}' created", topic.name);
     Ok(())
 }
