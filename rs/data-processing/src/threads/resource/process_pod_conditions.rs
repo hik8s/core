@@ -63,3 +63,17 @@ pub fn get_conditions_len(deployment: &Pod) -> usize {
         None => 0,
     }
 }
+
+pub fn update_pod_conditions(previous_state: Pod, mut new_state: Pod) -> (Pod, bool) {
+    let mut conditions = get_conditions(&previous_state);
+    let previous_num_conditions = conditions.len();
+    conditions.extend_from_slice(&get_conditions(&new_state));
+    let aggregated_conditions = unique_conditions(conditions);
+
+    if let Some(status) = new_state.status.as_mut() {
+        status.conditions = Some(aggregated_conditions);
+    }
+
+    let updated_conditions = get_conditions_len(&new_state) > previous_num_conditions;
+    (new_state, updated_conditions)
+}
