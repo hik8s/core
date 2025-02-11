@@ -42,7 +42,10 @@ pub fn write_yaml_files(points: &[ScoredPoint], output_dir: &Path) -> Result<(),
             .and_then(|m| m.get("uid"))
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
-
+        let resource_version = json_value
+            .get("metadata")
+            .and_then(|s| s.get("resource_version"))
+            .and_then(|v| v.as_str());
         let observed_generation = json_value
             .get("status")
             .and_then(|s| s.get("observedGeneration"))
@@ -50,11 +53,12 @@ pub fn write_yaml_files(points: &[ScoredPoint], output_dir: &Path) -> Result<(),
 
         let yaml_string = serde_yaml::to_string(&yaml_value).unwrap();
 
-        let file_name = if let Some(gen) = observed_generation {
-            format!("{}-{}-{}-{}-{}.yaml", kind, name, gen, uid, counter)
-        } else {
-            format!("{}-{}-{}-{}.yaml", kind, name, uid, counter)
+        let file_name = match (resource_version, observed_generation) {
+            (Some(rv), _) => format!("{}-{}-{}-{}.yaml", kind, name, uid, rv),
+            (None, Some(gen)) => format!("{}-{}-{}-{}.yaml", kind, name, uid, gen),
+            (None, None) => format!("{}-{}-{}-{}.yaml", kind, name, uid, counter),
         };
+
         let file_path = output_dir.join(file_name);
 
         std::fs::write(file_path, yaml_string)?;
