@@ -16,7 +16,7 @@ use shared::types::kubeapidata::{KubeApiData, KubeEventType};
 use shared::{log_error, log_error_continue, log_warn, log_warn_continue};
 
 use super::error::ProcessThreadError;
-use super::resource::process_deployment_conditions as deployment;
+use super::resource::process_deployment_conditions::update_deployment_conditions;
 use super::resource::process_pod_conditions as pod;
 use shared::utils::get_as_string;
 
@@ -68,15 +68,8 @@ pub async fn process_resource(
                     // update incoming resource from state
                     let current_state: Deployment =
                         log_error_continue!(serde_json::from_str(&json));
-                    let init_num_conditions = deployment::get_conditions_len(&current_state);
-
-                    let mut conditions = deployment::get_conditions(&current_state);
-                    conditions.extend_from_slice(&deployment::get_conditions(&new_state));
-                    let aggregated_conditions = deployment::unique_conditions(conditions);
-
-                    if let Some(status) = new_state.status.as_mut() {
-                        status.conditions = Some(aggregated_conditions)
-                    }
+                    let (new_state, is_updated) =
+                        update_deployment_conditions(current_state, new_state);
 
                     let json = serde_json::to_string(&new_state)
                         .map_err(ProcessThreadError::SerializationError)?;
@@ -85,12 +78,8 @@ pub async fn process_resource(
                         .await
                         .map_err(ProcessThreadError::RedisSet)?;
 
-                    let new_num_conditions = deployment::get_conditions_len(&new_state);
-                    if new_num_conditions > init_num_conditions {
-                        requires_vectorization = true;
-                    }
-                    if data.event_type == KubeEventType::Delete {
-                        // TODO: make more consistend
+                    if data.event_type == KubeEventType::Delete || is_updated {
+                        // TODO: align with delete logic in data-vectorizer
                         requires_vectorization = true;
                     }
                     data.json = serde_json::to_value(new_state)
