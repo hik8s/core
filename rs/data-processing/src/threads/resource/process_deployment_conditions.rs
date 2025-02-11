@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use k8s_openapi::api::apps::v1::{Deployment, DeploymentCondition};
 
+use crate::threads::error::ProcessThreadError;
+
 pub fn unique_conditions(conditions: Vec<DeploymentCondition>) -> Vec<DeploymentCondition> {
     let mut map: HashMap<String, DeploymentCondition> = HashMap::new();
 
@@ -47,4 +49,33 @@ pub fn get_conditions_len(deployment: &Deployment) -> usize {
         },
         None => 0,
     }
+}
+
+pub fn update_deployment_conditions(
+    previous_state: Deployment,
+    mut new_state: Deployment,
+) -> (Deployment, bool) {
+    let mut conditions = get_conditions(&previous_state);
+    let previous_num_conditions = conditions.len();
+    conditions.extend_from_slice(&get_conditions(&new_state));
+    let aggregated_conditions = unique_conditions(conditions);
+
+    if let Some(status) = new_state.status.as_mut() {
+        status.conditions = Some(aggregated_conditions);
+    }
+
+    let updated_conditions = get_conditions_len(&new_state) > previous_num_conditions;
+    (new_state, updated_conditions)
+}
+
+pub fn get_deployment_uid(deploy: &Deployment) -> Result<String, ProcessThreadError> {
+    deploy
+        .metadata
+        .uid
+        .to_owned()
+        .ok_or(ProcessThreadError::MissingField("uid".to_string()))
+}
+
+pub fn remove_deploy_managed_fields(deploy: &mut Deployment) {
+    deploy.metadata.managed_fields = None;
 }
