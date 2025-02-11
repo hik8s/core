@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "data-processing"
-version = "0.4.11"
+version = "0.4.12"
 
 [dependencies]
 algorithm = {workspace = true}
@@ -10,7 +10,6 @@ chrono = {workspace = true}
 dotenv = {workspace = true}
 fluvio = {workspace = true}
 futures-util = {workspace = true}
-k8s-openapi = {workspace = true}
 rstest = {workspace = true}
 serde_json = {workspace = true}
 shared = {workspace = true}

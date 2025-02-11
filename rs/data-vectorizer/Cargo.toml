@@ -1,11 +1,12 @@
 [package]
 edition.workspace = true
 name = "data-vectorizer"
-version = "0.4.15"
+version = "0.4.16"
 
 [dependencies]
 anyhow = {workspace = true}
 futures-util = {workspace = true}
+k8s-openapi = {workspace = true}
 qdrant-client = {workspace = true}
 rstest = {workspace = true}
 serde = {workspace = true}

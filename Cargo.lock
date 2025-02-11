@@ -1062,7 +1062,7 @@ dependencies = [
 
 [[package]]
 name = "data-processing"
-version = "0.4.11"
+version = "0.4.12"
 dependencies = [
  "algorithm",
  "anyhow",
@@ -1070,7 +1070,6 @@ dependencies = [
  "dotenv",
  "fluvio",
  "futures-util",
- "k8s-openapi",
  "rstest",
  "serde_json",
  "shared",
@@ -1081,10 +1080,11 @@ dependencies = [
 
 [[package]]
 name = "data-vectorizer"
-version = "0.4.15"
+version = "0.4.16"
 dependencies = [
  "anyhow",
  "futures-util",
+ "k8s-openapi",
  "qdrant-client",
  "rstest",
  "serde",

@@ -1,6 +1,8 @@
 use shared::{
-    connections::openai::embeddings::RequestEmbeddingError,
-    connections::qdrant::error::QdrantConnectionError,
+    connections::{
+        openai::embeddings::RequestEmbeddingError, qdrant::error::QdrantConnectionError,
+        redis::connect::RedisConnectionError,
+    },
     fluvio::{FluvioConnectionError, OffsetError},
 };
 use std::str::Utf8Error;
@@ -14,6 +16,12 @@ pub enum DataVectorizationError {
     FluvioOffsetError(#[from] OffsetError),
     #[error("Qdrant connection error: {0}")]
     QdrantConnectionError(#[from] QdrantConnectionError),
+    #[error("Redis get error: {0}")]
+    RedisGet(#[source] RedisConnectionError),
+    #[error("Redis set error: {0}")]
+    RedisSet(#[source] RedisConnectionError),
+    #[error("Redis init error: {0}")]
+    RedisInit(#[source] RedisConnectionError),
     #[error("Anyhow error: {0}")]
     AnyhowError(#[from] anyhow::Error),
     #[error("OpenAI API error: {0}")]
@@ -26,6 +34,10 @@ pub enum DataVectorizationError {
     Utf8Error(#[from] Utf8Error),
     #[error("Task join error: {0}")]
     JoinError(#[from] tokio::task::JoinError),
+    #[error("Serialization error: {0}")]
+    SerializationError(#[source] serde_json::Error),
     #[error("Deserialization error: {0}")]
     DeserializationError(#[source] serde_json::Error),
+    #[error("Resource misses field: {0}")]
+    MissingField(String),
 }

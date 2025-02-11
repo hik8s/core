@@ -17,6 +17,8 @@ pub enum RedisConnectionError {
     ConfigError(#[from] ConfigError),
     #[error("Redis error: {0}")]
     RedisError(#[from] RedisError),
+    #[error("Redis init error: {0}")]
+    RedisInit(#[source] RedisError),
     #[error("Failed to get value from Redis: {0}")]
     GetError(#[source] RedisError),
     #[error("Failed to set value in Redis: {0}")]
@@ -28,8 +30,10 @@ pub enum RedisConnectionError {
 impl RedisConnection {
     pub fn new() -> Result<Self, RedisConnectionError> {
         let config = RedisConfig::new()?;
-        let client = Client::open(config.get_uri())?;
-        let connection = client.get_connection()?;
+        let client = Client::open(config.get_uri()).map_err(RedisConnectionError::RedisInit)?;
+        let connection = client
+            .get_connection()
+            .map_err(RedisConnectionError::RedisInit)?;
         let redis_connection = RedisConnection { connection };
         Ok(redis_connection)
     }

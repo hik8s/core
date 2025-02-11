@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use k8s_openapi::api::core::v1::{Pod, PodCondition};
 
-use crate::threads::error::ProcessThreadError;
+use crate::error::DataVectorizationError;
 
 pub fn unique_conditions(conditions: Vec<PodCondition>) -> Vec<PodCondition> {
     let mut map: HashMap<String, PodCondition> = HashMap::new();
@@ -80,7 +80,7 @@ pub fn update_pod_conditions(previous_state: Pod, mut new_state: Pod) -> (Pod, b
     (new_state, updated_conditions)
 }
 
-pub fn get_pod_key(pod: &Pod) -> Result<String, ProcessThreadError> {
+pub fn get_pod_key(pod: &Pod) -> Result<String, DataVectorizationError> {
     let owner_uids = pod.metadata.owner_references.as_ref().map(|refs| {
         refs.iter()
             .map(|owner| owner.uid.as_ref())
@@ -94,7 +94,7 @@ pub fn get_pod_key(pod: &Pod) -> Result<String, ProcessThreadError> {
         pod.metadata
             .uid
             .to_owned()
-            .ok_or(ProcessThreadError::MissingField("uid".to_string()))
+            .ok_or(DataVectorizationError::MissingField("uid".to_string()))
     }
 }
 

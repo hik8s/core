@@ -7,6 +7,7 @@ use shared::{
             connect::{update_deleted_resources, QdrantConnection},
             ResourceQdrantMetadata,
         },
+        redis::connect::RedisConnection,
     },
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
     log_error_continue, log_warn_continue,
@@ -20,7 +21,19 @@ use shared::{
     },
 };
 
-use crate::{error::DataVectorizationError, vectorize::vectorizer::vectorize_chunk};
+use crate::{
+    error::DataVectorizationError,
+    vectorize::{
+        resource_state::{
+            deployment_conditions::{
+                get_deployment_uid, remove_deploy_managed_fields, update_deployment_conditions,
+            },
+            pod_conditions::{get_pod_key, remove_pod_managed_fields, update_pod_conditions},
+            update_state::update_resource_state,
+        },
+        vectorizer::vectorize_chunk,
+    },
+};
 
 pub async fn vectorize_resource(
     limiter: Arc<RateLimiter>,
@@ -30,6 +43,7 @@ pub async fn vectorize_resource(
 ) -> Result<(), DataVectorizationError> {
     let fluvio = FluvioConnection::new().await?;
     let qdrant = QdrantConnection::new().await?;
+    let mut redis = RedisConnection::new().map_err(DataVectorizationError::RedisInit)?;
     let mut consumer = fluvio.create_consumer(0, topic).await?;
     let tokenizer = Tokenizer::new()?;
     let polling_interval = Duration::from_millis(100);
@@ -60,6 +74,52 @@ pub async fn vectorize_resource(
 
                 if skiplist.contains(&kind_lowercase) {
                     continue;
+                }
+
+                if kind == "Deployment" {
+                    let requires_vectorization = log_error_continue!(
+                        update_resource_state(
+                            &mut redis,
+                            &mut kube_api_data,
+                            &format!("{customer_id}:{kind}"),
+                            update_deployment_conditions,
+                            get_deployment_uid,
+                            remove_deploy_managed_fields
+                        )
+                        .await
+                    );
+                    if !requires_vectorization {
+                        continue;
+                    }
+                }
+
+                if kind == "Pod" {
+                    /*
+                    TODO:
+                    - qdrant(payload): condition state updated or payload fields execpt data updated
+                        - case: new pod without problems will have conditions with problems embeded.
+                            That is ok, as the same replicaset had pod with problems. However, we must
+                            provide the actual conditions of the pod to the model and should indicate
+                            the problems of previous pods of that replicaset. this data should ideally
+                            be retrieved from greptime
+                        - case: old entry in qdrant should be updated and not deleted. currently we would set
+                            delete=true
+                    */
+
+                    let requires_vectorization = log_error_continue!(
+                        update_resource_state(
+                            &mut redis,
+                            &mut kube_api_data,
+                            &format!("{customer_id}:{kind}"),
+                            update_pod_conditions,
+                            get_pod_key,
+                            remove_pod_managed_fields
+                        )
+                        .await
+                    );
+                    if !requires_vectorization {
+                        continue;
+                    }
                 }
 
                 let metadata = kube_api_data
