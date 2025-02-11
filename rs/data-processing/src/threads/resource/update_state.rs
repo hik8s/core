@@ -6,20 +6,26 @@ use shared::{
 
 use crate::threads::error::ProcessThreadError;
 
-pub async fn update_resource_state<T, F>(
+// TODO: use a wrapped type that implements F, G, H
+pub async fn update_resource_state<T, F, G, H>(
     redis: &mut RedisConnection,
-    new_state: T,
     data: &mut KubeApiData,
-    key: &str,
+    key_prefix: &str,
     update_conditions: F,
+    get_uid: G,
+    remove_managed_fields: H,
 ) -> Result<bool, ProcessThreadError>
 where
     T: Serialize + DeserializeOwned,
     F: FnOnce(T, T) -> (T, bool),
+    G: FnOnce(&T) -> Result<String, ProcessThreadError>,
+    H: FnOnce(&mut T),
 {
-    // let new_state: T = serde_json::from_value(data.json.clone())
-    //     .map_err(ProcessThreadError::DeserializationError)?;
+    let mut new_state: T = serde_json::from_value(data.json.clone())
+        .map_err(ProcessThreadError::DeserializationError)?;
+    remove_managed_fields(&mut new_state);
 
+    let key = &format!("{key_prefix}:{}", get_uid(&new_state)?);
     let mut requires_vectorization = false;
 
     match redis

@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
-use k8s_openapi::api::apps::v1::Deployment;
-
 use fluvio::spu::SpuSocketPool;
 use fluvio::TopicProducer;
 use futures_util::StreamExt;
-use k8s_openapi::api::core::v1::Pod;
 use shared::connections::fluvio::util::get_record_key;
 
 use fluvio::consumer::ConsumerStream;
@@ -17,9 +14,11 @@ use shared::{log_error, log_error_continue, log_warn, log_warn_continue};
 
 use super::error::ProcessThreadError;
 use super::resource::process_deployment_conditions::{
-    get_deployment_uid, update_deployment_conditions,
+    get_deployment_uid, remove_deploy_managed_fields, update_deployment_conditions,
 };
-use super::resource::process_pod_conditions::{get_pod_key, update_pod_conditions};
+use super::resource::process_pod_conditions::{
+    get_pod_key, remove_pod_managed_fields, update_pod_conditions,
+};
 use super::resource::update_state::update_resource_state;
 use shared::utils::get_as_string;
 
@@ -40,18 +39,14 @@ pub async fn process_resource(
         let kind = log_warn_continue!(get_as_string(&data.json, "kind"));
 
         if kind == "Deployment" {
-            let mut new_state: Deployment = serde_json::from_value(data.json.clone())
-                .map_err(ProcessThreadError::DeserializationError)?;
-            new_state.metadata.managed_fields = None;
-            let uid = log_error_continue!(get_deployment_uid(&new_state));
-            let key = format!("{customer_id}:{kind}:{uid}");
             let requires_vectorization = log_error_continue!(
                 update_resource_state(
                     &mut redis,
-                    new_state,
                     &mut data,
-                    &key,
+                    &format!("{customer_id}:{kind}"),
                     update_deployment_conditions,
+                    get_deployment_uid,
+                    remove_deploy_managed_fields
                 )
                 .await
             );
@@ -73,19 +68,14 @@ pub async fn process_resource(
                     delete=true
             */
 
-            let mut new_state: Pod = serde_json::from_value(data.json.clone())
-                .map_err(ProcessThreadError::DeserializationError)?;
-            new_state.metadata.managed_fields = None;
-            let redis_uid = log_error_continue!(get_pod_key(&new_state));
-            let key = format!("{customer_id}:{kind}:{redis_uid}");
-
             let requires_vectorization = log_error_continue!(
                 update_resource_state(
                     &mut redis,
-                    new_state,
                     &mut data,
-                    &key,
+                    &format!("{customer_id}:{kind}"),
                     update_pod_conditions,
+                    get_pod_key,
+                    remove_pod_managed_fields
                 )
                 .await
             );

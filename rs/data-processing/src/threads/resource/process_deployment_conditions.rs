@@ -75,3 +75,7 @@ pub fn get_deployment_uid(deploy: &Deployment) -> Result<String, ProcessThreadEr
         .to_owned()
         .ok_or(ProcessThreadError::MissingField("uid".to_string()))
 }
+
+pub fn remove_deploy_managed_fields(deploy: &mut Deployment) {
+    deploy.metadata.managed_fields = None;
+}

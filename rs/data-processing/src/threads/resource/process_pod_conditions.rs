@@ -97,3 +97,7 @@ pub fn get_pod_key(pod: &Pod) -> Result<String, ProcessThreadError> {
             .ok_or(ProcessThreadError::MissingField("uid".to_string()))
     }
 }
+
+pub fn remove_pod_managed_fields(pod: &mut Pod) {
+    pod.metadata.managed_fields = None;
+}
