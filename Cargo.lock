@@ -1080,7 +1080,7 @@ dependencies = [
 
 [[package]]
 name = "data-vectorizer"
-version = "0.4.15"
+version = "0.4.16"
 dependencies = [
  "anyhow",
  "futures-util",
