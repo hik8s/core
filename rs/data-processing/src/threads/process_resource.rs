@@ -12,12 +12,13 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use shared::connections::redis::connect::RedisConnection;
 use shared::fluvio::commit_and_flush_offsets;
-use shared::types::kubeapidata::{KubeApiData, KubeEventType};
+use shared::types::kubeapidata::KubeApiData;
 use shared::{log_error, log_error_continue, log_warn, log_warn_continue};
 
 use super::error::ProcessThreadError;
 use super::resource::process_deployment_conditions::update_deployment_conditions;
 use super::resource::process_pod_conditions::update_pod_conditions;
+use super::resource::update_state::update_resource_state;
 use shared::utils::get_as_string;
 
 pub async fn process_resource(
@@ -37,7 +38,6 @@ pub async fn process_resource(
         let kind = log_warn_continue!(get_as_string(&data.json, "kind"));
 
         if kind == "Deployment" {
-            let mut requires_vectorization = false;
             let mut new_state: Deployment = serde_json::from_value(data.json.clone())
                 .map_err(ProcessThreadError::DeserializationError)?;
             new_state.metadata.managed_fields = None;
@@ -47,45 +47,16 @@ pub async fn process_resource(
                 .to_owned()
                 .ok_or(ProcessThreadError::MissingField("uid".to_string())));
             let key = format!("{customer_id}:{kind}:{uid}");
-            match log_error_continue!(redis
-                .get_with_retry::<String>(&key)
+            let requires_vectorization = log_error_continue!(
+                update_resource_state(
+                    &mut redis,
+                    new_state,
+                    &mut data,
+                    &key,
+                    update_deployment_conditions,
+                )
                 .await
-                .map_err(ProcessThreadError::RedisGet))
-            {
-                None => {
-                    // Serialize
-                    let json = serde_json::to_string(&new_state)
-                        .map_err(ProcessThreadError::SerializationError)?;
-
-                    // Set redis
-                    redis
-                        .set_with_retry::<String>(&key, &json)
-                        .await
-                        .map_err(ProcessThreadError::RedisSet)?;
-                    requires_vectorization = true;
-                }
-                Some(json) => {
-                    // update incoming resource from state
-                    let current_state: Deployment =
-                        log_error_continue!(serde_json::from_str(&json));
-                    let (new_state, is_updated) =
-                        update_deployment_conditions(current_state, new_state);
-
-                    let json = serde_json::to_string(&new_state)
-                        .map_err(ProcessThreadError::SerializationError)?;
-                    redis
-                        .set_with_retry::<String>(&key, &json)
-                        .await
-                        .map_err(ProcessThreadError::RedisSet)?;
-
-                    if data.event_type == KubeEventType::Delete || is_updated {
-                        // TODO: align with delete logic in data-vectorizer
-                        requires_vectorization = true;
-                    }
-                    data.json = serde_json::to_value(new_state)
-                        .map_err(ProcessThreadError::SerializationError)?;
-                }
-            }
+            );
             if !requires_vectorization {
                 continue;
             }
@@ -103,7 +74,7 @@ pub async fn process_resource(
                 - case: old entry in qdrant should be updated and not deleted. currently we would set
                     delete=true
             */
-            let mut requires_vectorization = false;
+
             let mut new_state: Pod = serde_json::from_value(data.json.clone())
                 .map_err(ProcessThreadError::DeserializationError)?;
             new_state.metadata.managed_fields = None;
@@ -125,44 +96,16 @@ pub async fn process_resource(
             };
             let key = format!("{customer_id}:{kind}:{redis_uid}");
 
-            match log_error_continue!(redis
-                .get_with_retry::<String>(&key)
+            let requires_vectorization = log_error_continue!(
+                update_resource_state(
+                    &mut redis,
+                    new_state,
+                    &mut data,
+                    &key,
+                    update_pod_conditions,
+                )
                 .await
-                .map_err(ProcessThreadError::RedisGet))
-            {
-                None => {
-                    // Serialize
-                    let json = serde_json::to_string(&new_state)
-                        .map_err(ProcessThreadError::SerializationError)?;
-
-                    // Set redis
-                    redis
-                        .set_with_retry::<String>(&key, &json)
-                        .await
-                        .map_err(ProcessThreadError::RedisSet)?;
-                    requires_vectorization = true;
-                }
-                Some(json) => {
-                    // update incoming resource from state
-                    let current_state: Pod = log_error_continue!(serde_json::from_str(&json));
-                    let (new_state, is_updated) = update_pod_conditions(current_state, new_state);
-                    let new_json = serde_json::to_string(&new_state)
-                        .map_err(ProcessThreadError::SerializationError)?;
-
-                    redis
-                        .set_with_retry::<String>(&key, &new_json)
-                        .await
-                        .map_err(ProcessThreadError::RedisSet)?;
-
-                    if data.event_type == KubeEventType::Delete || is_updated {
-                        // TODO: align with delete logic in data-vectorizer
-                        requires_vectorization = true;
-                    }
-
-                    data.json = serde_json::to_value(new_state)
-                        .map_err(ProcessThreadError::SerializationError)?;
-                }
-            }
+            );
             if !requires_vectorization {
                 continue;
             }
