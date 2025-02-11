@@ -55,7 +55,7 @@ where
                 .await
                 .map_err(DataVectorizationError::RedisSet)?;
 
-            if data.event_type == KubeEventType::Delete || is_updated {
+            if is_updated {
                 requires_vectorization = true;
             }
             data.json = serde_json::to_value(new_state)
