@@ -6,6 +6,7 @@ version = "0.4.15"
 [dependencies]
 anyhow = {workspace = true}
 futures-util = {workspace = true}
+k8s-openapi = {workspace = true}
 qdrant-client = {workspace = true}
 rstest = {workspace = true}
 serde = {workspace = true}

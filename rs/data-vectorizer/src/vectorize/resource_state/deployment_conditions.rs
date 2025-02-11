@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use k8s_openapi::api::apps::v1::{Deployment, DeploymentCondition};
 
-use crate::threads::error::ProcessThreadError;
+use crate::error::DataVectorizationError;
 
 pub fn unique_conditions(conditions: Vec<DeploymentCondition>) -> Vec<DeploymentCondition> {
     let mut map: HashMap<String, DeploymentCondition> = HashMap::new();
@@ -68,12 +68,12 @@ pub fn update_deployment_conditions(
     (new_state, updated_conditions)
 }
 
-pub fn get_deployment_uid(deploy: &Deployment) -> Result<String, ProcessThreadError> {
+pub fn get_deployment_uid(deploy: &Deployment) -> Result<String, DataVectorizationError> {
     deploy
         .metadata
         .uid
         .to_owned()
-        .ok_or(ProcessThreadError::MissingField("uid".to_string()))
+        .ok_or(DataVectorizationError::MissingField("uid".to_string()))
 }
 
 pub fn remove_deploy_managed_fields(deploy: &mut Deployment) {

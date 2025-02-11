@@ -7,82 +7,23 @@ use shared::connections::fluvio::util::get_record_key;
 
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
-use shared::connections::redis::connect::RedisConnection;
 use shared::fluvio::commit_and_flush_offsets;
 use shared::types::kubeapidata::KubeApiData;
-use shared::{log_error, log_error_continue, log_warn, log_warn_continue};
+use shared::{log_error, log_warn, log_warn_continue};
 
 use super::error::ProcessThreadError;
-use super::resource::process_deployment_conditions::{
-    get_deployment_uid, remove_deploy_managed_fields, update_deployment_conditions,
-};
-use super::resource::process_pod_conditions::{
-    get_pod_key, remove_pod_managed_fields, update_pod_conditions,
-};
-use super::resource::update_state::update_resource_state;
-use shared::utils::get_as_string;
 
 pub async fn process_resource(
     mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>>,
     producer: Arc<TopicProducer<SpuSocketPool>>,
 ) -> Result<(), ProcessThreadError> {
-    let mut redis = RedisConnection::new().map_err(ProcessThreadError::RedisInit)?;
-
     while let Some(result) = consumer.next().await {
         let record = log_warn_continue!(result);
         let customer_id = log_warn_continue!(get_record_key(&record));
 
-        let mut data: KubeApiData = log_warn_continue!(record
+        let data: KubeApiData = log_warn_continue!(record
             .try_into()
             .map_err(ProcessThreadError::DeserializationError));
-
-        let kind = log_warn_continue!(get_as_string(&data.json, "kind"));
-
-        if kind == "Deployment" {
-            let requires_vectorization = log_error_continue!(
-                update_resource_state(
-                    &mut redis,
-                    &mut data,
-                    &format!("{customer_id}:{kind}"),
-                    update_deployment_conditions,
-                    get_deployment_uid,
-                    remove_deploy_managed_fields
-                )
-                .await
-            );
-            if !requires_vectorization {
-                continue;
-            }
-        }
-
-        if kind == "Pod" {
-            /*
-            TODO:
-            - qdrant(payload): condition state updated or payload fields execpt data updated
-                - case: new pod without problems will have conditions with problems embeded.
-                    That is ok, as the same replicaset had pod with problems. However, we must
-                    provide the actual conditions of the pod to the model and should indicate
-                    the problems of previous pods of that replicaset. this data should ideally
-                    be retrieved from greptime
-                - case: old entry in qdrant should be updated and not deleted. currently we would set
-                    delete=true
-            */
-
-            let requires_vectorization = log_error_continue!(
-                update_resource_state(
-                    &mut redis,
-                    &mut data,
-                    &format!("{customer_id}:{kind}"),
-                    update_pod_conditions,
-                    get_pod_key,
-                    remove_pod_managed_fields
-                )
-                .await
-            );
-            if !requires_vectorization {
-                continue;
-            }
-        }
 
         let data_serialized: Vec<u8> = log_warn_continue!(data
             .try_into()

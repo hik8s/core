@@ -1070,7 +1070,6 @@ dependencies = [
  "dotenv",
  "fluvio",
  "futures-util",
- "k8s-openapi",
  "rstest",
  "serde_json",
  "shared",
@@ -1085,6 +1084,7 @@ version = "0.4.15"
 dependencies = [
  "anyhow",
  "futures-util",
+ "k8s-openapi",
  "qdrant-client",
  "rstest",
  "serde",
