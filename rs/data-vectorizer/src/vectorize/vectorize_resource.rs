@@ -101,9 +101,9 @@ pub async fn vectorize_resource(
                             That is ok, as the same replicaset had pod with problems. However, we must
                             provide the actual conditions of the pod to the model and should indicate
                             the problems of previous pods of that replicaset. this data should ideally
-                            be retrieved from greptime
-                        - case: old entry in qdrant should be updated and not deleted. currently we would set
-                            delete=true
+                            be retrieved from greptime.
+                        - case: updated pods should have the latest pod uid to avoid mismatch of cluster
+                            state and search space.
                     */
 
                     let requires_vectorization = log_error_continue!(
