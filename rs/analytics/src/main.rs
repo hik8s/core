@@ -1,68 +1,32 @@
+pub mod analyze_logs;
+pub mod analyze_resource;
 pub mod histogram;
 pub mod utils;
 
 use std::env;
 
-use histogram::resource_histograms;
+use analyze_logs::analyze_logs;
+use analyze_resource::analyze_resource;
 use shared::{
-    connections::{dbname::DbName, qdrant::connect::QdrantConnection},
-    get_env_var,
-    tracing::setup::setup_tracing,
+    connections::qdrant::connect::QdrantConnection, get_env_var, tracing::setup::setup_tracing,
 };
-
-use utils::write_resource_yaml;
 
 #[tokio::main]
 async fn main() {
     setup_tracing(false);
-    env::set_var("QDRANT_HOST", "prod.qdrant.hik8s.ai");
-    let kinds = vec![
-        "Ingress",
-        "Pod",
-        "Namespace",
-        "ServiceAccount",
-        "StorageClass",
-        "DaemonSet",
-        "ClusterRole",
-        "Service",
-        "Node",
-        "ClusterRoleBinding",
-        "Role",
-        "StatefulSet",
-        "Deployment",
-    ];
+    let limit = 1000000;
+    let run_analyze_resource = false;
+    let run_analyze_log = true;
+
+    env::set_var("QDRANT_HOST", "dev.qdrant.hik8s.ai");
     let customer_id = get_env_var("ANALYTICS_CLIENT_ID").unwrap();
     let qdrant = QdrantConnection::new().await.unwrap();
 
-    // write deployment
-    let write = false;
-    if write {
-        write_resource_yaml(
-            ".giant-yaml",
-            "policy-meta-operator",
-            "Deployment",
-            &["status"],
-            &qdrant,
-            &customer_id,
-            10000,
-        )
-        .await
-        .unwrap();
-        write_resource_yaml(
-            ".giant-yaml",
-            "policy-meta-operator-7496ffdfdb-hfzqk",
-            "Pod",
-            &["status", "metadata", "spec"],
-            &qdrant,
-            &customer_id,
-            10000,
-        )
-        .await
-        .unwrap();
+    if run_analyze_resource {
+        analyze_resource(&qdrant, &customer_id, limit).await;
     }
 
-    // histograms
-    resource_histograms(kinds, &qdrant, &DbName::Resource, &customer_id, 10000, 10)
-        .await
-        .unwrap();
+    if run_analyze_log {
+        analyze_logs(&qdrant, &customer_id, limit).await;
+    }
 }

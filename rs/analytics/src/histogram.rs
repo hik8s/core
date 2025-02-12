@@ -1,11 +1,7 @@
-use std::collections::HashMap;
-
 use qdrant_client::qdrant::ScoredPoint;
-use shared::connections::{
-    dbname::DbName,
-    qdrant::connect::{string_filter, QdrantConnection},
-};
+use std::collections::HashMap;
 use tabled::{Table, Tabled};
+
 #[derive(Tabled)]
 struct HistogramRow {
     #[tabled(rename = "Name")]
@@ -15,58 +11,40 @@ struct HistogramRow {
     #[tabled(rename = "Percentage")]
     percentage: String,
 }
+const MAX_NAME_LENGTH: usize = 80;
 
-pub fn create_histogram(points: &[ScoredPoint], kind: &str, top_k: usize) -> String {
+pub fn create_histogram(key: &str, points: &[ScoredPoint], top_k: usize) -> Table {
     // Create frequency map
-    let mut name_counts: HashMap<String, usize> = HashMap::new();
+    let mut value_counts: HashMap<String, usize> = HashMap::new();
     for point in points {
-        if let Some(name) = point.payload.get("name").and_then(|n| n.as_str()) {
-            *name_counts.entry(name.to_string()).or_default() += 1;
+        if let Some(value) = point.payload.get(key).and_then(|n| n.as_str()) {
+            *value_counts.entry(value.to_string()).or_default() += 1;
         }
     }
 
     // Convert to vec and sort
-    let mut counts: Vec<(String, usize)> = name_counts.into_iter().collect();
+    let mut counts: Vec<(String, usize)> = value_counts.into_iter().collect();
     counts.sort_by(|a, b| b.1.cmp(&a.1));
 
     // Create histogram rows
     let mut histogram_rows = Vec::new();
     for (name, count) in counts.iter().take(top_k) {
         let percentage = format!("{:.1}%", (*count as f64 / points.len() as f64) * 100.0);
+        let truncated_name = if name.len() > MAX_NAME_LENGTH {
+            format!("{}...", &name[..MAX_NAME_LENGTH])
+        } else {
+            name.to_owned()
+        };
         histogram_rows.push(HistogramRow {
-            name: name.clone(),
+            name: truncated_name,
             count: *count,
             percentage,
         });
     }
     histogram_rows.push(HistogramRow {
-        name: kind.to_string(),
+        name: "Total".to_string(),
         count: points.len(),
         percentage: "100%".to_string(),
     });
-
-    format!(
-        "\nTop 10 most frequent names for {}:\n{}",
-        kind,
-        Table::new(histogram_rows)
-    )
-}
-
-pub async fn resource_histograms(
-    kinds: Vec<&str>,
-    qdrant: &QdrantConnection,
-    db: &DbName,
-    customer_id: &str,
-    limit: u64,
-    top_k: usize,
-) -> Result<(), Box<dyn std::error::Error>> {
-    for kind in kinds {
-        let filter = string_filter("kind", kind);
-        let points = qdrant
-            .query_points(db, customer_id, Some(filter), limit, true)
-            .await?;
-
-        println!("{}", create_histogram(&points, kind, top_k));
-    }
-    Ok(())
+    Table::new(histogram_rows)
 }
