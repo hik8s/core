@@ -1,8 +1,8 @@
 use shared::connections::{dbname::DbName, qdrant::connect::QdrantConnection};
 
-use crate::{histogram::resource_histograms, utils::write_resource_yaml};
+use crate::{histogram::create_histograms, utils::write_resource_yaml};
 
-pub async fn analyze_resource(qdrant: &QdrantConnection, customer_id: &str) {
+pub async fn analyze_resource(qdrant: &QdrantConnection, customer_id: &str, limit: u64) {
     let kinds = vec![
         "Ingress",
         "Pod",
@@ -29,7 +29,7 @@ pub async fn analyze_resource(qdrant: &QdrantConnection, customer_id: &str) {
             &["status", "metadata", "spec"],
             qdrant,
             customer_id,
-            10000,
+            limit,
         )
         .await
         .unwrap();
@@ -40,14 +40,23 @@ pub async fn analyze_resource(qdrant: &QdrantConnection, customer_id: &str) {
             &["status", "metadata", "spec"],
             qdrant,
             customer_id,
-            10000,
+            limit,
         )
         .await
         .unwrap();
     }
 
     // histograms
-    resource_histograms(kinds, qdrant, &DbName::Resource, customer_id, 10000, 10)
-        .await
-        .unwrap();
+    create_histograms(
+        "kind",
+        "name",
+        kinds,
+        qdrant,
+        &DbName::Resource,
+        customer_id,
+        limit,
+        10,
+    )
+    .await
+    .unwrap();
 }

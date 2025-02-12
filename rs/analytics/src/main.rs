@@ -13,13 +13,14 @@ use shared::{
 #[tokio::main]
 async fn main() {
     setup_tracing(false);
-
+    let limit = 100000;
     let run_analyze_resource = false;
 
     env::set_var("QDRANT_HOST", "dev.qdrant.hik8s.ai");
     let customer_id = get_env_var("ANALYTICS_CLIENT_ID").unwrap();
     let qdrant = QdrantConnection::new().await.unwrap();
+
     if run_analyze_resource {
-        analyze_resource(&qdrant, &customer_id).await;
+        analyze_resource(&qdrant, &customer_id, limit).await;
     }
 }
