@@ -24,7 +24,7 @@ async fn main() -> Result<(), ChatBackendError> {
 
     let qdrant = QdrantConnection::new().await?;
 
-    let rocket = build_rocket(&vec![qdrant], routes![chat_completion]);
+    let rocket = build_rocket(&[qdrant], routes![chat_completion]);
 
     rocket.launch().await?;
     Ok(())

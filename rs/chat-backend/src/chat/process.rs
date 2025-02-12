@@ -44,9 +44,9 @@ impl RequestOptions {
         }
     }
 }
-impl Into<Vec<ChatCompletionRequestMessage>> for RequestOptions {
-    fn into(self) -> Vec<ChatCompletionRequestMessage> {
-        self.messages
+impl From<RequestOptions> for Vec<ChatCompletionRequestMessage> {
+    fn from(val: RequestOptions) -> Self {
+        val.messages
             .into_iter()
             .map(|message| match message.role.as_str() {
                 "system" => create_system_message(),
