@@ -1,11 +1,7 @@
-use std::collections::HashMap;
-
 use qdrant_client::qdrant::ScoredPoint;
-use shared::connections::{
-    dbname::DbName,
-    qdrant::connect::{string_filter, QdrantConnection},
-};
+use std::collections::HashMap;
 use tabled::{Table, Tabled};
+
 #[derive(Tabled)]
 struct HistogramRow {
     #[tabled(rename = "Name")]
@@ -51,27 +47,4 @@ pub fn create_histogram(key: &str, points: &[ScoredPoint], top_k: usize) -> Tabl
         percentage: "100%".to_string(),
     });
     Table::new(histogram_rows)
-}
-
-pub async fn create_histograms(
-    key_separate: &str,
-    key_aggregate: &str,
-    values: Vec<&str>,
-    qdrant: &QdrantConnection,
-    db: &DbName,
-    customer_id: &str,
-    limit: u64,
-    top_k: usize,
-) -> Result<(), Box<dyn std::error::Error>> {
-    for value in values {
-        let filter = string_filter(key_separate, value);
-        let points = qdrant
-            .query_points(db, customer_id, Some(filter), limit, true)
-            .await?;
-        let histogram = create_histogram(key_aggregate, &points, top_k);
-        let histogram_string =
-            format!("\nTop {top_k} most frequent names for {value}:\n{histogram}",);
-        println!("{histogram_string}");
-    }
-    Ok(())
 }

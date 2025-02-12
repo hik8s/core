@@ -1,24 +1,11 @@
 use shared::connections::{dbname::DbName, qdrant::connect::QdrantConnection};
 
-use crate::{histogram::create_histograms, utils::write_resource_yaml};
+use crate::{
+    histogram::create_histogram,
+    utils::{group_points_by_key, write_resource_yaml},
+};
 
 pub async fn analyze_resource(qdrant: &QdrantConnection, customer_id: &str, limit: u64) {
-    let kinds = vec![
-        "Ingress",
-        "Pod",
-        "Namespace",
-        "ServiceAccount",
-        "StorageClass",
-        "DaemonSet",
-        "ClusterRole",
-        "Service",
-        "Node",
-        "ClusterRoleBinding",
-        "Role",
-        "StatefulSet",
-        "Deployment",
-    ];
-
     // write deployment
     let write = false;
     if write {
@@ -46,17 +33,19 @@ pub async fn analyze_resource(qdrant: &QdrantConnection, customer_id: &str, limi
         .unwrap();
     }
 
+    let filter_key = "kind";
+    let count_key = "name";
+    let db = &DbName::Resource;
+    let top_k = 10;
+
     // histograms
-    create_histograms(
-        "kind",
-        "name",
-        kinds,
-        qdrant,
-        &DbName::Resource,
-        customer_id,
-        limit,
-        10,
-    )
-    .await
-    .unwrap();
+    let groups = group_points_by_key(filter_key, qdrant, db, customer_id, limit).await;
+    tracing::debug!("unique groups: {:?}", groups.keys());
+    tracing::debug!("unique groups len: {:?}", groups.len());
+
+    for (group, points) in groups {
+        let histogram = create_histogram(count_key, &points, top_k);
+        let explanation = format!("\nTop {top_k} most frequent names for {group}:");
+        println!("{explanation}\n{histogram}");
+    }
 }

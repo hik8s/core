@@ -1,4 +1,4 @@
-use std::{collections::HashSet, path::Path};
+use std::{collections::HashMap, path::Path};
 
 use qdrant_client::qdrant::ScoredPoint;
 use shared::connections::{
@@ -6,16 +6,29 @@ use shared::connections::{
     qdrant::connect::{parse_qdrant_value, string_condition, string_filter, QdrantConnection},
 };
 
-pub fn unique_values(key: &str, points: &[ScoredPoint]) -> HashSet<String> {
-    points
-        .iter()
-        .filter_map(|point| {
-            point
-                .payload
-                .get(key)
-                .map(|v| v.as_str().unwrap().to_string())
-        })
-        .collect()
+pub async fn group_points_by_key(
+    key: &str,
+    qdrant: &QdrantConnection,
+    db: &DbName,
+    customer_id: &str,
+    limit: u64,
+) -> HashMap<String, Vec<ScoredPoint>> {
+    let points = qdrant
+        .query_points(db, customer_id, None, limit, true)
+        .await
+        .unwrap();
+
+    let mut grouped_points: HashMap<String, Vec<ScoredPoint>> = HashMap::new();
+
+    for point in points {
+        if let Some(value) = point.payload.get(key).and_then(|v| v.as_str()) {
+            grouped_points
+                .entry(value.to_string())
+                .or_default()
+                .push(point.clone());
+        }
+    }
+    grouped_points
 }
 
 pub fn write_yaml_files(
