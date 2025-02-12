@@ -42,10 +42,18 @@ pub fn write_yaml_files(points: &[ScoredPoint], output_dir: &Path) -> Result<(),
             .and_then(|m| m.get("uid"))
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
-        let resource_version = json_value
+        let mut resource_version = json_value
             .get("metadata")
-            .and_then(|s| s.get("resource_version"))
+            .and_then(|s| s.get("resourceVersion"))
             .and_then(|v| v.as_str());
+        resource_version = match resource_version {
+            Some(rv) => Some(rv),
+            None => json_value
+                .get("metadata")
+                .and_then(|s| s.get("resource_version"))
+                .and_then(|v| v.as_str()),
+        };
+
         let observed_generation = json_value
             .get("status")
             .and_then(|s| s.get("observedGeneration"))

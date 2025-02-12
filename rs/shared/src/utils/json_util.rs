@@ -93,7 +93,7 @@ pub fn create_metadata_map(
     );
     metadata_map.insert("uid".to_string(), Value::String(uid.to_string()));
     metadata_map.insert(
-        "resource_version".to_string(),
+        "resourceVersion".to_string(),
         Value::String(resource_version.to_string()),
     );
     metadata_map
