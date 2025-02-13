@@ -17,6 +17,7 @@ use super::mock_client::{generate_podname, get_test_metadata};
 #[derive(Clone, Copy)]
 pub enum TestCase {
     Simple,
+    Short,
     DataIntakeLimit,
     DataProcessingLimit,
     OpenAiRateLimit,
@@ -26,6 +27,7 @@ impl Display for TestCase {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let name = match self {
             TestCase::Simple => "simple",
+            TestCase::Short => "short",
             TestCase::DataIntakeLimit => "data-intake-limit",
             TestCase::DataProcessingLimit => "data-processing-limit",
             TestCase::OpenAiRateLimit => "openai-ratelimit",
@@ -111,6 +113,35 @@ pub fn get_test_data(case: TestCase) -> TestData {
                     get_test_line(4),
                 ],
                 expected_class: class,
+                metadata,
+            }
+        }
+        TestCase::Short => {
+            let metadata = get_test_metadata(&generate_podname(case));
+            let raw_messages = vec![
+                "Trace[535324451]: [878.754588ms] [878.754588ms] END".to_string(),
+                "Trace[803048940]: [1h59m31.217943757s] [1h59m31.217943757s] END".to_string(),
+                "Trace[2022532732]: [744.428697ms] [744.428697ms] END".to_string(),
+                "Trace[2043416383]: [744.655377ms] [744.655377ms] END".to_string(),
+            ];
+            let items = vec![
+                Item::Fix("Trace".to_string()),
+                Item::Fix("[".to_string()),
+                Item::Var,
+                Item::Fix("]".to_string()),
+                Item::Fix(":".to_string()),
+                Item::Fix("[".to_string()),
+                Item::Var,
+                Item::Fix("]".to_string()),
+                Item::Fix("[".to_string()),
+                Item::Var,
+                Item::Fix("]".to_string()),
+                Item::Fix("END".to_string()),
+            ];
+            let expected_class = class_from_items(items, 0.75, &metadata);
+            TestData {
+                raw_messages,
+                expected_class,
                 metadata,
             }
         }
