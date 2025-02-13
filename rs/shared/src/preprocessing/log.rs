@@ -139,8 +139,8 @@ mod tests {
             "compact-revision", "108342",
         ]
     )]
-    #[case("stderr F I0315 09:37:55.934101       1 main.go:250] Node kind-worker2 has CIDR [10.244.2.0/24]", vec!["stderr", "F", "I0315", "09:37:55.934101", "1", "main.go:250]", "Node", "kind-worker2", "has", "CIDR", "[10.244.2.0/24]"])]
-    #[case("stderr F I0315 10:44:54.473228       1 main.go:227] handling current node", vec!["stderr", "F", "I0315", "10:44:54.473228", "1", "main.go:227]", "handling", "current", "node"])]
+    #[case("stderr F I0315 09:37:55.934101       1 main.go:250] Node kind-worker2 has CIDR [10.244.2.0/24]", vec!["stderr", "F", "I0315", "09:37:55.934101", "1", "main.go:250", "]", "Node", "kind-worker2", "has", "CIDR", "[", "10.244.2.0/24", "]"])]
+    #[case("stderr F I0315 10:44:54.473228       1 main.go:227] handling current node", vec!["stderr", "F", "I0315", "10:44:54.473228", "1", "main.go:227", "]", "handling", "current", "node"])]
     fn test_preprocess_log(#[case] input: &str, #[case] expected: Vec<&str>) {
         setup_tracing(false);
         assert_eq!(
@@ -233,7 +233,7 @@ mod tests {
         let preprocessed_input2 = preprocess_message(input2, "customer_id", "key", "record_id2");
         for (item1, item2) in zip(&preprocessed_input1, &preprocessed_input2) {
             if item1 != item2 {
-                tracing::info!("found: {:<25} != {:<25}", item1, item2);
+                tracing::debug!("found: {:<25} != {:<25}", item1, item2);
             }
         }
         let comparison = compare(&preprocessed_input1, &preprocessed_input2);
