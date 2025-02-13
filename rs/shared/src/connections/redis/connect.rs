@@ -49,18 +49,13 @@ impl RedisConnection {
         }
     }
 
-    pub fn get(
-        &mut self,
-        customer_id: &str,
-        key: &str,
-    ) -> Result<ClassifierState, RedisConnectionError> {
-        let key = self.key(DbName::Log, customer_id, None, key);
-        let exists: bool = self.connection.exists(&key)?;
+    pub fn get(&mut self, key: &str) -> Result<ClassifierState, RedisConnectionError> {
+        let exists: bool = self.connection.exists(key)?;
         match exists {
             true => {
                 let state: ClassifierState = self
                     .connection
-                    .get(&key)
+                    .get(key)
                     .map_err(RedisConnectionError::GetError)?;
                 Ok(state)
             }
@@ -71,13 +66,7 @@ impl RedisConnection {
         }
     }
 
-    pub fn set(
-        &mut self,
-        customer_id: &str,
-        key: &str,
-        value: ClassifierState,
-    ) -> Result<(), RedisConnectionError> {
-        let key = self.key(DbName::Log, customer_id, None, key);
+    pub fn set(&mut self, key: &str, value: ClassifierState) -> Result<(), RedisConnectionError> {
         let serialized_value: String = serde_json::to_string(&value).unwrap();
         let _res: () = self
             .connection

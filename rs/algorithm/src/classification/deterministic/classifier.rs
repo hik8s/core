@@ -1,5 +1,5 @@
 use shared::{
-    connections::redis::connect::RedisConnection,
+    connections::{dbname::DbName, redis::connect::RedisConnection},
     preprocessing::compare::compare,
     types::{
         class::Class,
@@ -46,7 +46,8 @@ impl Classifier {
     ) -> Result<(Option<Class>, ClassifiedLogRecord), ClassifierError> {
         let mut best_match: Option<&mut Class> = None;
         let mut highest_similarity = 0 as f64;
-        let state = &mut self.redis.get(customer_id, &log.key)?;
+        let key = self.redis.key(DbName::Log, customer_id, None, &log.key);
+        let state = &mut self.redis.get(&key)?;
 
         for class in state.classes.iter_mut() {
             if class.length != log.length as usize {
@@ -78,7 +79,7 @@ impl Classifier {
             }
             None => self.new_class(log, state),
         };
-        self.redis.set(customer_id, &log.key, state.to_owned())?;
+        self.redis.set(&key, state.to_owned())?;
         Ok(result)
     }
 
