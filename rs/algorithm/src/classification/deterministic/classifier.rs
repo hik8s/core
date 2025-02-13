@@ -121,9 +121,10 @@ mod tests {
         utils::mock::mock_data::{get_test_data, TestCase, TestData},
     };
 
-    #[rstest]
     #[tokio::test]
+    #[rstest]
     #[case(get_test_data(TestCase::Simple))]
+    #[case(get_test_data(TestCase::Short))]
     async fn test_classify_json_nested(#[case] test_data: TestData) -> Result<(), ClassifierError> {
         setup_tracing(false);
 
@@ -134,6 +135,10 @@ mod tests {
             let preprocessed_log =
                 PreprocessedLogRecord::from((&"customer_id".to_owned(), &raw_message, &key));
             let class = classifier.classify(&preprocessed_log, "customer_id")?.0;
+            if let Some(class) = &class {
+                tracing::debug!("Classified: {}", class);
+            }
+
             match index.cmp(&1) {
                 std::cmp::Ordering::Equal => {
                     assert!(class.is_some());
