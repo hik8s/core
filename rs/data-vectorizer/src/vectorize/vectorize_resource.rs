@@ -79,9 +79,10 @@ pub async fn vectorize_resource(
                 if kind == "Deployment" {
                     let requires_vectorization = log_error_continue!(
                         update_resource_state(
+                            &customer_id,
+                            &kind,
                             &mut redis,
                             &mut kube_api_data,
-                            &format!("{customer_id}:{kind}"),
                             update_deployment_conditions,
                             get_deployment_uid,
                             remove_deploy_managed_fields
@@ -108,9 +109,10 @@ pub async fn vectorize_resource(
 
                     let requires_vectorization = log_error_continue!(
                         update_resource_state(
+                            &customer_id,
+                            &kind,
                             &mut redis,
                             &mut kube_api_data,
-                            &format!("{customer_id}:{kind}"),
                             update_pod_conditions,
                             get_pod_key,
                             remove_pod_managed_fields

@@ -1,13 +1,17 @@
 use k8s_openapi::serde::{de::DeserializeOwned, Serialize};
-use shared::{connections::redis::connect::RedisConnection, types::kubeapidata::KubeApiData};
+use shared::{
+    connections::{dbname::DbName, redis::connect::RedisConnection},
+    types::kubeapidata::KubeApiData,
+};
 
 use crate::error::DataVectorizationError;
 
 // TODO: use a wrapped type that implements F, G, H
 pub async fn update_resource_state<T, F, G, H>(
+    customer_id: &str,
+    kind: &str,
     redis: &mut RedisConnection,
     data: &mut KubeApiData,
-    key_prefix: &str,
     update_conditions: F,
     get_uid: G,
     remove_managed_fields: H,
@@ -22,11 +26,11 @@ where
         .map_err(DataVectorizationError::DeserializationError)?;
     remove_managed_fields(&mut new_state);
 
-    let key = &format!("{key_prefix}:{}", get_uid(&new_state)?);
     let mut requires_vectorization = false;
-
+    let uid = get_uid(&new_state)?;
+    let key = redis.key(DbName::Resource, customer_id, Some(kind), &uid);
     match redis
-        .get_with_retry::<String>(key)
+        .get_with_retry::<String>(&key)
         .await
         .map_err(DataVectorizationError::RedisGet)?
     {
@@ -35,7 +39,7 @@ where
                 .map_err(DataVectorizationError::SerializationError)?;
 
             redis
-                .set_with_retry::<String>(key, &json)
+                .set_with_retry::<String>(&key, &json)
                 .await
                 .map_err(DataVectorizationError::RedisSet)?;
             requires_vectorization = true;
@@ -48,7 +52,7 @@ where
                 .map_err(DataVectorizationError::SerializationError)?;
 
             redis
-                .set_with_retry::<String>(key, &new_json)
+                .set_with_retry::<String>(&key, &new_json)
                 .await
                 .map_err(DataVectorizationError::RedisSet)?;
 
