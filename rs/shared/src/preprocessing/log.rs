@@ -112,7 +112,7 @@ mod tests {
     fn test_preprocess_log(#[case] input: &str, #[case] expected: Vec<&str>) {
         setup_tracing(false);
         assert_eq!(
-            preprocess_message(&input, "customer_id", "key", "record_id"),
+            preprocess_message(input, "customer_id", "key", "record_id"),
             expected
         );
     }

@@ -46,7 +46,7 @@ impl Classifier {
     ) -> Result<(Option<Class>, ClassifiedLogRecord), ClassifierError> {
         let mut best_match: Option<&mut Class> = None;
         let mut highest_similarity = 0 as f64;
-        let state = &mut self.redis.get(&customer_id, &log.key)?;
+        let state = &mut self.redis.get(customer_id, &log.key)?;
 
         for class in state.classes.iter_mut() {
             if class.length != log.length as usize {
@@ -70,7 +70,7 @@ impl Classifier {
                     class.similarity = highest_similarity;
                     // TODO: return class if representation changed
                     let identical = previous_class.to_string() == class.to_string();
-                    let classified_log = ClassifiedLogRecord::new(log, &class);
+                    let classified_log = ClassifiedLogRecord::new(log, class);
                     (self.get_class(class, identical), classified_log)
                 } else {
                     self.new_class(log, state)
@@ -134,13 +134,17 @@ mod tests {
             let preprocessed_log =
                 PreprocessedLogRecord::from((&"customer_id".to_owned(), &raw_message, &key));
             let class = classifier.classify(&preprocessed_log, "customer_id")?.0;
-            if index == 1 {
-                assert_eq!(class.is_none(), false);
-                let class = class.unwrap();
-                assert_eq!(class.to_string(), expected_class.to_string());
-                assert_eq!(class.similarity, expected_class.similarity);
-            } else if index > 1 {
-                assert_eq!(class.is_none(), true);
+            match index.cmp(&1) {
+                std::cmp::Ordering::Equal => {
+                    assert!(class.is_some());
+                    let class = class.unwrap();
+                    assert_eq!(class.to_string(), expected_class.to_string());
+                    assert_eq!(class.similarity, expected_class.similarity);
+                }
+                std::cmp::Ordering::Greater => {
+                    assert!(class.is_none());
+                }
+                std::cmp::Ordering::Less => {}
             }
         }
         Ok(())

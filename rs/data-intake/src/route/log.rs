@@ -35,17 +35,17 @@ pub async fn log_intake<'a>(
         // read multipart entry
         let field = multipart
             .read_entry()
-            .map_err(|e| DataIntakeError::MultipartDataInvalid(e))?
+            .map_err(DataIntakeError::MultipartDataInvalid)?
             .ok_or_else(|| DataIntakeError::MultipartNoFields)?;
         match field.headers.name.deref() {
             "metadata" => {
                 // process metadata
                 process_metadata(field.data, &mut metadata)
-                    .map_err(|e| DataIntakeError::MultipartMetadata(e))?;
+                    .map_err(DataIntakeError::MultipartMetadata)?;
             }
             "stream" => {
                 // process stream
-                let metadata = metadata.ok_or_else(|| DataIntakeError::MetadataNone)?;
+                let metadata = metadata.ok_or(DataIntakeError::MetadataNone)?;
                 let mut logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
