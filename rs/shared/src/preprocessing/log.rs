@@ -47,7 +47,35 @@ pub fn preprocess_message(
 }
 
 fn split_string(input: &str) -> Vec<String> {
-    input.split_whitespace().map(|s| s.to_string()).collect()
+    input
+        .split_whitespace()
+        .flat_map(|s| {
+            let comma_parts: Vec<&str> = s.split(',').collect();
+            comma_parts.into_iter().flat_map(|part| {
+                // Find first colon
+                if let Some(colon_index) = part.find(':') {
+                    let (left, right) = part.split_at(colon_index);
+                    // Check if right part exists (remove the colon)
+                    let right = &right[1..];
+
+                    // Check if left is not numeric and both parts are non-empty
+                    if !left.is_empty()
+                        && !right.is_empty()
+                        && !left.chars().next().map_or(false, |c| c.is_numeric())
+                        && !right.chars().next().map_or(false, |c| c.is_numeric())
+                    {
+                        vec![left.to_string(), right.to_string()]
+                    } else {
+                        vec![part.to_string()]
+                    }
+                } else {
+                    vec![part.to_string()]
+                }
+            })
+        })
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
 }
 
 fn flatten_json(json: &Value) -> Vec<String> {
@@ -87,6 +115,8 @@ fn flatten_json_recursive(json: &Value, result: &mut Vec<String>, prefix: String
 
 #[cfg(test)]
 mod tests {
+
+    use std::iter::zip;
 
     use super::*;
     use crate::{preprocessing::compare::compare, tracing::setup::setup_tracing};
@@ -172,13 +202,38 @@ mod tests {
         "stderr F I0315 09:37:55.934101       1 main.go:250] Node kind-worker2 has CIDR [10.244.2.0/24]"),
         vec![true, true, true, true, true, true, true, true, true, true, true]
     )]
+    #[case((
+        "Trace[535324451]: [878.754588ms] [878.754588ms] END", 
+        "Trace[803048940]: [1h59m31.217943757s] [1h59m31.217943757s] END"),
+        vec![false, false, false, true]
+    )]
+    #[case((
+        r#"Trace[535324451]:  ---"Txn call completed" 877ms (20:22:51.902)"#, 
+        r#"Trace[631464459]:  ---"Txn call completed" 733ms (20:22:51.902)"#),
+        vec![false, true, true, true, false, true]
+    )]
+    #[case((
+        r#"Trace[535324451]: ["GuaranteedUpdate etcd3" audit-id:9fde19f1-4dd0-45f3-acc3-dc5d15a6e61d,key:/leases/kube-system/apiserver-347x4lfleh74trmmrparvvqcqq,type:*coordination.Lease,resource:leases.coordination.k8s.io 878ms (20:22:51.023)"#, 
+        r#"Trace[631464459]: ["GuaranteedUpdate etcd3" audit-id:27328d45-5870-4189-aff5-f674130f5480,key:/leases/kube-system/apiserver-347x4lfleh74trmmrparvvqcqq,type:*coordination.Lease,resource:leases.coordination.k8s.io 737ms (20:22:51.165)"#),
+        vec![false, true, true, false, true, true, true, true, true, true, false, false]
+    )]
+    #[case((
+        r#"I0212 20:22:51.902250       1 trace.go:236] Trace[535324451]: "Update" accept:application/vnd.kubernetes.protobuf, */*,audit-id:9fde19f1-4dd0-45f3-acc3-dc5d15a6e61d,client:::1,api-group:coordination.k8s.io,api-version:v1,name:apiserver-347x4lfleh74trmmrparvvqcqq,subresource:,namespace:kube-system,protocol:HTTP/2.0,resource:leases,scope:resource,url:/apis/coordination.k8s.io/v1/namespaces/kube-system/leases/apiserver-347x4lfleh74trmmrparvvqcqq,user-agent:kube-apiserver/v1.30.1 (linux/amd64) kubernetes/6911225,verb:PUT (12-Feb-2025 20:22:51.023) (total time: 878ms):"#, 
+        r#"I0212 20:22:51.644891       1 trace.go:236] Trace[1589317137]: "Update" accept:application/json, */*,audit-id:a8ccd550-7e16-40d2-9679-f9d80a6c57bd,client:10.244.1.86,api-group:coordination.k8s.io,api-version:v1,name:notification-controller-leader-election,subresource:,namespace:flux-system,protocol:HTTP/2.0,resource:leases,scope:resource,url:/apis/coordination.k8s.io/v1/namespaces/flux-system/leases/notification-controller-leader-election,user-agent:notification-controller/v0.0.0 (linux/amd64) kubernetes/$Format/leader-election,verb:PUT (12-Feb-2025 20:22:50.978) (total time: 666ms):"#
+    ),
+        vec![true, false, true, true, false, true, true, false, true, false, false, false, true, true, true, true, true, false, true, true, false, true, true, true, true, true, true, true, false, true, false, true, false, true, true, true, false, true, true, false]
+    )]
 
     fn test_preprocess_compare_logs(#[case] inputs: (&str, &str), #[case] expected: Vec<bool>) {
         setup_tracing(false);
         let (input1, input2) = inputs;
-        let preprocessed_input1 = preprocess_message(&input1, "customer_id", "key", "record_id1");
-        let preprocessed_input2 = preprocess_message(&input2, "customer_id", "key", "record_id2");
-
+        let preprocessed_input1 = preprocess_message(input1, "customer_id", "key", "record_id1");
+        let preprocessed_input2 = preprocess_message(input2, "customer_id", "key", "record_id2");
+        for (item1, item2) in zip(&preprocessed_input1, &preprocessed_input2) {
+            if item1 != item2 {
+                tracing::debug!("found: {:<25} != {:<25}", item1, item2);
+            }
+        }
         let comparison = compare(&preprocessed_input1, &preprocessed_input2);
         assert_eq!(comparison, expected, "All items should match");
     }
