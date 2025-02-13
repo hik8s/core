@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::{connections::ConfigError, types::classifier::state::ClassifierState};
+use crate::{
+    connections::{dbname::DbName, ConfigError},
+    types::classifier::state::ClassifierState,
+};
 
 use super::config::RedisConfig;
 use redis::{Client, Commands, Connection, FromRedisValue, RedisError, ToRedisArgs};
@@ -38,38 +41,36 @@ impl RedisConnection {
         Ok(redis_connection)
     }
 
-    pub fn get(
-        &mut self,
-        customer_id: &str,
-        key: &str,
-    ) -> Result<ClassifierState, RedisConnectionError> {
-        let identifier = format!("{customer_id}:{key}");
-        let exists: bool = self.connection.exists(&identifier)?;
+    pub fn key(&self, db: DbName, customer_id: &str, kind: Option<&str>, uid: &str) -> String {
+        if let Some(kind) = kind {
+            format!("{}_{}_{}", db.id(customer_id), kind, uid)
+        } else {
+            format!("{}_{}", db.id(customer_id), uid)
+        }
+    }
+
+    pub fn get(&mut self, key: &str) -> Result<ClassifierState, RedisConnectionError> {
+        let exists: bool = self.connection.exists(key)?;
         match exists {
             true => {
                 let state: ClassifierState = self
                     .connection
-                    .get(&identifier)
+                    .get(key)
                     .map_err(RedisConnectionError::GetError)?;
                 Ok(state)
             }
             false => {
-                info!("Creating new state for key: {}", identifier);
+                info!("Creating new state for key: {}", key);
                 Ok(ClassifierState { classes: vec![] })
             }
         }
     }
 
-    pub fn set(
-        &mut self,
-        customer_id: &str,
-        key: &str,
-        value: ClassifierState,
-    ) -> Result<(), RedisConnectionError> {
+    pub fn set(&mut self, key: &str, value: ClassifierState) -> Result<(), RedisConnectionError> {
         let serialized_value: String = serde_json::to_string(&value).unwrap();
         let _res: () = self
             .connection
-            .set(format!("{customer_id}:{key}"), serialized_value)
+            .set(key, serialized_value)
             .map_err(RedisConnectionError::SetError)?;
         Ok(())
     }
