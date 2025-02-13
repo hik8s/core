@@ -41,8 +41,12 @@ impl RedisConnection {
         Ok(redis_connection)
     }
 
-    fn key(&self, db: DbName, customer_id: &str, key: &str) -> String {
-        format!("{}_{}", db.id(customer_id), key)
+    pub fn key(&self, db: DbName, customer_id: &str, kind: Option<&str>, uid: &str) -> String {
+        if let Some(kind) = kind {
+            format!("{}_{}_{}", db.id(customer_id), kind, uid)
+        } else {
+            format!("{}_{}", db.id(customer_id), uid)
+        }
     }
 
     pub fn get(
@@ -50,7 +54,7 @@ impl RedisConnection {
         customer_id: &str,
         key: &str,
     ) -> Result<ClassifierState, RedisConnectionError> {
-        let key = self.key(DbName::Log, customer_id, key);
+        let key = self.key(DbName::Log, customer_id, None, key);
         let exists: bool = self.connection.exists(&key)?;
         match exists {
             true => {
@@ -73,7 +77,7 @@ impl RedisConnection {
         key: &str,
         value: ClassifierState,
     ) -> Result<(), RedisConnectionError> {
-        let key = self.key(DbName::Log, customer_id, key);
+        let key = self.key(DbName::Log, customer_id, None, key);
         let serialized_value: String = serde_json::to_string(&value).unwrap();
         let _res: () = self
             .connection
