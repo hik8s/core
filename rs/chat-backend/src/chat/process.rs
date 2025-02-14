@@ -90,7 +90,7 @@ pub async fn process_user_message(
             break;
         }
 
-        let tool_calls = collect_tool_call_chunks(tool_call_chunks);
+        let tool_calls = collect_tool_call_chunks(tool_call_chunks)?;
 
         let assistant_tool_request =
             create_assistant_message("Tool request", Some(tool_calls.clone()));
