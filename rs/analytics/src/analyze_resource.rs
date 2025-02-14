@@ -34,12 +34,13 @@ pub async fn analyze_resource(qdrant: &QdrantConnection, customer_id: &str, limi
     }
 
     let filter_key = "kind";
+    let filter_val = None;
     let count_key = "name";
     let db = &DbName::Resource;
     let top_k = 10;
 
     // histograms
-    let groups = group_points_by_key(filter_key, qdrant, db, customer_id, limit).await;
+    let groups = group_points_by_key(filter_key, filter_val, qdrant, db, customer_id, limit).await;
     tracing::debug!("unique groups: {:?}", groups.keys());
     tracing::debug!("unique groups len: {:?}", groups.len());
 

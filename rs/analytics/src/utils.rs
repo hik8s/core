@@ -8,13 +8,15 @@ use shared::connections::{
 
 pub async fn group_points_by_key(
     key: &str,
+    value: Option<&str>,
     qdrant: &QdrantConnection,
     db: &DbName,
     customer_id: &str,
     limit: u64,
 ) -> HashMap<String, Vec<ScoredPoint>> {
+    let filter = value.map(|v| string_filter(key, v));
     let points = qdrant
-        .query_points(db, customer_id, None, limit, true)
+        .query_points(db, customer_id, filter, limit, true)
         .await
         .unwrap();
 
