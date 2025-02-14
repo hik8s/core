@@ -71,6 +71,7 @@ pub async fn process_user_message(
     options: RequestOptions,
 ) -> Result<(), anyhow::Error> {
     let openai = OpenAIConnection::new();
+    let mut counter = 0;
 
     let user_message = extract_last_user_text_message(messages);
     loop {
@@ -84,14 +85,12 @@ pub async fn process_user_message(
             .await
             .map_err(|e| log_error!(e))?;
 
-        if finish_reason == Some(FinishReason::Stop) {
+        if finish_reason == Some(FinishReason::Stop) && tool_call_chunks.is_empty() {
+            tracing::info!("Finished at depth: {}", counter);
             break;
         }
 
-        let tool_calls = collect_tool_call_chunks(tool_call_chunks);
-        if tool_calls.is_empty() {
-            break;
-        }
+        let tool_calls = collect_tool_call_chunks(tool_call_chunks)?;
 
         let assistant_tool_request =
             create_assistant_message("Tool request", Some(tool_calls.clone()));
@@ -105,6 +104,7 @@ pub async fn process_user_message(
             let tool_submission = create_tool_message(&tool_output, &tool_call.id);
             messages.push(tool_submission);
         }
+        counter += 1;
     }
     Ok(())
 }

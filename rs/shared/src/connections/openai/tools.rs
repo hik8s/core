@@ -534,38 +534,50 @@ impl Into<ChatCompletionTool> for Tool {
     }
 }
 
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ToolCallError {
+    #[error("Missing tool call ID")]
+    MissingId,
+    #[error("Invalid function call: {0}")]
+    InvalidFunction(String),
+    #[error("No tool calls found")]
+    EmptyToolCalls,
+}
+
 pub fn collect_tool_call_chunks(
     tool_call_chunks: Vec<ChatCompletionMessageToolCallChunk>,
-) -> Vec<ChatCompletionMessageToolCall> {
+) -> Result<Vec<ChatCompletionMessageToolCall>, ToolCallError> {
+    if tool_call_chunks.is_empty() {
+        return Err(ToolCallError::EmptyToolCalls);
+    }
     let mut tool_calls = Vec::<ChatCompletionMessageToolCall>::new();
-    if !tool_call_chunks.is_empty() {
-        for chunk in tool_call_chunks {
-            if let Some(call_id) = chunk.id {
-                tool_calls.push(ChatCompletionMessageToolCall {
-                    id: call_id,
-                    r#type: ChatCompletionToolType::Function,
-                    function: FunctionCall {
-                        name: "".to_string(),
-                        arguments: "".to_string(),
-                    },
-                });
+    
+    for chunk in tool_call_chunks {
+        if let Some(call_id) = chunk.id {
+            tool_calls.push(ChatCompletionMessageToolCall {
+                id: call_id,
+                r#type: ChatCompletionToolType::Function,
+                function: FunctionCall {
+                    name: String::new(),
+                    arguments: String::new(),
+                },
+            });
+        }
+        if let Some(function_call) = chunk.function {
+            let current_call = tool_calls.last_mut()
+                .ok_or_else(|| ToolCallError::InvalidFunction("No tool call found".to_string()))?;
+
+            if let Some(name) = function_call.name {
+                current_call.function.name.push_str(&name);
             }
-            if let Some(funcion_call_stream) = chunk.function {
-                if let Some(name) = funcion_call_stream.name {
-                    tool_calls.last_mut().unwrap().function.name.push_str(&name);
-                }
-                if let Some(arguments) = funcion_call_stream.arguments {
-                    tool_calls
-                        .last_mut()
-                        .unwrap()
-                        .function
-                        .arguments
-                        .push_str(&arguments);
-                }
+            if let Some(arguments) = function_call.arguments {
+                current_call.function.arguments.push_str(&arguments);
             }
         }
     }
-    tool_calls
+    Ok(tool_calls)
 }
 
 pub fn create_search_prompt(user_message: &str, args: &LogRetrievalArgs) -> String {
@@ -722,7 +734,7 @@ mod tests {
         assert!(!tool_call_chunks.is_empty());
 
         // tool processing
-        let tool_calls = collect_tool_call_chunks(tool_call_chunks);
+        let tool_calls = collect_tool_call_chunks(tool_call_chunks).unwrap();
         messages.push(create_assistant_message(
             "Assistent requested tool calls. Asses the tool calls and make another tool request to cluster overview",
             Some(tool_calls.clone()),
