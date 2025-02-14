@@ -537,6 +537,7 @@ impl Into<ChatCompletionTool> for Tool {
 pub fn collect_tool_call_chunks(
     tool_call_chunks: Vec<ChatCompletionMessageToolCallChunk>,
 ) -> Vec<ChatCompletionMessageToolCall> {
+    // TODO: handle errors graceful
     let mut tool_calls = Vec::<ChatCompletionMessageToolCall>::new();
     if !tool_call_chunks.is_empty() {
         for chunk in tool_call_chunks {
