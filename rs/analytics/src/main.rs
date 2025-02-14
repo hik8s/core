@@ -20,8 +20,8 @@ async fn main() {
     setup_tracing(false);
     let limit = 1000000;
     let run_analyze_resource = false;
-    let run_analyze_log = false;
-    let run_analyze_state = true;
+    let run_analyze_log = true;
+    let run_analyze_state = false;
 
     env::set_var("QDRANT_HOST", "dev.qdrant.hik8s.ai");
     let customer_id = get_env_var("ANALYTICS_CLIENT_ID").unwrap();
@@ -32,7 +32,7 @@ async fn main() {
     }
 
     if run_analyze_log {
-        analyze_logs(&qdrant, &customer_id, limit).await;
+        analyze_logs(Some("examples"), &qdrant, &customer_id, limit).await;
     }
 
     // env::set_var("REDIS_HOST", "dev.qdrant.hik8s.ai");
