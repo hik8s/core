@@ -6,6 +6,10 @@ use shared::connections::{
     qdrant::connect::{parse_qdrant_value, string_condition, string_filter, QdrantConnection},
 };
 
+pub fn create_map<'a>(key: &'a str, value: Option<&'a str>) -> HashMap<&'a str, Option<&'a str>> {
+    [(key, value)].into_iter().collect()
+}
+
 pub async fn group_points_by_key(
     key: &str,
     value: Option<&str>,
@@ -16,7 +20,7 @@ pub async fn group_points_by_key(
 ) -> HashMap<String, Vec<ScoredPoint>> {
     let filter = value.map(|v| string_filter(key, v));
     let points = qdrant
-        .query_points(db, customer_id, filter, limit, true)
+        .query_points(db, customer_id, filter.clone(), limit, true)
         .await
         .unwrap();
 

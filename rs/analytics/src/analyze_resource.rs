@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use shared::connections::{dbname::DbName, qdrant::connect::QdrantConnection};
 
 use crate::{
@@ -5,7 +7,13 @@ use crate::{
     utils::{group_points_by_key, write_resource_yaml},
 };
 
-pub async fn analyze_resource(qdrant: &QdrantConnection, customer_id: &str, limit: u64) {
+pub async fn analyze_resource<'a>(
+    filter_map: HashMap<&'a str, Option<&'a str>>,
+    count_key: &str,
+    qdrant: &QdrantConnection,
+    customer_id: &str,
+    limit: u64,
+) {
     // write deployment
     let write = false;
     if write {
@@ -33,20 +41,20 @@ pub async fn analyze_resource(qdrant: &QdrantConnection, customer_id: &str, limi
         .unwrap();
     }
 
-    let filter_key = "kind";
-    let filter_val = None;
-    let count_key = "name";
     let db = &DbName::Resource;
     let top_k = 10;
 
     // histograms
-    let groups = group_points_by_key(filter_key, filter_val, qdrant, db, customer_id, limit).await;
-    tracing::debug!("unique groups: {:?}", groups.keys());
-    tracing::debug!("unique groups len: {:?}", groups.len());
+    for (filter_key, filter_value) in filter_map {
+        let groups =
+            group_points_by_key(filter_key, filter_value, qdrant, db, customer_id, limit).await;
+        tracing::debug!("unique groups: {:?}", groups.keys());
+        tracing::debug!("unique groups len: {:?}", groups.len());
 
-    for (group, points) in groups {
-        let histogram = create_histogram(count_key, &points, top_k);
-        let explanation = format!("\nTop {top_k} most frequent names for {group}:");
-        println!("{explanation}\n{histogram}");
+        for (group, points) in groups {
+            let histogram = create_histogram(count_key, &points, top_k);
+            let explanation = format!("\nTop {top_k} most frequent names for {group}:");
+            println!("{explanation}\n{histogram}");
+        }
     }
 }
