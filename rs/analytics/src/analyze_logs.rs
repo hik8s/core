@@ -5,8 +5,8 @@ use shared::connections::{dbname::DbName, qdrant::connect::QdrantConnection};
 
 use crate::{histogram::create_histogram, utils::group_points_by_key};
 
-pub async fn analyze_logs<'a>(
-    filter_map: HashMap<&'a str, Option<&'a str>>,
+pub async fn analyze_logs(
+    filter_map: HashMap<String, Option<String>>,
     count_key: &str,
     qdrant: &QdrantConnection,
     customer_id: &str,
@@ -16,7 +16,7 @@ pub async fn analyze_logs<'a>(
     let top_k = 10;
     for (filter_key, filter_value) in filter_map {
         let groups =
-            group_points_by_key(filter_key, filter_value, qdrant, db, customer_id, limit).await;
+            group_points_by_key(&filter_key, filter_value, qdrant, db, customer_id, limit).await;
         tracing::debug!("unique groups: {:?}", groups.keys());
         tracing::debug!("unique groups len: {:?}", groups.len());
 

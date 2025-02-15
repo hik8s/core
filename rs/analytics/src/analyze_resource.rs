@@ -7,8 +7,8 @@ use crate::{
     utils::{group_points_by_key, write_resource_yaml},
 };
 
-pub async fn analyze_resource<'a>(
-    filter_map: HashMap<&'a str, Option<&'a str>>,
+pub async fn analyze_resource(
+    filter_map: HashMap<String, Option<String>>,
     count_key: &str,
     qdrant: &QdrantConnection,
     customer_id: &str,
@@ -47,7 +47,7 @@ pub async fn analyze_resource<'a>(
     // histograms
     for (filter_key, filter_value) in filter_map {
         let groups =
-            group_points_by_key(filter_key, filter_value, qdrant, db, customer_id, limit).await;
+            group_points_by_key(&filter_key, filter_value, qdrant, db, customer_id, limit).await;
         tracing::debug!("unique groups: {:?}", groups.keys());
         tracing::debug!("unique groups len: {:?}", groups.len());
 

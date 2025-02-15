@@ -4,7 +4,7 @@ pub mod analyze_state;
 pub mod histogram;
 pub mod utils;
 
-use std::{collections::HashMap, env};
+use std::env;
 
 use analyze_logs::analyze_logs;
 use analyze_resource::analyze_resource;
@@ -28,12 +28,12 @@ async fn main() {
     let customer_id = get_env_var("ANALYTICS_CLIENT_ID").unwrap();
     let qdrant = QdrantConnection::new().await.unwrap();
 
-    let filter_map: HashMap<&str, Option<&str>> = create_map("namespace", Some("examples"));
+    let filter_map = create_map("namespace", Some("examples"));
     if run_analyze_resource {
         analyze_resource(filter_map, "name", &qdrant, &customer_id, limit).await;
     }
 
-    let filter_map: HashMap<&str, Option<&str>> = create_map("namespace", Some("examples"));
+    let filter_map = create_map("namespace", Some("examples"));
     if run_analyze_log {
         analyze_logs(filter_map, "key", &qdrant, &customer_id, limit).await;
     }
