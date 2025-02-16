@@ -6,7 +6,6 @@ mod tests {
         connections::{
             dbname::DbName,
             openai::tools::{LogRetrievalArgs, Tool},
-            qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
         },
         constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
         get_env_var,
@@ -14,6 +13,7 @@ mod tests {
         tracing::setup::setup_tracing,
         types::tokenizer::Tokenizer,
         utils::ratelimit::RateLimiter,
+        QdrantConnection, QdrantConnectionError,
     };
     use tracing::info;
 

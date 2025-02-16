@@ -10,9 +10,8 @@ use analyze_logs::analyze_logs;
 use analyze_resource::analyze_resource;
 use analyze_state::analyze_state;
 use shared::{
-    connections::{qdrant::connect::QdrantConnection, redis::connect::RedisConnection},
-    get_env_var,
-    tracing::setup::setup_tracing,
+    connections::redis::connect::RedisConnection, get_env_var, tracing::setup::setup_tracing,
+    QdrantConnection,
 };
 use utils::create_map;
 

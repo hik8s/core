@@ -1,14 +1,12 @@
 use std::{sync::Arc, time::Duration};
 
 use shared::{
-    connections::{
-        dbname::DbName,
-        qdrant::{connect::QdrantConnection, EventQdrantMetadata},
-    },
+    connections::{dbname::DbName, qdrant::EventQdrantMetadata},
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
     log_error_continue, log_warn_continue,
     types::{kubeapidata::KubeApiData, tokenizer::Tokenizer},
     utils::{get_as_option_string, get_as_ref, get_as_string, ratelimit::RateLimiter},
+    QdrantConnection,
 };
 
 use crate::error::DataVectorizationError;

@@ -1,15 +1,11 @@
 use async_openai::types::{ChatCompletionRequestMessage, FinishReason};
 use shared::{
-    connections::{
-        openai::{
-            messages::{
-                create_assistant_message, create_system_message, create_tool_message,
-                create_user_message, extract_last_user_text_message,
-            },
-            tools::{collect_tool_call_chunks, Tool},
+    connections::openai::{
+        messages::{
+            create_assistant_message, create_system_message, create_tool_message,
+            create_user_message, extract_last_user_text_message,
         },
-        qdrant::connect::QdrantConnection,
-        OpenAIConnection,
+        tools::{collect_tool_call_chunks, Tool},
     },
     constant::OPENAI_CHAT_MODEL_MINI,
     log_error,

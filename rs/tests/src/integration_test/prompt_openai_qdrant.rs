@@ -12,6 +12,7 @@ mod tests {
         connections::{dbname::DbName, qdrant::EventQdrantMetadata},
         openai::OpenAIConnection,
         testdata::{UserTest, UserTestData},
+        QdrantConnection,
     };
     use tokio::sync::mpsc;
 

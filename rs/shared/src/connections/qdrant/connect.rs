@@ -15,9 +15,10 @@ use tracing::info;
 use crate::{
     connections::dbname::DbName,
     constant::{EMBEDDING_SIZE, EMBEDDING_USIZE},
+    QdrantConnectionError,
 };
 
-use super::{config::QdrantConfig, error::QdrantConnectionError};
+use super::config::QdrantConfig;
 
 #[derive(Clone)]
 pub struct QdrantConnection {

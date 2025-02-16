@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use shared::connections::{dbname::DbName, qdrant::connect::QdrantConnection};
+use shared::{connections::dbname::DbName, QdrantConnection};
 
 use crate::{
     histogram::create_histogram,
