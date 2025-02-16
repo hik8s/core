@@ -8,9 +8,7 @@ use shared::{
         tools::{collect_tool_call_chunks, Tool},
     },
     constant::OPENAI_CHAT_MODEL_MINI,
-    log_error,
-    openai::OpenAIConnection,
-    QdrantConnection,
+    log_error, OpenAIConnection, QdrantConnection,
 };
 use tokio::sync::mpsc;
 

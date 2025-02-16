@@ -15,9 +15,7 @@ pub mod fluvio {
     };
 }
 
-pub mod openai {
-    pub use crate::connections::openai::openai_connection::OpenAIConnection;
-}
+pub use crate::connections::openai::openai_connection::OpenAIConnection;
 
 pub use crate::connections::qdrant::connect::QdrantConnection;
 pub use crate::connections::qdrant::error::QdrantConnectionError;

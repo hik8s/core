@@ -624,7 +624,7 @@ mod tests {
             openai::{
                 messages::{create_assistant_message, create_system_message, create_tool_message, create_user_message},
                 tools::{collect_tool_call_chunks, Tool},
-            }, constant::OPENAI_CHAT_MODEL_MINI, log_error, openai::OpenAIConnection, testdata::{UserTest, UserTestData}, tracing::setup::setup_tracing
+            }, constant::OPENAI_CHAT_MODEL_MINI, log_error, OpenAIConnection, testdata::{UserTest, UserTestData}, tracing::setup::setup_tracing
     };
 
     fn convert_empty_to_none(input: &Option<String>) -> Option<String> {

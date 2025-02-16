@@ -10,9 +10,8 @@ mod tests {
     use rstest::rstest;
     use shared::{
         connections::{dbname::DbName, qdrant::EventQdrantMetadata},
-        openai::OpenAIConnection,
         testdata::{UserTest, UserTestData},
-        QdrantConnection,
+        OpenAIConnection, QdrantConnection,
     };
     use tokio::sync::mpsc;
 
