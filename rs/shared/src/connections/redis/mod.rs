@@ -1,2 +1,2 @@
 pub mod config;
-pub mod connect;
+pub mod redis_connection;

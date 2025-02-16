@@ -15,9 +15,15 @@ pub mod fluvio {
     };
 }
 
+// openai
 pub use crate::connections::openai::openai_connection::OpenAIConnection;
 
+// qdrant
 pub use crate::connections::qdrant::connect::QdrantConnection;
 pub use crate::connections::qdrant::error::QdrantConnectionError;
 
+// redis
+pub use crate::connections::redis::redis_connection::{RedisConnection, RedisConnectionError};
+
+// util
 pub use crate::connections::get_env_var;

@@ -7,7 +7,6 @@ use shared::{
             connect::{update_deleted_resources, QdrantConnection},
             ResourceQdrantMetadata,
         },
-        redis::connect::RedisConnection,
     },
     fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
     log_error_continue, log_warn_continue,
@@ -19,6 +18,7 @@ use shared::{
         create_metadata_map, extract_remove_key, get_as_option_string, get_as_string, get_uid,
         ratelimit::RateLimiter,
     },
+    RedisConnection,
 };
 
 use crate::{
