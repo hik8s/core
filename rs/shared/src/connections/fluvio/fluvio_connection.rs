@@ -1,4 +1,4 @@
-use crate::{log_error, log_warn_continue};
+use crate::{log_error, log_error_continue, log_warn_continue};
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use fluvio::TopicProducerConfigBuilder;
@@ -97,7 +97,7 @@ impl FluvioConnection {
                 Err(_) => continue,         // no record received within the timeout
             };
             let record = log_warn_continue!(result);
-            let customer_id = get_record_key(&record).map_err(|e| log_error!(e))?;
+            let customer_id = log_error_continue!(get_record_key(&record));
 
             if let Some(records_by_key) = batch.get_mut(&customer_id) {
                 records_by_key.push(record);
