@@ -59,10 +59,8 @@ impl FluvioConnection {
         &self,
         partition_id: u32,
         name: TopicName,
-    ) -> Result<
-        impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin,
-        FluvioConnectionError,
-    > {
+    ) -> Result<impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>>, FluvioConnectionError>
+    {
         let topic = FluvioTopic::new(name);
         let consumer = self
             .fluvio
@@ -85,7 +83,7 @@ impl FluvioConnection {
 
     pub async fn next_batch(
         &self,
-        consumer: &mut (impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>> + Unpin),
+        consumer: &mut impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>>,
         polling_interval: Duration,
     ) -> Result<HashMap<String, Vec<ConsumerRecord>>, FluvioConnectionError> {
         let start_time = Instant::now();
