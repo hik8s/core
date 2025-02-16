@@ -26,8 +26,14 @@ pub use crate::connections::greptime::greptime_connection::{
 pub use crate::connections::openai::openai_connection::OpenAIConnection;
 
 // qdrant
-pub use crate::connections::qdrant::connect::QdrantConnection;
 pub use crate::connections::qdrant::error::QdrantConnectionError;
+pub use crate::connections::qdrant::qdrant_connection::QdrantConnection;
+pub mod qdrant_util {
+    pub use crate::connections::qdrant::qdrant_connection::{
+        create_filter, create_filter_with_data_type, match_any, parse_qdrant_value,
+        string_condition, string_filter, update_deleted_resources,
+    };
+}
 
 // redis
 pub use crate::connections::redis::redis_connection::{RedisConnection, RedisConnectionError};

@@ -1,9 +1,10 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use shared::{
-    connections::qdrant::{connect::update_deleted_resources, ResourceQdrantMetadata},
+    connections::qdrant::ResourceQdrantMetadata,
     fluvio::{commit_and_flush_offsets, TopicName},
     log_error_continue, log_warn_continue,
+    qdrant_util::update_deleted_resources,
     types::{
         kubeapidata::{KubeApiData, KubeEventType},
         tokenizer::Tokenizer,
