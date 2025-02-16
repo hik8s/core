@@ -17,7 +17,7 @@ mod tests {
 
     use shared::{
         connections::openai::messages::extract_message_content,
-        constant::OPENAI_EMBEDDING_TOKEN_LIMIT, get_env_var, tracing::setup::setup_tracing,
+        constant::OPENAI_EMBEDDING_TOKEN_LIMIT, get_env_var, setup_tracing,
         types::tokenizer::Tokenizer, utils::ratelimit::RateLimiter,
     };
 

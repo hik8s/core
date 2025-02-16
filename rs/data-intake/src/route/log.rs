@@ -101,7 +101,7 @@ mod tests {
     use rstest::rstest;
     use shared::mock::rocket::get_test_client;
 
-    use shared::tracing::setup::setup_tracing;
+    use shared::setup_tracing;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
 

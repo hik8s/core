@@ -3,8 +3,7 @@ mod tests {
     use crate::{
         connections::qdrant::connect::{match_any, update_deleted_resources},
         constant::EMBEDDING_SIZE,
-        tracing::setup::setup_tracing,
-        DbName, QdrantConnection, QdrantConnectionError,
+        setup_tracing, DbName, QdrantConnection, QdrantConnectionError,
     };
 
     use qdrant_client::{

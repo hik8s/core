@@ -116,7 +116,7 @@ mod tests {
     use super::Classifier;
     use rstest::rstest;
     use shared::{
-        tracing::setup::setup_tracing,
+        setup_tracing,
         types::{classifier::error::ClassifierError, record::preprocessed::PreprocessedLogRecord},
         utils::mock::mock_data::{get_test_data, TestCase, TestData},
         RedisConnection,

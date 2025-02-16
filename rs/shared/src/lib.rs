@@ -34,3 +34,4 @@ pub use crate::connections::redis::redis_connection::{RedisConnection, RedisConn
 
 // util
 pub use crate::connections::{dbname::DbName, get_env_var, ConfigError};
+pub use crate::tracing::setup_tracing::setup_tracing;

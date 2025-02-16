@@ -19,7 +19,7 @@ mod tests {
     use shared::constant::OPENAI_EMBEDDING_TOKEN_LIMIT;
     use shared::get_env_var;
     use shared::mock::rocket::get_test_client;
-    use shared::tracing::setup::setup_tracing;
+    use shared::setup_tracing;
     use shared::types::class::vectorized::{from_scored_point, VectorizedClass};
     use shared::utils::mock::mock_client::post_test_batch;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};

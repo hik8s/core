@@ -5,9 +5,8 @@ mod tests {
     use shared::{
         connections::openai::tools::{LogRetrievalArgs, Tool},
         constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
-        get_env_var,
+        get_env_var, setup_tracing,
         testdata::{UserTest, UserTestData},
-        tracing::setup::setup_tracing,
         types::tokenizer::Tokenizer,
         utils::ratelimit::RateLimiter,
         DbName, QdrantConnection, QdrantConnectionError,

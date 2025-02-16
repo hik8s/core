@@ -1,5 +1,5 @@
 use data_intake::{error::DataIntakeError, server::initialize_data_intake};
-use shared::tracing::setup::setup_tracing;
+use shared::setup_tracing;
 
 #[rocket::main]
 async fn main() -> Result<(), DataIntakeError> {
