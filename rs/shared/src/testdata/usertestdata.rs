@@ -26,10 +26,10 @@ pub enum UserTest {
 impl UserTest {
     fn prompt(&self, meta: &Metadata) -> String {
         match self {
-            UserTest::Logs => format!("logs"),
-            UserTest::RetrieveLogs => format!("Could you retrieve logs?"),
-            UserTest::RetrieveLogsForMe => format!("Could you retrieve logs for me?"),
-            UserTest::RetrieveLogsForClusterForMe => format!("Could you retrieve logs for the cluster for me?"),
+            UserTest::Logs => String::from("logs"),
+            UserTest::RetrieveLogs => String::from("Could you retrieve logs?"),
+            UserTest::RetrieveLogsForMe => String::from("Could you retrieve logs for me?"),
+            UserTest::RetrieveLogsForClusterForMe => String::from("Could you retrieve logs for the cluster for me?"),
             UserTest::RetrieveLogsAppNamespace => format!("Could you investigate the logs from {} in {}?", &meta.pod_name, &meta.namespace),
             UserTest::RetrieveEvent => "Please retrieve events for me".to_string(),
             UserTest::RetrieveResourceStatus => "Please retrieve resource status for me".to_string(),
@@ -117,8 +117,8 @@ impl UserTestData {
             meta.namespace = ns.to_owned();
         }
         Self {
-            prompt: case.prompt(&meta),
-            class: log_class(&case.log_message(), &meta),
+            prompt: case.prompt(meta),
+            class: log_class(&case.log_message(), meta),
             messages: vec![],
             application,
             namespace,

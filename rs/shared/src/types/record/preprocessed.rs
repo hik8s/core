@@ -15,31 +15,6 @@ pub struct PreprocessedLogRecord {
     pub container: String,
 }
 
-impl PreprocessedLogRecord {
-    pub fn new(
-        timestamp: i64,
-        message: String,
-        record_id: String,
-        preprocessed_message: Vec<String>,
-        key: String,
-        namespace: String,
-        pod_uid: String,
-        container: String,
-    ) -> Self {
-        PreprocessedLogRecord {
-            timestamp,
-            message,
-            record_id,
-            length: preprocessed_message.len() as u64,
-            preprocessed_message,
-            key,
-            namespace,
-            pod_uid,
-            container,
-        }
-    }
-}
-
 impl From<(&String, &String, &Metadata)> for PreprocessedLogRecord {
     fn from((customer_id, raw_message, metadata): (&String, &String, &Metadata)) -> Self {
         let log = LogRecord::from((raw_message, metadata));

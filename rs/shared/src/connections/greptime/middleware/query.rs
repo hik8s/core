@@ -12,7 +12,7 @@ pub async fn read_records(
     table_name: &str,
 ) -> Result<Vec<PgRow>, sqlx::Error> {
     let psql = greptime
-        .connect_db(&db, customer_id)
+        .connect_db(db, customer_id)
         .await
         .map_err(|e| log_error!(e))
         .unwrap();

@@ -1,4 +1,4 @@
-pub fn compare(input1: &Vec<String>, input2: &Vec<String>) -> Vec<bool> {
+pub fn compare(input1: &[String], input2: &[String]) -> Vec<bool> {
     let mut result = Vec::new();
     let max_length = input1.len().max(input2.len());
 

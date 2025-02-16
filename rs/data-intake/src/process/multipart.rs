@@ -41,10 +41,7 @@ pub fn process_stream(
         if n == 0 {
             break;
         }
-        let chunk = from_utf8(&buffer[..n]).map_err(|e| {
-            error!("{e:?}, {key}");
-            e
-        })?;
+        let chunk = from_utf8(&buffer[..n]).inspect_err(|e| error!("{e:?}, {key}"))?;
         logs.extend(process_chunk(chunk, &mut remainder, metadata));
     }
 

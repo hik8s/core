@@ -525,11 +525,11 @@ if a databases are specified provide the exact yaml."###, application_name = arg
     }
 }
 
-impl Into<ChatCompletionTool> for Tool {
-    fn into(self) -> ChatCompletionTool {
+impl From<Tool> for ChatCompletionTool {
+    fn from(tool: Tool) -> ChatCompletionTool {
         ChatCompletionTool {
             r#type: ChatCompletionToolType::Function,
-            function: self.get_function(),
+            function: tool.get_function(),
         }
     }
 }
