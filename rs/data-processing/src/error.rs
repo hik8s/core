@@ -1,5 +1,5 @@
 use crate::threads::error::ProcessThreadError;
-use shared::fluvio::FluvioConnectionError;
+use shared::FluvioConnectionError;
 
 use thiserror::Error;
 

@@ -15,7 +15,7 @@ use crate::{
     log_error,
 };
 
-use super::error::FluvioConnectionError;
+use crate::FluvioConnectionError;
 
 use strum::EnumIter;
 

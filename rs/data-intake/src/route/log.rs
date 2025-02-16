@@ -7,11 +7,11 @@ use rocket::Data;
 use shared::connections::dbname::DbName;
 use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
-use shared::fluvio::FluvioConnection;
 use shared::fluvio::TopicName;
 use shared::log_error;
 use shared::router::auth::guard::AuthenticatedUser;
 use shared::types::metadata::Metadata;
+use shared::FluvioConnection;
 use std::ops::Deref;
 use tracing::warn;
 

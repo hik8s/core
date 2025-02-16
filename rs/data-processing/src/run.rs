@@ -4,9 +4,9 @@ use crate::threads::process_log::process_logs;
 use crate::threads::process_resource::process_resource;
 
 use shared::connections::fluvio::topic::FluvioTopic;
-use shared::fluvio::FluvioConnection;
 use shared::fluvio::TopicName;
 use shared::log_error_with_message;
+use shared::FluvioConnection;
 use tokio::task::JoinHandle;
 
 pub fn run_log_processing(

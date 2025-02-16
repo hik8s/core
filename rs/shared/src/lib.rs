@@ -10,10 +10,11 @@ pub mod utils;
 
 pub mod fluvio {
     pub use crate::connections::fluvio::{
-        error::FluvioConnectionError, error::OffsetError, fluvio_connection::FluvioConnection,
-        offset::commit_and_flush_offsets, topic::TopicName,
+        error::OffsetError, offset::commit_and_flush_offsets, topic::TopicName,
     };
 }
+pub use crate::connections::fluvio::error::FluvioConnectionError;
+pub use crate::connections::fluvio::fluvio_connection::FluvioConnection;
 
 // openai
 pub use crate::connections::openai::openai_connection::OpenAIConnection;

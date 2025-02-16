@@ -1,7 +1,6 @@
 use shared::{
-    connections::openai::embeddings::RequestEmbeddingError,
-    fluvio::{FluvioConnectionError, OffsetError},
-    QdrantConnectionError, RedisConnectionError,
+    connections::openai::embeddings::RequestEmbeddingError, fluvio::OffsetError,
+    FluvioConnectionError, QdrantConnectionError, RedisConnectionError,
 };
 use std::str::Utf8Error;
 use thiserror::Error;

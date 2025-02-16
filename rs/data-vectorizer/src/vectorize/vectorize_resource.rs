@@ -8,7 +8,7 @@ use shared::{
             ResourceQdrantMetadata,
         },
     },
-    fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
+    fluvio::{commit_and_flush_offsets, TopicName},
     log_error_continue, log_warn_continue,
     types::{
         kubeapidata::{KubeApiData, KubeEventType},
@@ -18,7 +18,7 @@ use shared::{
         create_metadata_map, extract_remove_key, get_as_option_string, get_as_string, get_uid,
         ratelimit::RateLimiter,
     },
-    RedisConnection,
+    FluvioConnection, RedisConnection,
 };
 
 use crate::{

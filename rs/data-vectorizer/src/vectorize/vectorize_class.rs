@@ -2,11 +2,11 @@ use std::{sync::Arc, time::Duration};
 
 use shared::{
     connections::{dbname::DbName, fluvio::offset::commit_and_flush_offsets},
-    fluvio::{FluvioConnection, TopicName},
+    fluvio::TopicName,
     log_error_continue,
     types::{class::Class, tokenizer::Tokenizer},
     utils::ratelimit::RateLimiter,
-    QdrantConnection,
+    FluvioConnection, QdrantConnection,
 };
 
 use tracing::info;

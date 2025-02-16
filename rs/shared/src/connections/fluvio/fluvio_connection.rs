@@ -14,9 +14,9 @@ use std::time::{Duration, Instant};
 use strum::IntoEnumIterator;
 use tokio::time::timeout;
 
-use super::error::FluvioConnectionError;
 use super::topic::{create_topic, FluvioTopic, TopicName};
 use super::util::get_record_key;
+use crate::FluvioConnectionError;
 
 #[derive(Clone)]
 pub struct FluvioConnection {
