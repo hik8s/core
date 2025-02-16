@@ -24,6 +24,13 @@ pub use crate::connections::greptime::greptime_connection::{
 
 // openai
 pub use crate::connections::openai::openai_connection::OpenAIConnection;
+pub mod openai_util {
+    pub use crate::connections::openai::messages::{
+        create_assistant_message, create_system_message, create_tool_message, create_user_message,
+        extract_last_user_text_message,
+    };
+    pub use crate::connections::openai::tools::{collect_tool_call_chunks, Tool};
+}
 
 // qdrant
 pub use crate::connections::qdrant::error::QdrantConnectionError;

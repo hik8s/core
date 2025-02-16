@@ -616,13 +616,8 @@ mod tests {
     use rstest::rstest;
     use tokio::sync::mpsc;
 
-    use crate::{
-        connections::
-            openai::{
-                messages::{create_assistant_message, create_system_message, create_tool_message, create_user_message},
-                tools::{collect_tool_call_chunks, Tool},
-            }, constant::OPENAI_CHAT_MODEL_MINI, log_error, OpenAIConnection, testdata::{UserTest, UserTestData}, setup_tracing
-    };
+    use crate::{constant::OPENAI_CHAT_MODEL_MINI, log_error, setup_tracing, testdata::{UserTest, UserTestData}, OpenAIConnection};
+    use crate::openai_util::{collect_tool_call_chunks, create_assistant_message, create_system_message, create_tool_message, create_user_message, Tool};
 
     fn convert_empty_to_none(input: &Option<String>) -> Option<String> {
         match input {
