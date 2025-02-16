@@ -8,6 +8,7 @@ pub mod tracing;
 pub mod types;
 pub mod utils;
 
+// fluvio
 pub mod fluvio {
     pub use crate::connections::fluvio::{
         error::OffsetError, offset::commit_and_flush_offsets, topic::TopicName,
@@ -15,6 +16,11 @@ pub mod fluvio {
 }
 pub use crate::connections::fluvio::error::FluvioConnectionError;
 pub use crate::connections::fluvio::fluvio_connection::FluvioConnection;
+
+// greptime
+pub use crate::connections::greptime::greptime_connection::{
+    GreptimeConnection, GreptimeConnectionError,
+};
 
 // openai
 pub use crate::connections::openai::openai_connection::OpenAIConnection;

@@ -1,6 +1,6 @@
 use sqlx::{postgres::PgRow, Executor};
 
-use crate::{connections::greptime::connect::GreptimeConnection, log_error, DbName};
+use crate::{log_error, DbName, GreptimeConnection};
 
 pub async fn read_records(
     greptime: GreptimeConnection,
