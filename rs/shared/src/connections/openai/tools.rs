@@ -10,13 +10,11 @@ use serde_json::json;
 use std::fmt;
 
 use crate::{
-    connections::{
-        dbname::DbName,
+    connections::
         qdrant::{
             connect::{create_filter, create_filter_with_data_type},
             EventQdrantMetadata, ResourceQdrantMetadata,
-        },
-    }, log_error, testdata::UserTestData, types::class::vectorized::{from_scored_point, VectorizedClass}, QdrantConnection, QdrantConnectionError
+        }, log_error, testdata::UserTestData, types::class::vectorized::{from_scored_point, VectorizedClass}, DbName, QdrantConnection, QdrantConnectionError
 };
 
 use super::embeddings::request_embedding;

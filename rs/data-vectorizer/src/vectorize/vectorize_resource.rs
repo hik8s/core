@@ -1,13 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use shared::{
-    connections::{
-        dbname::DbName,
-        qdrant::{
-            connect::{update_deleted_resources, QdrantConnection},
-            ResourceQdrantMetadata,
-        },
-    },
+    connections::qdrant::{connect::update_deleted_resources, ResourceQdrantMetadata},
     fluvio::{commit_and_flush_offsets, TopicName},
     log_error_continue, log_warn_continue,
     types::{
@@ -18,7 +12,7 @@ use shared::{
         create_metadata_map, extract_remove_key, get_as_option_string, get_as_string, get_uid,
         ratelimit::RateLimiter,
     },
-    FluvioConnection, RedisConnection,
+    DbName, FluvioConnection, QdrantConnection, RedisConnection,
 };
 
 use crate::{

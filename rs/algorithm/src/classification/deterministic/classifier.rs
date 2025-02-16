@@ -1,5 +1,5 @@
 use shared::{
-    connections::{dbname::DbName, redis::redis_connection::RedisConnection},
+    connections::redis::redis_connection::RedisConnection,
     preprocessing::compare::compare,
     types::{
         class::Class,
@@ -7,6 +7,7 @@ use shared::{
         record::{classified::ClassifiedLogRecord, preprocessed::PreprocessedLogRecord},
         tokenizer::Tokenizer,
     },
+    DbName,
 };
 use std::env::var;
 

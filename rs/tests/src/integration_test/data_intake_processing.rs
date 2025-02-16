@@ -12,7 +12,6 @@ mod tests {
     use data_vectorizer::vectorize_class;
     use qdrant_client::qdrant::{ScoredPoint, Value};
     use rstest::rstest;
-    use shared::connections::dbname::DbName;
     use shared::connections::greptime::connect::GreptimeConnection;
     use shared::connections::greptime::middleware::query::read_records;
     use shared::connections::qdrant::connect::{
@@ -27,6 +26,7 @@ mod tests {
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
     use shared::utils::ratelimit::RateLimiter;
+    use shared::DbName;
     use std::collections::HashSet;
     use std::path::Path;
     use std::sync::{Arc, Mutex, Once};

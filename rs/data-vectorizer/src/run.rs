@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
 use shared::{
-    connections::{dbname::DbName, get_env_var_as_vec},
-    fluvio::TopicName,
-    log_error_with_message,
-    utils::ratelimit::RateLimiter,
+    connections::get_env_var_as_vec, fluvio::TopicName, log_error_with_message,
+    utils::ratelimit::RateLimiter, DbName,
 };
 use tokio::task::JoinHandle;
 

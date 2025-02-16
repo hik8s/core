@@ -3,17 +3,14 @@ mod tests {
     use data_vectorizer::vectorize::vectorizer::vectorize_class_batch;
     use rstest::rstest;
     use shared::{
-        connections::{
-            dbname::DbName,
-            openai::tools::{LogRetrievalArgs, Tool},
-        },
+        connections::openai::tools::{LogRetrievalArgs, Tool},
         constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
         get_env_var,
         testdata::{UserTest, UserTestData},
         tracing::setup::setup_tracing,
         types::tokenizer::Tokenizer,
         utils::ratelimit::RateLimiter,
-        QdrantConnection, QdrantConnectionError,
+        DbName, QdrantConnection, QdrantConnectionError,
     };
     use tracing::info;
 

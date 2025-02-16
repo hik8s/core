@@ -13,9 +13,8 @@ use tonic::Code;
 use tracing::info;
 
 use crate::{
-    connections::dbname::DbName,
     constant::{EMBEDDING_SIZE, EMBEDDING_USIZE},
-    QdrantConnectionError,
+    DbName, QdrantConnectionError,
 };
 
 use super::config::QdrantConfig;

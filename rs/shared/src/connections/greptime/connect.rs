@@ -1,6 +1,6 @@
-use crate::connections::dbname::DbName;
 use crate::connections::ConfigError;
 use crate::log_error;
+use crate::DbName;
 
 use super::config::GreptimeConfig;
 use greptimedb_ingester::{Client as GreptimeClient, ClientBuilder, Database, StreamInserter};

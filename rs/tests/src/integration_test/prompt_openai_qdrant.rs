@@ -9,9 +9,9 @@ mod tests {
     use data_vectorizer::vectorize::vectorizer::{vectorize_chunk, vectorize_class_batch};
     use rstest::rstest;
     use shared::{
-        connections::{dbname::DbName, qdrant::EventQdrantMetadata},
+        connections::qdrant::EventQdrantMetadata,
         testdata::{UserTest, UserTestData},
-        OpenAIConnection, QdrantConnection,
+        DbName, OpenAIConnection, QdrantConnection,
     };
     use tokio::sync::mpsc;
 
