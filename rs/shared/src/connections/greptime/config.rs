@@ -1,7 +1,7 @@
 const DEFAULT_GREPTIME_RPC_PORT: &str = "4001";
 const DEFAULT_GREPTIME_PSQL_PORT: &str = "4003";
 
-use crate::{connections::ConfigError, get_env_var};
+use crate::{get_env_var, ConfigError};
 
 #[derive(Clone)]
 pub struct GreptimeConfig {

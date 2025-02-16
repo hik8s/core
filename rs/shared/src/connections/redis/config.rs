@@ -1,4 +1,4 @@
-use crate::{connections::ConfigError, get_env_var};
+use crate::{get_env_var, ConfigError};
 
 pub struct RedisConfig {
     pub host: String,

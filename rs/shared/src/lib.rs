@@ -33,4 +33,4 @@ pub use crate::connections::qdrant::error::QdrantConnectionError;
 pub use crate::connections::redis::redis_connection::{RedisConnection, RedisConnectionError};
 
 // util
-pub use crate::connections::{dbname::DbName, get_env_var};
+pub use crate::connections::{dbname::DbName, get_env_var, ConfigError};

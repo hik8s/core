@@ -1,5 +1,5 @@
-use crate::connections::ConfigError;
 use crate::log_error;
+use crate::ConfigError;
 use crate::DbName;
 
 use super::config::GreptimeConfig;

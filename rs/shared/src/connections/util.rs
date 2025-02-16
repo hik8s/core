@@ -1,4 +1,4 @@
-use super::ConfigError;
+use crate::ConfigError;
 use std::env::var;
 
 pub fn get_env_var(key: &str) -> Result<String, ConfigError> {
