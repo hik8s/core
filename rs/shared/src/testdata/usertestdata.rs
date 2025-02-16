@@ -117,8 +117,8 @@ impl UserTestData {
             meta.namespace = ns.to_owned();
         }
         Self {
-            prompt: case.prompt(&meta),
-            class: log_class(&case.log_message(), &meta),
+            prompt: case.prompt(meta),
+            class: log_class(&case.log_message(), meta),
             messages: vec![],
             application,
             namespace,
