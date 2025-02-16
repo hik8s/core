@@ -10,20 +10,15 @@ mod tests {
     use rstest::rstest;
     use shared::{
         connections::{dbname::DbName, qdrant::EventQdrantMetadata},
+        openai::OpenAIConnection,
         testdata::{UserTest, UserTestData},
     };
     use tokio::sync::mpsc;
 
     use shared::{
-        connections::{
-            openai::messages::extract_message_content, qdrant::connect::QdrantConnection,
-            OpenAIConnection,
-        },
-        constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
-        get_env_var,
-        tracing::setup::setup_tracing,
-        types::tokenizer::Tokenizer,
-        utils::ratelimit::RateLimiter,
+        connections::openai::messages::extract_message_content,
+        constant::OPENAI_EMBEDDING_TOKEN_LIMIT, get_env_var, tracing::setup::setup_tracing,
+        types::tokenizer::Tokenizer, utils::ratelimit::RateLimiter,
     };
 
     use crate::util::read_yaml_files;

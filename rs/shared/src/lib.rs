@@ -9,10 +9,17 @@ pub mod types;
 pub mod utils;
 
 pub mod fluvio {
-    // use shared::fluvio::{...} instead of shared::connections::fluvio::{...,{...}}
     pub use crate::connections::fluvio::{
         error::FluvioConnectionError, error::OffsetError, fluvio_connection::FluvioConnection,
         offset::commit_and_flush_offsets, topic::TopicName,
     };
 }
+
+pub mod openai {
+    pub use crate::connections::openai::openai_connection::OpenAIConnection;
+}
+
+pub use crate::connections::qdrant::connect::QdrantConnection;
+pub use crate::connections::qdrant::error::QdrantConnectionError;
+
 pub use crate::connections::get_env_var;

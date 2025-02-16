@@ -13,10 +13,10 @@ use crate::{
     connections::{
         dbname::DbName,
         qdrant::{
-            connect::{create_filter, create_filter_with_data_type, QdrantConnection},
-            error::QdrantConnectionError, EventQdrantMetadata, ResourceQdrantMetadata,
+            connect::{create_filter, create_filter_with_data_type},
+            EventQdrantMetadata, ResourceQdrantMetadata,
         },
-    }, log_error, testdata::UserTestData, types::class::vectorized::{from_scored_point, VectorizedClass}
+    }, log_error, testdata::UserTestData, types::class::vectorized::{from_scored_point, VectorizedClass}, QdrantConnection, QdrantConnectionError
 };
 
 use super::embeddings::request_embedding;
@@ -620,20 +620,11 @@ mod tests {
     use tokio::sync::mpsc;
 
     use crate::{
-        connections::{
+        connections::
             openai::{
-                messages::{
-                    create_assistant_message, create_system_message, create_tool_message,
-                    create_user_message,
-                },
+                messages::{create_assistant_message, create_system_message, create_tool_message, create_user_message},
                 tools::{collect_tool_call_chunks, Tool},
-            },
-            OpenAIConnection,
-        },
-        constant::OPENAI_CHAT_MODEL_MINI,
-        log_error,
-        testdata::{UserTest, UserTestData},
-        tracing::setup::setup_tracing,
+            }, constant::OPENAI_CHAT_MODEL_MINI, log_error, openai::OpenAIConnection, testdata::{UserTest, UserTestData}, tracing::setup::setup_tracing
     };
 
     fn convert_empty_to_none(input: &Option<String>) -> Option<String> {

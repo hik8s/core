@@ -9,5 +9,4 @@ mod util;
 
 pub use crate::connections::error::ConfigError;
 
-pub use crate::connections::openai::openai_connection::OpenAIConnection;
 pub use crate::connections::util::{get_env_var, get_env_var_as_vec};

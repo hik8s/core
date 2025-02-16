@@ -13,6 +13,8 @@ use shared::{
     },
     constant::OPENAI_CHAT_MODEL_MINI,
     log_error,
+    openai::OpenAIConnection,
+    QdrantConnection,
 };
 use tokio::sync::mpsc;
 
