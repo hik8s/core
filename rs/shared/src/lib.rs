@@ -46,5 +46,7 @@ pub mod qdrant_util {
 pub use crate::connections::redis::redis_connection::{RedisConnection, RedisConnectionError};
 
 // util
-pub use crate::connections::{dbname::DbName, get_env_var, ConfigError};
+pub use crate::connections::util::{get_env_var, get_env_var_as_vec};
+pub use crate::connections::{dbname::DbName, ConfigError};
 pub use crate::tracing::setup_tracing::setup_tracing;
+pub use crate::utils::ratelimit::RateLimiter;

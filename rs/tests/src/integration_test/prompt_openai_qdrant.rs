@@ -18,7 +18,7 @@ mod tests {
     use shared::{
         connections::openai::messages::extract_message_content,
         constant::OPENAI_EMBEDDING_TOKEN_LIMIT, get_env_var, setup_tracing,
-        types::tokenizer::Tokenizer, utils::ratelimit::RateLimiter,
+        types::tokenizer::Tokenizer, RateLimiter,
     };
 
     use crate::util::read_yaml_files;

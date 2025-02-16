@@ -5,8 +5,7 @@ use shared::{
     fluvio::TopicName,
     log_error_continue,
     types::{class::Class, tokenizer::Tokenizer},
-    utils::ratelimit::RateLimiter,
-    DbName, FluvioConnection, QdrantConnection,
+    DbName, FluvioConnection, QdrantConnection, RateLimiter,
 };
 
 use tracing::info;

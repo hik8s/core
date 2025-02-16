@@ -11,9 +11,8 @@ use shared::{
     },
     utils::{
         create_metadata_map, extract_remove_key, get_as_option_string, get_as_string, get_uid,
-        ratelimit::RateLimiter,
     },
-    DbName, FluvioConnection, QdrantConnection, RedisConnection,
+    DbName, FluvioConnection, QdrantConnection, RateLimiter, RedisConnection,
 };
 
 use crate::{

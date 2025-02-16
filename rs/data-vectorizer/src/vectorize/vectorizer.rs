@@ -10,8 +10,7 @@ use shared::{
         },
         tokenizer::Tokenizer,
     },
-    utils::ratelimit::RateLimiter,
-    DbName, QdrantConnection,
+    DbName, QdrantConnection, RateLimiter,
 };
 use tracing::info;
 

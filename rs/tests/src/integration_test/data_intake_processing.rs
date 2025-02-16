@@ -21,9 +21,9 @@ mod tests {
     use shared::utils::mock::mock_client::post_test_batch;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
-    use shared::utils::ratelimit::RateLimiter;
     use shared::DbName;
     use shared::GreptimeConnection;
+    use shared::RateLimiter;
     use shared::{get_env_var, QdrantConnection};
     use std::collections::HashSet;
     use std::path::Path;

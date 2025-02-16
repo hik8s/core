@@ -8,8 +8,7 @@ mod tests {
         get_env_var, setup_tracing,
         testdata::{UserTest, UserTestData},
         types::tokenizer::Tokenizer,
-        utils::ratelimit::RateLimiter,
-        DbName, QdrantConnection, QdrantConnectionError,
+        DbName, QdrantConnection, QdrantConnectionError, RateLimiter,
     };
     use tracing::info;
 
