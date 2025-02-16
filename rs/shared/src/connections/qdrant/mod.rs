@@ -8,8 +8,8 @@ use uuid7::uuid4;
 use crate::types::class::vectorized::Id;
 
 pub mod config;
-pub mod connect;
 pub mod error;
+pub mod qdrant_connection;
 mod test_qdrant;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

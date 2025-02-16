@@ -4,7 +4,7 @@ use rocket::post;
 use rocket::response::stream::{Event, EventStream};
 use rocket::serde::json::Json;
 
-use shared::connections::qdrant::connect::QdrantConnection;
+use shared::QdrantConnection;
 use tokio;
 use tokio::sync::mpsc;
 use tracing::error;

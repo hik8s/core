@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use qdrant_client::qdrant::ScoredPoint;
-use shared::connections::{dbname::DbName, qdrant::connect::QdrantConnection};
+use shared::{DbName, QdrantConnection};
 
 use crate::{histogram::create_histogram, utils::group_points_by_key};
 

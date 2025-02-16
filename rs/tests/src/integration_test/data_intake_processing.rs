@@ -12,21 +12,19 @@ mod tests {
     use data_vectorizer::vectorize_class;
     use qdrant_client::qdrant::{ScoredPoint, Value};
     use rstest::rstest;
-    use shared::connections::dbname::DbName;
-    use shared::connections::greptime::connect::GreptimeConnection;
     use shared::connections::greptime::middleware::query::read_records;
-    use shared::connections::qdrant::connect::{
-        match_any, parse_qdrant_value, string_filter, QdrantConnection,
-    };
     use shared::constant::OPENAI_EMBEDDING_TOKEN_LIMIT;
-    use shared::get_env_var;
     use shared::mock::rocket::get_test_client;
-    use shared::tracing::setup::setup_tracing;
+    use shared::qdrant_util::{match_any, parse_qdrant_value, string_filter};
+    use shared::setup_tracing;
     use shared::types::class::vectorized::{from_scored_point, VectorizedClass};
     use shared::utils::mock::mock_client::post_test_batch;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
-    use shared::utils::ratelimit::RateLimiter;
+    use shared::DbName;
+    use shared::GreptimeConnection;
+    use shared::RateLimiter;
+    use shared::{get_env_var, QdrantConnection};
     use std::collections::HashSet;
     use std::path::Path;
     use std::sync::{Arc, Mutex, Once};

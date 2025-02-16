@@ -11,7 +11,7 @@ pub fn compare(input1: &[String], input2: &[String]) -> Vec<bool> {
 #[cfg(test)]
 mod tests {
 
-    use crate::tracing::setup::setup_tracing;
+    use crate::setup_tracing;
 
     use super::*;
     use rstest::rstest;

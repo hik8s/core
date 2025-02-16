@@ -1,7 +1,5 @@
 use rocket::{http::Status, response::Responder, Request, Response};
-use shared::{
-    connections::greptime::connect::GreptimeConnectionError, fluvio::FluvioConnectionError,
-};
+use shared::{FluvioConnectionError, GreptimeConnectionError};
 use std::io::Cursor;
 use thiserror::Error;
 use tracing::error;

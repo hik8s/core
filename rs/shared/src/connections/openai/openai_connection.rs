@@ -198,7 +198,7 @@ fn create_no_choice_error() -> ApiError {
 
 #[cfg(test)]
 mod tests {
-    use crate::tracing::setup::setup_tracing;
+    use crate::setup_tracing;
 
     use super::*;
 

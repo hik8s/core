@@ -1,9 +1,6 @@
 use std::time::Duration;
 
-use crate::{
-    connections::{dbname::DbName, ConfigError},
-    types::classifier::state::ClassifierState,
-};
+use crate::{types::classifier::state::ClassifierState, ConfigError, DbName};
 
 use super::config::RedisConfig;
 use redis::{Client, Commands, Connection, FromRedisValue, RedisError, ToRedisArgs};

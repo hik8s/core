@@ -121,7 +121,7 @@ mod tests {
     use std::iter::zip;
 
     use super::*;
-    use crate::{preprocessing::compare::compare, tracing::setup::setup_tracing};
+    use crate::{preprocessing::compare::compare, setup_tracing};
     use rstest::rstest;
     use serde_json::json;
 

@@ -5,7 +5,7 @@ use crate::route::{
 };
 use rocket::{routes, Build, Rocket};
 use shared::router::rocket::{build_rocket, Connection};
-use shared::{connections::greptime::connect::GreptimeConnection, fluvio::FluvioConnection};
+use shared::{FluvioConnection, GreptimeConnection};
 
 pub async fn initialize_data_intake() -> Result<Rocket<Build>, DataIntakeError> {
     let greptime = GreptimeConnection::new().await?;

@@ -1,4 +1,4 @@
-use crate::{connections::ConfigError, get_env_var};
+use crate::{get_env_var, ConfigError};
 
 const DEFAULT_QDRANT_PORT: &str = "6334";
 

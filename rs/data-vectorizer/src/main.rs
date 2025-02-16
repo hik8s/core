@@ -4,10 +4,7 @@ use data_vectorizer::{
     error::DataVectorizationError,
     run::{run_vectorize_class, run_vectorize_customresource, run_vectorize_resource},
 };
-use shared::{
-    constant::OPENAI_EMBEDDING_TOKEN_LIMIT, tracing::setup::setup_tracing,
-    utils::ratelimit::RateLimiter,
-};
+use shared::{constant::OPENAI_EMBEDDING_TOKEN_LIMIT, setup_tracing, RateLimiter};
 
 #[tokio::main]
 async fn main() -> Result<(), DataVectorizationError> {

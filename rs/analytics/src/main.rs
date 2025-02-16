@@ -9,11 +9,7 @@ use std::env;
 use analyze_logs::analyze_logs;
 use analyze_resource::analyze_resource;
 use analyze_state::analyze_state;
-use shared::{
-    connections::{qdrant::connect::QdrantConnection, redis::connect::RedisConnection},
-    get_env_var,
-    tracing::setup::setup_tracing,
-};
+use shared::{get_env_var, setup_tracing, QdrantConnection, RedisConnection};
 use utils::create_map;
 
 #[tokio::main]

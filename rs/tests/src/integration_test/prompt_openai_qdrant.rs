@@ -9,21 +9,16 @@ mod tests {
     use data_vectorizer::vectorize::vectorizer::{vectorize_chunk, vectorize_class_batch};
     use rstest::rstest;
     use shared::{
-        connections::{dbname::DbName, qdrant::EventQdrantMetadata},
+        connections::qdrant::EventQdrantMetadata,
         testdata::{UserTest, UserTestData},
+        DbName, OpenAIConnection, QdrantConnection,
     };
     use tokio::sync::mpsc;
 
     use shared::{
-        connections::{
-            openai::messages::extract_message_content, qdrant::connect::QdrantConnection,
-            OpenAIConnection,
-        },
-        constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
-        get_env_var,
-        tracing::setup::setup_tracing,
-        types::tokenizer::Tokenizer,
-        utils::ratelimit::RateLimiter,
+        connections::openai::messages::extract_message_content,
+        constant::OPENAI_EMBEDDING_TOKEN_LIMIT, get_env_var, setup_tracing,
+        types::tokenizer::Tokenizer, RateLimiter,
     };
 
     use crate::util::read_yaml_files;

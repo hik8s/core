@@ -4,14 +4,14 @@ use crate::error::DataIntakeError;
 use rocket::http::ContentType;
 use rocket::post;
 use rocket::Data;
-use shared::connections::dbname::DbName;
-use shared::connections::greptime::connect::GreptimeConnection;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
-use shared::fluvio::FluvioConnection;
 use shared::fluvio::TopicName;
 use shared::log_error;
 use shared::router::auth::guard::AuthenticatedUser;
 use shared::types::metadata::Metadata;
+use shared::DbName;
+use shared::FluvioConnection;
+use shared::GreptimeConnection;
 use std::ops::Deref;
 use tracing::warn;
 
@@ -101,7 +101,7 @@ mod tests {
     use rstest::rstest;
     use shared::mock::rocket::get_test_client;
 
-    use shared::tracing::setup::setup_tracing;
+    use shared::setup_tracing;
     use shared::utils::mock::mock_data::{get_test_data, TestCase};
     use shared::utils::mock::{mock_client::post_test_stream, mock_stream::get_multipart_stream};
 

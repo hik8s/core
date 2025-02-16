@@ -1,6 +1,6 @@
 use rocket::{request::FromRequest, State};
 
-use super::fluvio_connection::FluvioConnection;
+use crate::FluvioConnection;
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for FluvioConnection {

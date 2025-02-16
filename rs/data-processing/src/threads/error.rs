@@ -1,11 +1,8 @@
 use std::str::Utf8Error;
 
 use shared::{
-    connections::{
-        greptime::connect::GreptimeConnectionError, redis::connect::RedisConnectionError,
-    },
-    fluvio::OffsetError,
-    types::classifier::error::ClassifierError,
+    fluvio::OffsetError, types::classifier::error::ClassifierError, GreptimeConnectionError,
+    RedisConnectionError,
 };
 use thiserror::Error;
 

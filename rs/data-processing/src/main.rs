@@ -3,7 +3,7 @@ use data_processing::run::{
     run_customresource_processing, run_event_processing, run_log_processing,
     run_resource_processing,
 };
-use shared::tracing::setup::setup_tracing;
+use shared::setup_tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), DataProcessingError> {

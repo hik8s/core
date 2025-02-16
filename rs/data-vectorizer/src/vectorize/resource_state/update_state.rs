@@ -1,8 +1,5 @@
 use k8s_openapi::serde::{de::DeserializeOwned, Serialize};
-use shared::{
-    connections::{dbname::DbName, redis::connect::RedisConnection},
-    types::kubeapidata::KubeApiData,
-};
+use shared::{types::kubeapidata::KubeApiData, DbName, RedisConnection};
 
 use crate::error::DataVectorizationError;
 

@@ -1,24 +1,18 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use shared::{
-    connections::{
-        dbname::DbName,
-        qdrant::{
-            connect::{update_deleted_resources, QdrantConnection},
-            ResourceQdrantMetadata,
-        },
-        redis::connect::RedisConnection,
-    },
-    fluvio::{commit_and_flush_offsets, FluvioConnection, TopicName},
+    connections::qdrant::ResourceQdrantMetadata,
+    fluvio::{commit_and_flush_offsets, TopicName},
     log_error_continue, log_warn_continue,
+    qdrant_util::update_deleted_resources,
     types::{
         kubeapidata::{KubeApiData, KubeEventType},
         tokenizer::Tokenizer,
     },
     utils::{
         create_metadata_map, extract_remove_key, get_as_option_string, get_as_string, get_uid,
-        ratelimit::RateLimiter,
     },
+    DbName, FluvioConnection, QdrantConnection, RateLimiter, RedisConnection,
 };
 
 use crate::{

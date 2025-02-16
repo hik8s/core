@@ -1,4 +1,4 @@
-pub mod setup;
+pub mod setup_tracing;
 
 #[macro_export]
 macro_rules! log_error {

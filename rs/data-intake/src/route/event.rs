@@ -2,9 +2,9 @@ use crate::error::DataIntakeError;
 
 use rocket::post;
 use rocket::serde::json::Json;
-use shared::fluvio::{FluvioConnection, TopicName};
-use shared::log_error;
+use shared::fluvio::TopicName;
 use shared::router::auth::guard::AuthenticatedUser;
+use shared::{log_error, FluvioConnection};
 
 #[post("/event", format = "json", data = "<event>")]
 pub async fn event_intake(

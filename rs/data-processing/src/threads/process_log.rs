@@ -12,8 +12,8 @@ use std::sync::Arc;
 
 use futures_util::StreamExt;
 use shared::{
-    connections::redis::connect::RedisConnection,
     types::record::{log::LogRecord, preprocessed::PreprocessedLogRecord},
+    RedisConnection,
 };
 use tracing::warn;
 

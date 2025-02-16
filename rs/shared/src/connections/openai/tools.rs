@@ -10,13 +10,12 @@ use serde_json::json;
 use std::fmt;
 
 use crate::{
-    connections::{
-        dbname::DbName,
-        qdrant::{
-            connect::{create_filter, create_filter_with_data_type, QdrantConnection},
-            error::QdrantConnectionError, EventQdrantMetadata, ResourceQdrantMetadata,
-        },
-    }, log_error, testdata::UserTestData, types::class::vectorized::{from_scored_point, VectorizedClass}
+    connections::qdrant::{EventQdrantMetadata, ResourceQdrantMetadata},
+    log_error,
+    qdrant_util::{create_filter, create_filter_with_data_type},
+    testdata::UserTestData,
+    types::class::vectorized::{from_scored_point, VectorizedClass},
+    DbName, QdrantConnection, QdrantConnectionError,
 };
 
 use super::embeddings::request_embedding;
@@ -64,12 +63,18 @@ impl EventRetrievalArgs {
     pub fn search_prompt(&self, user_message: &str) -> String {
         let mut prompt: String = user_message.to_string();
         prompt.push_str(format!("\nUser intention: {}", self.intention).as_str());
-    
+
         if self.application.is_some() {
-            prompt.push_str(&format!("\nApplication: {}", self.application.as_ref().unwrap()));
+            prompt.push_str(&format!(
+                "\nApplication: {}",
+                self.application.as_ref().unwrap()
+            ));
         }
         if self.namespace.is_some() {
-            prompt.push_str(&format!("\nNamespace: {}", self.namespace.as_ref().unwrap()));
+            prompt.push_str(&format!(
+                "\nNamespace: {}",
+                self.namespace.as_ref().unwrap()
+            ));
         }
         if self.kind.is_some() {
             prompt.push_str(&format!("\nKind: {}", self.kind.as_ref().unwrap()));
@@ -97,7 +102,7 @@ impl ResourceStatusRetrievalArgs {
     pub fn search_prompt(&self, user_message: &str) -> String {
         let mut prompt: String = user_message.to_string();
         prompt.push_str(format!("\nUser intention: {}", self.intention).as_str());
-        
+
         if let Some(kind) = &self.kind {
             prompt.push_str(&format!("\nKind: {}", kind));
         }
@@ -163,10 +168,18 @@ impl TryFrom<FunctionCall> for Tool {
             "deployment-options" => Ok(Tool::CreateDeployment(arguments.try_into().unwrap())),
             "log-retrieval" => Ok(Tool::LogRetrieval(arguments.try_into().unwrap())),
             "event-retrieval" => Ok(Tool::EventRetrieval(arguments.try_into().unwrap())),
-            "resource-status-retrieval" => Ok(Tool::ResourceStatusRetrieval(arguments.try_into().unwrap())),
-            "resource-spec-retrieval" => Ok(Tool::ResourceSpecRetrieval(arguments.try_into().unwrap())),
-            "customresource-status-retrieval" => Ok(Tool::CustomResourceStatusRetrieval(arguments.try_into().unwrap())),
-            "customresource-spec-retrieval" => Ok(Tool::CustomResourceSpecRetrieval(arguments.try_into().unwrap())),
+            "resource-status-retrieval" => {
+                Ok(Tool::ResourceStatusRetrieval(arguments.try_into().unwrap()))
+            }
+            "resource-spec-retrieval" => {
+                Ok(Tool::ResourceSpecRetrieval(arguments.try_into().unwrap()))
+            }
+            "customresource-status-retrieval" => Ok(Tool::CustomResourceStatusRetrieval(
+                arguments.try_into().unwrap(),
+            )),
+            "customresource-spec-retrieval" => Ok(Tool::CustomResourceSpecRetrieval(
+                arguments.try_into().unwrap(),
+            )),
             _ => Err(format!("Could not parse tool name: {}", name)),
         }
     }
@@ -553,7 +566,7 @@ pub fn collect_tool_call_chunks(
         return Err(ToolCallError::EmptyToolCalls);
     }
     let mut tool_calls = Vec::<ChatCompletionMessageToolCall>::new();
-    
+
     for chunk in tool_call_chunks {
         if let Some(call_id) = chunk.id {
             tool_calls.push(ChatCompletionMessageToolCall {
@@ -566,7 +579,8 @@ pub fn collect_tool_call_chunks(
             });
         }
         if let Some(function_call) = chunk.function {
-            let current_call = tool_calls.last_mut()
+            let current_call = tool_calls
+                .last_mut()
                 .ok_or_else(|| ToolCallError::InvalidFunction("No tool call found".to_string()))?;
 
             if let Some(name) = function_call.name {
@@ -599,7 +613,13 @@ pub fn format_event(sp: ScoredPoint) -> Result<String, serde_json::Error> {
     let event = EventQdrantMetadata::try_from(sp)?;
     Ok(format!(
         "{}: Object: {}/{}, Type: {}, Reason: {}, Message: {}, Score: {}\n",
-        event.namespace, event.kind, event.name, event.event_type, event.reason, event.message, score
+        event.namespace,
+        event.kind,
+        event.name,
+        event.event_type,
+        event.reason,
+        event.message,
+        score
     ))
 }
 
@@ -619,21 +639,15 @@ mod tests {
     use rstest::rstest;
     use tokio::sync::mpsc;
 
+    use crate::openai_util::{
+        collect_tool_call_chunks, create_assistant_message, create_system_message,
+        create_tool_message, create_user_message, Tool,
+    };
     use crate::{
-        connections::{
-            openai::{
-                messages::{
-                    create_assistant_message, create_system_message, create_tool_message,
-                    create_user_message,
-                },
-                tools::{collect_tool_call_chunks, Tool},
-            },
-            OpenAIConnection,
-        },
         constant::OPENAI_CHAT_MODEL_MINI,
-        log_error,
+        log_error, setup_tracing,
         testdata::{UserTest, UserTestData},
-        tracing::setup::setup_tracing,
+        OpenAIConnection,
     };
 
     fn convert_empty_to_none(input: &Option<String>) -> Option<String> {
@@ -643,7 +657,6 @@ mod tests {
             None => None,
         }
     }
-    
 
     #[tokio::test]
     #[rstest]
@@ -669,7 +682,10 @@ mod tests {
         ];
         let request =
             openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, num_choices);
-        let response = openai.create_completion(request).await.expect("Failed to create completion");
+        let response = openai
+            .create_completion(request)
+            .await
+            .expect("Failed to create completion");
 
         // tool processing
         let mut success_counter: f32 = 0.0;
@@ -680,7 +696,10 @@ mod tests {
                 let tool = Tool::try_from(tool_call.function).unwrap();
                 assert!(matches!(tool, Tool::LogRetrieval(_)));
                 if let Tool::LogRetrieval(args) = &tool {
-                    assert_eq!(convert_empty_to_none(&args.application), testdata.application);
+                    assert_eq!(
+                        convert_empty_to_none(&args.application),
+                        testdata.application
+                    );
                     assert_eq!(convert_empty_to_none(&args.namespace), testdata.namespace);
                     assert!(!args.intention.is_empty());
                     success_counter += 1.0;

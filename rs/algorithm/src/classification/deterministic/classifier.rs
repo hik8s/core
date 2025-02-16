@@ -1,5 +1,4 @@
 use shared::{
-    connections::{dbname::DbName, redis::connect::RedisConnection},
     preprocessing::compare::compare,
     types::{
         class::Class,
@@ -7,6 +6,7 @@ use shared::{
         record::{classified::ClassifiedLogRecord, preprocessed::PreprocessedLogRecord},
         tokenizer::Tokenizer,
     },
+    DbName, RedisConnection,
 };
 use std::env::var;
 
@@ -116,10 +116,10 @@ mod tests {
     use super::Classifier;
     use rstest::rstest;
     use shared::{
-        connections::redis::connect::RedisConnection,
-        tracing::setup::setup_tracing,
+        setup_tracing,
         types::{classifier::error::ClassifierError, record::preprocessed::PreprocessedLogRecord},
         utils::mock::mock_data::{get_test_data, TestCase, TestData},
+        RedisConnection,
     };
 
     #[tokio::test]

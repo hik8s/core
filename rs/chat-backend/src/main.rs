@@ -1,10 +1,8 @@
 use chat_backend::chat::route::chat_completion;
 use rocket::{main, routes};
 use shared::{
-    connections::qdrant::{connect::QdrantConnection, error::QdrantConnectionError},
-    constant::CHAT_BACKEND_PORT,
-    router::rocket::build_rocket,
-    tracing::setup::setup_tracing,
+    constant::CHAT_BACKEND_PORT, router::rocket::build_rocket, setup_tracing, QdrantConnection,
+    QdrantConnectionError,
 };
 
 use thiserror::Error;

@@ -1,7 +1,4 @@
-use crate::{
-    connections::{greptime::connect::GreptimeConnection, qdrant::connect::QdrantConnection},
-    fluvio::FluvioConnection,
-};
+use crate::{FluvioConnection, GreptimeConnection, QdrantConnection};
 use rocket::{catch, catchers, Build, Rocket, Route};
 
 pub trait Attach: Clone {

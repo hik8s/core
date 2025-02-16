@@ -173,7 +173,7 @@ fn compare_arrays(
 mod tests {
     use super::*;
     use serde_json::json;
-    use shared::tracing::setup::setup_tracing;
+    use shared::setup_tracing;
 
     #[test]
     fn test_compare_partition() {

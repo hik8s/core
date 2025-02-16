@@ -1,9 +1,7 @@
 use qdrant_client::qdrant::PointStruct;
 use serde::Serialize;
 use shared::{
-    connections::{
-        dbname::DbName, openai::embeddings::request_embedding, qdrant::connect::QdrantConnection,
-    },
+    connections::openai::embeddings::request_embedding,
     log_error_with_message,
     types::{
         class::{
@@ -12,7 +10,7 @@ use shared::{
         },
         tokenizer::Tokenizer,
     },
-    utils::ratelimit::RateLimiter,
+    DbName, QdrantConnection, RateLimiter,
 };
 use tracing::info;
 

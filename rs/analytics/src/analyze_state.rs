@@ -1,6 +1,6 @@
 use redis::Commands;
 
-use shared::connections::{dbname::DbName, redis::connect::RedisConnection};
+use shared::{DbName, RedisConnection};
 
 pub async fn analyze_state(redis: &mut RedisConnection, customer_id: &str) {
     let match_key = format!("{}_*", DbName::Log.id(customer_id));

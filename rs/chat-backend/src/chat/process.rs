@@ -1,18 +1,12 @@
 use async_openai::types::{ChatCompletionRequestMessage, FinishReason};
 use shared::{
-    connections::{
-        openai::{
-            messages::{
-                create_assistant_message, create_system_message, create_tool_message,
-                create_user_message, extract_last_user_text_message,
-            },
-            tools::{collect_tool_call_chunks, Tool},
-        },
-        qdrant::connect::QdrantConnection,
-        OpenAIConnection,
-    },
     constant::OPENAI_CHAT_MODEL_MINI,
     log_error,
+    openai_util::{
+        collect_tool_call_chunks, create_assistant_message, create_system_message,
+        create_tool_message, create_user_message, extract_last_user_text_message, Tool,
+    },
+    OpenAIConnection, QdrantConnection,
 };
 use tokio::sync::mpsc;
 

@@ -3,8 +3,7 @@ use std::{collections::HashMap, path::Path};
 use data_intake::error::DataIntakeError;
 use rocket::{http::Status, local::asynchronous::Client};
 use shared::{
-    connections::dbname::DbName, types::kubeapidata::KubeEventType,
-    utils::mock::mock_client::post_test_batch,
+    types::kubeapidata::KubeEventType, utils::mock::mock_client::post_test_batch, DbName,
 };
 use uuid7::uuid4;
 

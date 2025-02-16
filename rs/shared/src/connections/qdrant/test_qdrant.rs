@@ -1,15 +1,9 @@
 #[cfg(test)]
 mod tests {
     use crate::{
-        connections::{
-            dbname::DbName,
-            qdrant::{
-                connect::{match_any, update_deleted_resources, QdrantConnection},
-                error::QdrantConnectionError,
-            },
-        },
         constant::EMBEDDING_SIZE,
-        tracing::setup::setup_tracing,
+        qdrant_util::{match_any, update_deleted_resources},
+        setup_tracing, DbName, QdrantConnection, QdrantConnectionError,
     };
 
     use qdrant_client::{
