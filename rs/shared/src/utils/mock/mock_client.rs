@@ -9,7 +9,7 @@ use rocket::{
 use crate::{get_env_var, types::metadata::Metadata};
 
 pub async fn post_test_stream(client: &Client, route: &str, test_stream: String) -> Status {
-    let token = get_env_var("AUTH0_TOKEN").unwrap();
+    let token = get_env_var("AUTH_TOKEN").unwrap();
     let response = client
         .post(route)
         .header(
@@ -24,7 +24,7 @@ pub async fn post_test_stream(client: &Client, route: &str, test_stream: String)
 }
 
 pub async fn post_test(client: &Client, route: &str, json_value: serde_json::Value) -> Status {
-    let token = get_env_var("AUTH0_TOKEN").unwrap();
+    let token = get_env_var("AUTH_TOKEN").unwrap();
     let response = client
         .post(route)
         .header(ContentType::JSON)
@@ -41,7 +41,7 @@ pub async fn post_test_batch(
     route: &str,
     json_values: Vec<serde_json::Value>,
 ) -> Status {
-    let token = get_env_var("AUTH0_TOKEN").unwrap();
+    let token = get_env_var("AUTH_TOKEN").unwrap();
     let response = client
         .post(route)
         .header(ContentType::JSON)
