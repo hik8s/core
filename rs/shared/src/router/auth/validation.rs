@@ -15,8 +15,10 @@ struct Jwk {
     n: String,
     e: String,
     kid: String,
-    x5t: String,
-    x5c: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    x5t: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    x5c: Option<Vec<String>>,
 }
 
 async fn fetch_jwks(uri: &str) -> Result<Jwks, Box<dyn Error>> {
@@ -38,8 +40,8 @@ struct Claims {
 }
 
 pub async fn validate_token(token: &str) -> Result<String, AuthenticationError> {
-    let auth0_domain = env::var("AUTH0_DOMAIN")?;
-    let jwks_uri = format!("https://{}/.well-known/jwks.json", auth0_domain);
+    let auth_domain = env::var("AUTH_DOMAIN")?;
+    let jwks_uri = format!("https://{}/.well-known/jwks.json", auth_domain);
     let jwks = fetch_jwks(&jwks_uri).await?;
 
     let header = decode_header(token)?;
@@ -53,8 +55,8 @@ pub async fn validate_token(token: &str) -> Result<String, AuthenticationError> 
 
     let decoding_key = DecodingKey::from_rsa_components(&jwk.n, &jwk.e)?;
     let mut validation = Validation::new(Algorithm::RS256);
-    validation.set_audience(&[env::var("AUTH0_AUDIENCE")?]);
-    validation.set_issuer(&[format!("https://{}/", auth0_domain)]);
+    validation.set_issuer(&[format!("https://{}", auth_domain)]);
+    validation.validate_aud = false;
 
     let token_data = decode::<Claims>(token, &decoding_key, &validation)?;
     if token_data.claims.exp > chrono::Utc::now().timestamp() as usize {
