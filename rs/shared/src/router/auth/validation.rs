@@ -29,7 +29,8 @@ async fn fetch_jwks(uri: &str) -> Result<Jwks, Box<dyn Error>> {
 }
 
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
-use std::env;
+
+use crate::get_env_var;
 
 use super::error::AuthenticationError;
 
@@ -40,7 +41,7 @@ struct Claims {
 }
 
 pub async fn validate_token(token: &str) -> Result<String, AuthenticationError> {
-    let auth_domain = env::var("AUTH_DOMAIN")?;
+    let auth_domain = get_env_var("AUTH_DOMAIN")?;
     let jwks_uri = format!("https://{}/.well-known/jwks.json", auth_domain);
     let jwks = fetch_jwks(&jwks_uri).await?;
 
