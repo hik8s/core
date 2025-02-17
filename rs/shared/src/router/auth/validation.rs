@@ -68,7 +68,6 @@ pub async fn validate_token(token: &str) -> Result<String, AuthenticationError> 
     }
 }
 
-fn parse_client_id(input: &str) -> &str {
-    // TODO: sanitize input
-    input.split('@').next().unwrap_or(input)
+fn parse_client_id(uuid: &str) -> String {
+    uuid.replace('-', "")
 }
