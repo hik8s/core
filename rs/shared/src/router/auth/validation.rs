@@ -30,7 +30,7 @@ async fn fetch_jwks(uri: &str) -> Result<Jwks, Box<dyn Error>> {
 
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 
-use crate::get_env_var;
+use crate::{get_env_var, get_env_var_as_vec};
 
 use super::error::AuthenticationError;
 
@@ -57,13 +57,22 @@ pub async fn validate_token(token: &str) -> Result<String, AuthenticationError> 
     let decoding_key = DecodingKey::from_rsa_components(&jwk.n, &jwk.e)?;
     let mut validation = Validation::new(Algorithm::RS256);
     validation.set_issuer(&[format!("https://{}", auth_domain)]);
-    validation.validate_aud = false;
+    validation.set_audience(&get_env_audience()?);
 
     let token_data = decode::<Claims>(token, &decoding_key, &validation)?;
     if token_data.claims.exp > chrono::Utc::now().timestamp() as usize {
         validate_client_id(token_data.claims.sub)
     } else {
         Err(AuthenticationError::TokenExpired)
+    }
+}
+
+fn get_env_audience() -> Result<Vec<String>, AuthenticationError> {
+    match get_env_var_as_vec("AUTH_AUDIENCE")? {
+        Some(audience) => Ok(audience),
+        None => Err(AuthenticationError::MissingAudience(
+            "No audience values found in AUTH_AUDIENCE".to_string(),
+        )),
     }
 }
 

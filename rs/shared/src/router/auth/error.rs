@@ -14,6 +14,8 @@ pub enum AuthenticationError {
     KeyNotFound,
     #[error("Token has expired")]
     TokenExpired,
+    #[error("Missing audience: {0}")]
+    MissingAudience(String),
     #[error("Fetch JWKS error: {0}")]
     FetchJwksError(#[from] Box<dyn std::error::Error>),
     #[error("Invalid client id format: {0}")]
