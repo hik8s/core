@@ -1,5 +1,5 @@
 use shared::{
-    connections::openai::embeddings::RequestEmbeddingError, fluvio::OffsetError,
+    connections::openai::embeddings::RequestEmbeddingError, fluvio::OffsetError, ConfigError,
     FluvioConnectionError, QdrantConnectionError, RedisConnectionError,
 };
 use std::str::Utf8Error;
@@ -7,6 +7,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum DataVectorizationError {
+    #[error("Error with configuration: {0}")]
+    ConfigError(#[from] ConfigError),
     #[error("Fluvio connection error: {0}")]
     FluvioConnectionError(#[from] FluvioConnectionError),
     #[error("Fluvio offset error: {0}")]

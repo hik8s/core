@@ -28,7 +28,7 @@ pub fn run_vectorize_resource(
 ) -> Result<Vec<JoinHandle<Result<(), DataVectorizationError>>>, DataVectorizationError> {
     let mut threads: Vec<JoinHandle<Result<(), DataVectorizationError>>> = Vec::new();
 
-    let skiplist = get_env_var_as_vec("RESOURCE_SKIPLIST");
+    let skiplist = get_env_var_as_vec("RESOURCE_SKIPLIST")?;
     threads.push(tokio::spawn(async move {
         let db = DbName::Resource;
         let topic = TopicName::ProcessedResource;
@@ -49,7 +49,7 @@ pub fn run_vectorize_customresource(
 ) -> Result<Vec<JoinHandle<Result<(), DataVectorizationError>>>, DataVectorizationError> {
     let mut threads: Vec<JoinHandle<Result<(), DataVectorizationError>>> = Vec::new();
 
-    let skiplist = get_env_var_as_vec("CUSTOMRESOURCE_SKIPLIST");
+    let skiplist = get_env_var_as_vec("CUSTOMRESOURCE_SKIPLIST")?;
     threads.push(tokio::spawn(async move {
         let db = DbName::CustomResource;
         let topic = TopicName::ProcessedCustomResource;

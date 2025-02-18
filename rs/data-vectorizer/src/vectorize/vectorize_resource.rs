@@ -33,7 +33,7 @@ pub async fn vectorize_resource(
     limiter: Arc<RateLimiter>,
     db: DbName,
     topic: TopicName,
-    skiplist: Vec<String>,
+    skiplist: Option<Vec<String>>,
 ) -> Result<(), DataVectorizationError> {
     let fluvio = FluvioConnection::new().await?;
     let qdrant = QdrantConnection::new().await?;
@@ -66,8 +66,10 @@ pub async fn vectorize_resource(
                 }
                 let kind_lowercase = kind.to_lowercase();
 
-                if skiplist.contains(&kind_lowercase) {
-                    continue;
+                if let Some(ref skiplist) = skiplist {
+                    if skiplist.contains(&kind_lowercase) {
+                        continue;
+                    }
                 }
 
                 if kind == "Deployment" {
