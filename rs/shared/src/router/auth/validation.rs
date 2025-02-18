@@ -61,13 +61,35 @@ pub async fn validate_token(token: &str) -> Result<String, AuthenticationError> 
 
     let token_data = decode::<Claims>(token, &decoding_key, &validation)?;
     if token_data.claims.exp > chrono::Utc::now().timestamp() as usize {
-        let client_id = parse_client_id(&token_data.claims.sub);
-        Ok(client_id.to_string())
+        validate_client_id(token_data.claims.sub)
     } else {
         Err(AuthenticationError::TokenExpired)
     }
 }
 
-fn parse_client_id(uuid: &str) -> String {
-    uuid.replace('-', "")
+fn validate_client_id(sub: String) -> Result<String, AuthenticationError> {
+    if !sub.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return Err(AuthenticationError::InvalidClientIdFormat(
+            "Client id, must contain only alphanumeric characters".to_string(),
+        ));
+    }
+    Ok(sub)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_subject() {
+        // Valid cases
+        assert!(validate_client_id("abc123ABC".to_owned()).is_ok());
+        assert!(validate_client_id("59a98f41e8d14913b398cd7e4414c05e".to_owned()).is_ok());
+
+        // Invalid cases
+        assert!(validate_client_id("36afb309-638e-40fc-ae4e-c329219ed515".to_owned()).is_err());
+        assert!(validate_client_id("abc-123".to_owned()).is_err());
+        assert!(validate_client_id("abc@123".to_owned()).is_err());
+        assert!(validate_client_id("abc 123".to_owned()).is_err());
+    }
 }

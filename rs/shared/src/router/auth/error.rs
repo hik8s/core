@@ -16,4 +16,6 @@ pub enum AuthenticationError {
     TokenExpired,
     #[error("Fetch JWKS error: {0}")]
     FetchJwksError(#[from] Box<dyn std::error::Error>),
+    #[error("Invalid client id format: {0}")]
+    InvalidClientIdFormat(String),
 }
