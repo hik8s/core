@@ -1032,7 +1032,7 @@ dependencies = [
 
 [[package]]
 name = "data-intake"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "greptimedb-ingester",
  "multipart",

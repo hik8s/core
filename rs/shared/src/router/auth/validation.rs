@@ -15,8 +15,10 @@ struct Jwk {
     n: String,
     e: String,
     kid: String,
-    x5t: String,
-    x5c: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    x5t: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    x5c: Option<Vec<String>>,
 }
 
 async fn fetch_jwks(uri: &str) -> Result<Jwks, Box<dyn Error>> {
@@ -27,7 +29,8 @@ async fn fetch_jwks(uri: &str) -> Result<Jwks, Box<dyn Error>> {
 }
 
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
-use std::env;
+
+use crate::{get_env_var, get_env_var_as_vec};
 
 use super::error::AuthenticationError;
 
@@ -38,8 +41,8 @@ struct Claims {
 }
 
 pub async fn validate_token(token: &str) -> Result<String, AuthenticationError> {
-    let auth0_domain = env::var("AUTH0_DOMAIN")?;
-    let jwks_uri = format!("https://{}/.well-known/jwks.json", auth0_domain);
+    let auth_domain = get_env_var("AUTH_DOMAIN")?;
+    let jwks_uri = format!("https://{}/.well-known/jwks.json", auth_domain);
     let jwks = fetch_jwks(&jwks_uri).await?;
 
     let header = decode_header(token)?;
@@ -53,19 +56,49 @@ pub async fn validate_token(token: &str) -> Result<String, AuthenticationError> 
 
     let decoding_key = DecodingKey::from_rsa_components(&jwk.n, &jwk.e)?;
     let mut validation = Validation::new(Algorithm::RS256);
-    validation.set_audience(&[env::var("AUTH0_AUDIENCE")?]);
-    validation.set_issuer(&[format!("https://{}/", auth0_domain)]);
+    validation.set_issuer(&[format!("https://{}", auth_domain)]);
+    validation.set_audience(&get_env_audience()?);
 
     let token_data = decode::<Claims>(token, &decoding_key, &validation)?;
     if token_data.claims.exp > chrono::Utc::now().timestamp() as usize {
-        let client_id = parse_client_id(&token_data.claims.sub);
-        Ok(client_id.to_string())
+        validate_client_id(token_data.claims.sub)
     } else {
         Err(AuthenticationError::TokenExpired)
     }
 }
 
-fn parse_client_id(input: &str) -> &str {
-    // TODO: sanitize input
-    input.split('@').next().unwrap_or(input)
+fn get_env_audience() -> Result<Vec<String>, AuthenticationError> {
+    match get_env_var_as_vec("AUTH_AUDIENCE")? {
+        Some(audience) => Ok(audience),
+        None => Err(AuthenticationError::MissingAudience(
+            "No audience values found in AUTH_AUDIENCE".to_string(),
+        )),
+    }
+}
+
+fn validate_client_id(sub: String) -> Result<String, AuthenticationError> {
+    if !sub.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return Err(AuthenticationError::InvalidClientIdFormat(
+            "Client id, must contain only alphanumeric characters".to_string(),
+        ));
+    }
+    Ok(sub)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_subject() {
+        // Valid cases
+        assert!(validate_client_id("abc123ABC".to_owned()).is_ok());
+        assert!(validate_client_id("59a98f41e8d14913b398cd7e4414c05e".to_owned()).is_ok());
+
+        // Invalid cases
+        assert!(validate_client_id("36afb309-638e-40fc-ae4e-c329219ed515".to_owned()).is_err());
+        assert!(validate_client_id("abc-123".to_owned()).is_err());
+        assert!(validate_client_id("abc@123".to_owned()).is_err());
+        assert!(validate_client_id("abc 123".to_owned()).is_err());
+    }
 }

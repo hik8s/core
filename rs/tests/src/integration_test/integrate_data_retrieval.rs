@@ -29,7 +29,7 @@ mod tests {
             .await
             .unwrap()
             .0;
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
+        let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
         qdrant
             .upsert_points(points, &DbName::Log, &customer_id)
             .await
