@@ -40,7 +40,7 @@ mod tests {
             .await
             .unwrap()
             .0;
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
+        let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
         qdrant
             .upsert_points(points, &db, &customer_id)
             .await
@@ -140,7 +140,7 @@ mod tests {
         // Data ingestion
 
         let event = get_event_qdrant_metadata();
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
+        let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
         vectorize_chunk(
             &mut vec![event.data.clone()],
             &mut vec![event],
@@ -217,7 +217,7 @@ mod tests {
         setup_tracing(false);
         let qdrant = QdrantConnection::new().await.unwrap();
 
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
+        let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
 
         // Prompt processing
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
@@ -285,7 +285,7 @@ mod tests {
         setup_tracing(false);
         let qdrant = QdrantConnection::new().await.unwrap();
 
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
+        let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
 
         // Prompt processing
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
@@ -354,7 +354,7 @@ mod tests {
         // "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1. What are my options for databases?";
         "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1.";
         // "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1. Create the deployment with postgres and kafka";
-        let customer_id = get_env_var("AUTH0_CLIENT_ID_LOCAL").unwrap();
+        let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
 
         // Prompt processing
         let request_option = RequestOptions::new(prompt, &customer_id);
