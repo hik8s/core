@@ -4585,6 +4585,8 @@ dependencies = [
  "greptimedb-ingester",
  "jsonwebtoken",
  "k8s-openapi",
+ "once_cell",
+ "parking_lot 0.12.3",
  "qdrant-client",
  "rand 0.8.5",
  "redis",

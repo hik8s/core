@@ -13,6 +13,8 @@ futures-util = {workspace = true}
 greptimedb-ingester = {workspace = true}
 jsonwebtoken = {workspace = true}
 k8s-openapi = {workspace = true}
+once_cell = {workspace = true}
+parking_lot = {workspace = true}
 qdrant-client = {workspace = true}
 rand = {workspace = true}
 redis = {workspace = true}
