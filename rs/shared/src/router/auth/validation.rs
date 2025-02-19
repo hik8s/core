@@ -1,13 +1,27 @@
+use once_cell::sync::Lazy;
+use parking_lot::RwLock;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::error::Error;
+use std::time::{Duration, SystemTime};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct Jwks {
     keys: Vec<Jwk>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone)]
+struct CachedJwks {
+    jwks: Jwks,
+    expires_at: SystemTime,
+}
+
+static JWKS_CACHE: Lazy<RwLock<HashMap<String, CachedJwks>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
+const CACHE_DURATION: Duration = Duration::from_secs(3600); // 1 hour cache
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct Jwk {
     alg: String,
     kty: String,
@@ -28,6 +42,29 @@ async fn fetch_jwks(uri: &str) -> Result<Jwks, Box<dyn Error>> {
     Ok(jwks)
 }
 
+async fn get_jwks(uri: &str) -> Result<Jwks, Box<dyn Error>> {
+    // Check cache first
+    if let Some(cached) = JWKS_CACHE.read().get(uri) {
+        if SystemTime::now() < cached.expires_at {
+            return Ok(cached.jwks.clone());
+        }
+    }
+
+    // Cache miss or expired, fetch new JWKS
+    let jwks = fetch_jwks(uri).await?;
+
+    // Update cache
+    JWKS_CACHE.write().insert(
+        uri.to_string(),
+        CachedJwks {
+            jwks: jwks.clone(),
+            expires_at: SystemTime::now() + CACHE_DURATION,
+        },
+    );
+
+    Ok(jwks)
+}
+
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 
 use crate::{get_env_var, get_env_var_as_vec};
@@ -43,7 +80,7 @@ struct Claims {
 pub async fn validate_token(token: &str) -> Result<String, AuthenticationError> {
     let auth_domain = get_env_var("AUTH_DOMAIN")?;
     let jwks_uri = format!("https://{}/.well-known/jwks.json", auth_domain);
-    let jwks = fetch_jwks(&jwks_uri).await?;
+    let jwks = get_jwks(&jwks_uri).await?;
 
     let header = decode_header(token)?;
     let kid = header.kid.ok_or(AuthenticationError::MissingKid)?;

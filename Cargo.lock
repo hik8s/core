@@ -1032,7 +1032,7 @@ dependencies = [
 
 [[package]]
 name = "data-intake"
-version = "0.4.3"
+version = "0.4.4"
 dependencies = [
  "greptimedb-ingester",
  "multipart",
@@ -4585,6 +4585,8 @@ dependencies = [
  "greptimedb-ingester",
  "jsonwebtoken",
  "k8s-openapi",
+ "once_cell",
+ "parking_lot 0.12.3",
  "qdrant-client",
  "rand 0.8.5",
  "redis",

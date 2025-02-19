@@ -55,13 +55,14 @@ Test command for data-intake.
 
 ```bash
 # FILE=/tmp/records.txt
-FILE="/tmp/record_long.txt"
-URL="http://localhost:8000"
 # URL="https://dev.api.hik8s.ai"
 # URL="https://stag.api.hik8s.ai"
+FILE="/tmp/records.txt"
+# URL="https://dev.api.hik8s.ai"
+URL="http://localhost:8000"
 curl -X POST \
-     -H "Authorization: Bearer $AUTH0_TOKEN" \
+     -H "Authorization: Bearer $AUTH_TOKEN" \
      -F 'metadata={"path": "/var/log/pods/ns_my-pod-'$RANDOM'_uid-123/container", "file": "file_name_value"};type=application/json' \
      -F "stream=@$FILE;type=application/octet-stream" \
-     $URL/logs -v
+     $URL/logs
 ```
