@@ -79,7 +79,7 @@ pub fn run_event_processing(
         let fluvio = FluvioConnection::new().await?;
         let consumer = fluvio.create_consumer(0, TopicName::Event).await?;
         let producer = fluvio.get_producer(TopicName::ProcessedEvent).clone();
-        process_event(consumer, producer)
+        process_event(consumer, producer, DbName::Event)
             .await
             .map_err(|e| log_error_with_message!("Event processing thread exited with error", e))?;
         Ok(())
