@@ -3,6 +3,7 @@ use crate::threads::process_event::process_event;
 use crate::threads::process_log::process_logs;
 use crate::threads::process_resource::process_resource;
 
+use shared::connections::dbname::DbName;
 use shared::connections::fluvio::topic::FluvioTopic;
 use shared::fluvio::TopicName;
 use shared::log_error_with_message;
@@ -38,9 +39,11 @@ pub fn run_resource_processing(
         let fluvio = FluvioConnection::new().await?;
         let consumer = fluvio.create_consumer(0, TopicName::Resource).await?;
         let producer = fluvio.get_producer(TopicName::ProcessedResource).clone();
-        process_resource(consumer, producer).await.map_err(|e| {
-            log_error_with_message!("Resource processing thread exited with error", e)
-        })?;
+        process_resource(consumer, producer, DbName::Resource)
+            .await
+            .map_err(|e| {
+                log_error_with_message!("Resource processing thread exited with error", e)
+            })?;
         Ok(())
     }));
 
@@ -57,9 +60,11 @@ pub fn run_customresource_processing(
         let producer = fluvio
             .get_producer(TopicName::ProcessedCustomResource)
             .clone();
-        process_resource(consumer, producer).await.map_err(|e| {
-            log_error_with_message!("Custom resource processing thread exited with error", e)
-        })?;
+        process_resource(consumer, producer, DbName::CustomResource)
+            .await
+            .map_err(|e| {
+                log_error_with_message!("Custom resource processing thread exited with error", e)
+            })?;
         Ok(())
     }));
 
