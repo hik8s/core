@@ -91,7 +91,7 @@ mod tests {
 
         while start_time.elapsed() < timeout {
             // check greptime
-            rows = read_records(greptime.clone(), &db, &customer_id, &pod_name)
+            rows = read_records(greptime.clone(), &db.id(&customer_id), &pod_name)
                 .await
                 .unwrap();
 

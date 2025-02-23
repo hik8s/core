@@ -1,6 +1,5 @@
 use crate::log_error;
 use crate::ConfigError;
-use crate::DbName;
 
 use super::config::GreptimeConfig;
 use greptimedb_ingester::{Client as GreptimeClient, ClientBuilder, Database, StreamInserter};
@@ -50,43 +49,30 @@ impl GreptimeConnection {
             config,
         })
     }
-    pub fn streaming_inserter(
-        &self,
-        db: &DbName,
-        customer_id: &str,
-    ) -> Result<StreamInserter, GreptimeConnectionError> {
-        let database = Database::new_with_dbname(db.id(customer_id), self.client.clone());
+    pub fn streaming_inserter(&self, key: &str) -> Result<StreamInserter, GreptimeConnectionError> {
+        let database = Database::new_with_dbname(key, self.client.clone());
         database
             .streaming_inserter()
             .map_err(|e| log_error!(e).into())
     }
 
-    pub async fn create_database(
-        &self,
-        db: &DbName,
-        customer_id: &str,
-    ) -> Result<(), GreptimeConnectionError> {
-        let db_id = db.id(customer_id);
-        let result = sqlx::query(&format!("CREATE DATABASE {}", db_id))
+    pub async fn create_database(&self, key: &str) -> Result<(), GreptimeConnectionError> {
+        let result = sqlx::query(&format!("CREATE DATABASE {}", key))
             .execute(&self.admin_psql)
             .await;
         if let Err(e) = result {
             match e {
                 Error::Database(ref db_err) if db_err.code() == Some(Cow::Borrowed("22023")) => {
                     // this could happen if the database was created between the check and the create
-                    tracing::debug!("Database {} already exists.", db_id);
+                    tracing::debug!("Database {} already exists.", key);
                 }
                 e => return Err(log_error!(e).into()),
             }
         }
         Ok(())
     }
-    pub async fn connect_db(
-        &self,
-        db: &DbName,
-        customer_id: &str,
-    ) -> Result<Pool<Postgres>, GreptimeConnectionError> {
-        let psql_uri = self.config.get_psql_uri(&db.id(customer_id));
+    pub async fn connect_db(&self, key: &str) -> Result<Pool<Postgres>, GreptimeConnectionError> {
+        let psql_uri = self.config.get_psql_uri(key);
         PgPoolOptions::new()
             .max_connections(5)
             .connect(&psql_uri)
@@ -96,13 +82,12 @@ impl GreptimeConnection {
 
     pub async fn rename_table(
         &self,
-        db: &DbName,
-        customer_id: &str,
+        key: &str,
         table_name: &str,
         new_table_name: &str,
     ) -> Result<(), sqlx::Error> {
         let psql = self
-            .connect_db(db, customer_id)
+            .connect_db(key)
             .await
             .map_err(|e| log_error!(e))
             .unwrap();
@@ -114,13 +99,9 @@ impl GreptimeConnection {
         Ok(())
     }
 
-    pub async fn list_tables(
-        &self,
-        db: &DbName,
-        customer_id: &str,
-    ) -> Result<Vec<String>, sqlx::Error> {
+    pub async fn list_tables(&self, key: &str) -> Result<Vec<String>, sqlx::Error> {
         let psql = self
-            .connect_db(db, customer_id)
+            .connect_db(key)
             .await
             .map_err(|e| log_error!(e))
             .unwrap();
@@ -188,17 +169,17 @@ mod tests {
         let req = create_insert_request(&table_name, columns, 1);
 
         // insert data
-        let inserter = greptime.streaming_inserter(&db, &customer_id).unwrap();
+        let inserter = greptime.streaming_inserter(&db.id(&customer_id)).unwrap();
         inserter.insert(vec![req]).await.unwrap();
         inserter.finish().await.unwrap();
 
         // rename table
         let table_name_deleted = format!("{table_name}___deleted");
         greptime
-            .rename_table(&db, &customer_id, &table_name, &table_name_deleted)
+            .rename_table(&db.id(&customer_id), &table_name, &table_name_deleted)
             .await
             .unwrap();
-        let table_names = greptime.list_tables(&db, &customer_id).await?;
+        let table_names = greptime.list_tables(&db.id(&customer_id)).await?;
 
         // assert rename success
         assert!(

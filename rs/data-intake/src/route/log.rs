@@ -28,7 +28,7 @@ pub async fn log_intake<'a>(
     let db = DbName::Log;
     let topic = TopicName::Log;
 
-    greptime.create_database(&db, &user.customer_id).await?;
+    greptime.create_database(&db.id(&user.customer_id)).await?;
     // The loop will exit successfully if the stream field is processed,
     // exit with an error during processing and if no more field is found
     loop {
@@ -49,7 +49,7 @@ pub async fn log_intake<'a>(
                 let mut logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
-                let stream_inserter = greptime.streaming_inserter(&db, &user.customer_id)?;
+                let stream_inserter = greptime.streaming_inserter(&db.id(&user.customer_id))?;
                 let insert_request = logs_to_insert_request(&logs, &metadata.pod_name);
                 stream_inserter.insert(vec![insert_request]).await?;
                 stream_inserter.finish().await?;
