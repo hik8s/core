@@ -6,9 +6,9 @@ use crate::threads::process_resource::process_resource;
 use shared::connections::dbname::DbName;
 use shared::connections::fluvio::topic::FluvioTopic;
 use shared::fluvio::TopicName;
-use shared::log_error_with_message;
 use shared::FluvioConnection;
 use tokio::task::JoinHandle;
+use tracing::error;
 
 pub fn run_log_processing(
 ) -> Result<Vec<JoinHandle<Result<(), DataProcessingError>>>, DataProcessingError> {
@@ -22,9 +22,8 @@ pub fn run_log_processing(
             let class_producer = fluvio.get_producer(TopicName::Class).clone();
             process_logs(log_consumer, class_producer)
                 .await
-                .map_err(|e| {
-                    log_error_with_message!("Log processing thread exited with error", e)
-                })?;
+                .map_err(DataProcessingError::LogProcessingExit)
+                .inspect_err(|e| error!("{e:?}"))?;
             Ok(())
         }));
     }
@@ -41,9 +40,8 @@ pub fn run_resource_processing(
         let producer = fluvio.get_producer(TopicName::ProcessedResource).clone();
         process_resource(consumer, producer, DbName::Resource)
             .await
-            .map_err(|e| {
-                log_error_with_message!("Resource processing thread exited with error", e)
-            })?;
+            .map_err(DataProcessingError::ResourceProcessingExit)
+            .inspect_err(|e| error!("{e:?}"))?;
         Ok(())
     }));
 
@@ -62,9 +60,8 @@ pub fn run_customresource_processing(
             .clone();
         process_resource(consumer, producer, DbName::CustomResource)
             .await
-            .map_err(|e| {
-                log_error_with_message!("Custom resource processing thread exited with error", e)
-            })?;
+            .map_err(DataProcessingError::CustomResourceProcessingExit)
+            .inspect_err(|e| error!("{e:?}"))?;
         Ok(())
     }));
 
@@ -81,7 +78,8 @@ pub fn run_event_processing(
         let producer = fluvio.get_producer(TopicName::ProcessedEvent).clone();
         process_event(consumer, producer)
             .await
-            .map_err(|e| log_error_with_message!("Event processing thread exited with error", e))?;
+            .map_err(DataProcessingError::EventProcessingExit)
+            .inspect_err(|e| error!("{e:?}"))?;
         Ok(())
     }));
 
