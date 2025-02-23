@@ -158,6 +158,7 @@ mod tests {
         let greptime = GreptimeConnection::new().await.unwrap();
         let db = DbName::Resource;
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
+        let key = db.id(&customer_id);
 
         // test table
         let mut map = HashMap::<&str, String>::new();
@@ -169,17 +170,17 @@ mod tests {
         let req = create_insert_request(&table_name, columns, 1);
 
         // insert data
-        let inserter = greptime.streaming_inserter(&db.id(&customer_id)).unwrap();
+        let inserter = greptime.streaming_inserter(&key).unwrap();
         inserter.insert(vec![req]).await.unwrap();
         inserter.finish().await.unwrap();
 
         // rename table
         let table_name_deleted = format!("{table_name}___deleted");
         greptime
-            .rename_table(&db.id(&customer_id), &table_name, &table_name_deleted)
+            .rename_table(&key, &table_name, &table_name_deleted)
             .await
             .unwrap();
-        let table_names = greptime.list_tables(&db.id(&customer_id)).await?;
+        let table_names = greptime.list_tables(&key).await?;
 
         // assert rename success
         assert!(

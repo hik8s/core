@@ -28,8 +28,9 @@ pub async fn process_resource(
     while let Some(result) = consumer.next().await {
         let record = log_warn_continue!(result);
         let customer_id = log_warn_continue!(get_record_key(&record));
+        let key = db.id(&customer_id);
 
-        greptime.create_database(&db.id(&customer_id)).await?;
+        greptime.create_database(&key).await?;
 
         let data: KubeApiData = log_warn_continue!(record
             .try_into()
@@ -66,7 +67,7 @@ pub async fn process_resource(
             kind,
             latest_timestamp.to_owned(),
         );
-        let stream_inserter = greptime.streaming_inserter(&db.id(&customer_id))?;
+        let stream_inserter = greptime.streaming_inserter(&key)?;
         stream_inserter.insert(vec![insert_request]).await?;
         stream_inserter.finish().await?;
 
@@ -80,7 +81,7 @@ pub async fn process_resource(
             .ok();
         producer.flush().await.map_err(|e| log_warn!(e)).ok();
 
-        commit_and_flush_offsets(&mut consumer, &db.id(&customer_id))
+        commit_and_flush_offsets(&mut consumer, &key)
             .await
             .map_err(|e| log_error!(e))?;
     }

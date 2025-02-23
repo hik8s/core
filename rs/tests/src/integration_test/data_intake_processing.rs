@@ -82,6 +82,7 @@ mod tests {
         let pod_name = test_data.metadata.pod_name.clone();
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
         let db = DbName::Log;
+        let key = db.id(&customer_id);
         qdrant.create_collection(&db, &customer_id).await.unwrap();
 
         let start_time = tokio::time::Instant::now();
@@ -91,7 +92,7 @@ mod tests {
 
         while start_time.elapsed() < timeout {
             // check greptime
-            rows = read_records(greptime.clone(), &db.id(&customer_id), &pod_name)
+            rows = read_records(greptime.clone(), &key, &pod_name)
                 .await
                 .unwrap();
 
