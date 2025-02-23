@@ -6,7 +6,7 @@ use shared::connections::fluvio::util::get_record_key;
 use shared::constant::TOPIC_CLASS_BYTES_PER_RECORD;
 use shared::fluvio::commit_and_flush_offsets;
 use shared::preprocessing::log::preprocess_message;
-use shared::{log_error, log_warn_continue};
+use shared::{log_error, log_error_continue, log_warn_continue, DbName};
 
 use std::sync::Arc;
 
@@ -25,12 +25,14 @@ pub async fn process_logs(
     mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>>,
     producer: Arc<TopicProducer<SpuSocketPool>>,
 ) -> Result<(), ProcessThreadError> {
+    let db = DbName::Log;
     let redis = RedisConnection::new().map_err(ProcessThreadError::RedisInit)?;
     let mut classifier = Classifier::new(None, redis)?;
     while let Some(result) = consumer.next().await {
         let record = log_warn_continue!(result);
 
         let customer_id = log_warn_continue!(get_record_key(&record));
+        let key = db.id(&customer_id);
         let log = log_warn_continue!(
             LogRecord::try_from(record).map_err(ProcessThreadError::DeserializationError)
         );
@@ -71,10 +73,8 @@ pub async fn process_logs(
             producer.flush().await.map_err(|e| log_error!(e))?;
         }
 
-        // commit consumed offsets
-        commit_and_flush_offsets(&mut consumer, customer_id)
-            .await
-            .map_err(|e| log_error!(e))?;
+        // commit fluvio offset
+        log_error_continue!(commit_and_flush_offsets(&mut consumer, &key).await);
     }
     Ok(())
 }

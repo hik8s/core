@@ -29,7 +29,7 @@ pub async fn vectorize_event(
 
         // Process batch
         for (customer_id, records) in batch.drain() {
-            // tracing::info!("ID {} | resources: {}", customer_id, records.len());
+            let key = db.id(&customer_id);
 
             let mut chunk = vec![];
             let mut metachunk = vec![];
@@ -109,8 +109,9 @@ pub async fn vectorize_event(
             .await;
             chunk.clear();
             metachunk.clear();
+
+            // commit fluvio offset
+            log_error_continue!(commit_and_flush_offsets(&mut consumer, &key).await);
         }
-        // commit fluvio offset
-        log_error_continue!(commit_and_flush_offsets(&mut consumer, "".to_string()).await);
     }
 }

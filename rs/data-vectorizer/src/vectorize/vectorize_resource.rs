@@ -48,6 +48,7 @@ pub async fn vectorize_resource(
 
         // Process batch
         for (customer_id, records) in batch.drain() {
+            let key = db.id(&customer_id);
             let mut chunk: Vec<String> = vec![];
             let mut metachunk: Vec<ResourceQdrantMetadata> = vec![];
             let mut uids_deleted: Vec<String> = vec![];
@@ -204,8 +205,9 @@ pub async fn vectorize_resource(
             chunk.clear();
             metachunk.clear();
             uids_deleted.clear();
+
+            // commit fluvio offset
+            log_error_continue!(commit_and_flush_offsets(&mut consumer, &key).await);
         }
-        // commit fluvio offset
-        log_error_continue!(commit_and_flush_offsets(&mut consumer, "".to_string()).await);
     }
 }
