@@ -158,7 +158,7 @@ mod tests {
         let greptime = GreptimeConnection::new().await.unwrap();
         let db = DbName::Resource;
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
-        let key = db.id(&customer_id);
+        let key = db.key(&customer_id);
 
         // test table
         let mut map = HashMap::<&str, String>::new();

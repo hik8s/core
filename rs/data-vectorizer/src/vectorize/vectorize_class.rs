@@ -25,7 +25,7 @@ pub async fn vectorize_class(limiter: Arc<RateLimiter>) -> Result<(), DataVector
 
         // Process batch
         for (customer_id, records) in batch.drain() {
-            let key = db.id(&customer_id);
+            let key = db.key(&customer_id);
             let classes: Vec<Class> = records
                 .into_iter()
                 .map(|record| record.try_into())

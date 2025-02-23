@@ -28,7 +28,7 @@ pub async fn process_resource(
     while let Some(result) = consumer.next().await {
         let record = log_warn_continue!(result);
         let customer_id = log_warn_continue!(get_record_key(&record));
-        let key = db.id(&customer_id);
+        let key = db.key(&customer_id);
 
         greptime.create_database(&key).await?;
 

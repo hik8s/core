@@ -48,7 +48,7 @@ pub async fn vectorize_resource(
 
         // Process batch
         for (customer_id, records) in batch.drain() {
-            let key = db.id(&customer_id);
+            let key = db.key(&customer_id);
             let mut chunk: Vec<String> = vec![];
             let mut metachunk: Vec<ResourceQdrantMetadata> = vec![];
             let mut uids_deleted: Vec<String> = vec![];

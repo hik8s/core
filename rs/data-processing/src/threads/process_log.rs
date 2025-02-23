@@ -32,7 +32,7 @@ pub async fn process_logs(
         let record = log_warn_continue!(result);
 
         let customer_id = log_warn_continue!(get_record_key(&record));
-        let key = db.id(&customer_id);
+        let key = db.key(&customer_id);
         let log = log_warn_continue!(
             LogRecord::try_from(record).map_err(ProcessThreadError::DeserializationError)
         );

@@ -45,7 +45,7 @@ impl QdrantConnection {
     ) -> Result<(), QdrantConnectionError> {
         let collections = self.client.list_collections().await?;
         for collection in collections.collections {
-            if collection.name == db.id(customer_id) {
+            if collection.name == db.key(customer_id) {
                 return Ok(());
             }
         }
@@ -53,7 +53,7 @@ impl QdrantConnection {
         match self
             .client
             .create_collection(
-                CreateCollectionBuilder::new(db.id(customer_id))
+                CreateCollectionBuilder::new(db.key(customer_id))
                     .vectors_config(VectorParamsBuilder::new(EMBEDDING_SIZE, Distance::Cosine)),
             )
             .await
@@ -76,7 +76,7 @@ impl QdrantConnection {
         customer_id: &str,
     ) -> Result<PointsOperationResponse, QdrantConnectionError> {
         self.create_collection(db, customer_id).await?;
-        let request = UpsertPointsBuilder::new(db.id(customer_id), qdrant_point).wait(false);
+        let request = UpsertPointsBuilder::new(db.key(customer_id), qdrant_point).wait(false);
         self.client
             .upsert_points(request)
             .await
@@ -91,7 +91,7 @@ impl QdrantConnection {
     ) -> Result<PointsOperationResponse, QdrantError> {
         self.client
             .set_payload(
-                SetPayloadPointsBuilder::new(db.id(customer_id), new_payload)
+                SetPayloadPointsBuilder::new(db.key(customer_id), new_payload)
                     .points_selector(filter)
                     .wait(true),
             )
@@ -107,7 +107,7 @@ impl QdrantConnection {
     ) -> Result<Vec<ScoredPoint>, QdrantConnectionError> {
         self.create_collection(db, customer_id).await?;
         filter.must_not.push(Condition::matches("deleted", true));
-        let request = SearchPointsBuilder::new(db.id(customer_id), array.to_vec(), limit)
+        let request = SearchPointsBuilder::new(db.key(customer_id), array.to_vec(), limit)
             .filter(filter)
             .with_payload(true);
         let response = self.client.search_points(request).await?;
@@ -121,7 +121,7 @@ impl QdrantConnection {
         limit: u64,
         with_payload: bool,
     ) -> Result<Vec<ScoredPoint>, QdrantConnectionError> {
-        let mut request = QueryPointsBuilder::new(db.id(customer_id))
+        let mut request = QueryPointsBuilder::new(db.key(customer_id))
             .limit(limit)
             .with_payload(with_payload);
 

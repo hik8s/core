@@ -21,7 +21,7 @@ impl fmt::Display for DbName {
 }
 
 impl DbName {
-    pub fn id(&self, customer_id: &str) -> String {
+    pub fn key(&self, customer_id: &str) -> String {
         format!("{self}_{customer_id}")
     }
 }

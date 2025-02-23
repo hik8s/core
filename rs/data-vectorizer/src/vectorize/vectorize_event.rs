@@ -29,7 +29,7 @@ pub async fn vectorize_event(
 
         // Process batch
         for (customer_id, records) in batch.drain() {
-            let key = db.id(&customer_id);
+            let key = db.key(&customer_id);
 
             let mut chunk = vec![];
             let mut metachunk = vec![];
