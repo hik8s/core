@@ -15,7 +15,7 @@ use shared::utils::{
     extract_managed_field_timestamps, extract_timestamp, get_as_option_string, get_as_ref,
     get_as_string,
 };
-use shared::{log_error, log_warn, log_warn_continue, GreptimeConnection};
+use shared::{log_error, log_error_continue, log_warn, log_warn_continue, GreptimeConnection};
 
 use super::error::ProcessThreadError;
 
@@ -41,9 +41,9 @@ pub async fn process_resource(
         let apiversion = log_warn_continue!(get_as_string(&data.json, "apiVersion"));
 
         let metadata = log_warn_continue!(get_as_ref(&data.json, "metadata"));
-        let uid = get_as_option_string(metadata, "uid");
-        let name = get_as_option_string(metadata, "name");
-        let namespace = get_as_option_string(metadata, "namespace");
+        let uid = log_error_continue!(get_as_string(metadata, "uid"));
+        let name = get_as_string(metadata, "name").unwrap_or("no-name".to_string());
+        let namespace = get_as_string(metadata, "namespace").unwrap_or("no-namespace".to_string());
 
         let mut timestamps = extract_managed_field_timestamps(metadata);
         timestamps.push(extract_timestamp(metadata, "creationTimestamp"));
@@ -53,18 +53,49 @@ pub async fn process_resource(
         let status = data.json.get("status").map(|s| s.to_string());
         let spec = data.json.get("spec").map(|s| s.to_string());
 
+        let owner_names = metadata
+            .get("ownerReferences")
+            .and_then(|owner_references| {
+                owner_references.as_array().map(|refs| {
+                    refs.iter()
+                        .filter_map(|owner| get_as_option_string(owner, "name"))
+                        .collect::<Vec<String>>()
+                })
+            });
+        let owner_uids = metadata
+            .get("ownerReferences")
+            .and_then(|owner_references| {
+                owner_references.as_array().map(|refs| {
+                    refs.iter()
+                        .filter_map(|owner| get_as_option_string(owner, "uid"))
+                        .collect::<Vec<String>>()
+                })
+            });
+        let aggregation_name = match owner_names {
+            Some(names) => names.join("_"),
+            None => name.clone(),
+        };
+        let aggregation_uid = match owner_uids {
+            Some(uids) => uids.join("_"),
+            None => uid.clone(),
+        };
+
+        let table = format!(
+            "{}__{namespace}__{aggregation_name}__{aggregation_uid}",
+            kind.to_lowercase()
+        );
         let insert_request = resource_to_insert_request(
             apiversion,
             Some(kind.clone()),
-            name,
-            uid,
+            Some(name),
+            Some(uid),
             Some(metadata.to_string()),
-            namespace,
+            Some(namespace),
             spec,
             status,
             None,
             None,
-            kind,
+            table,
             latest_timestamp.to_owned(),
         );
         let stream_inserter = greptime.streaming_inserter(&db)?;
