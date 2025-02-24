@@ -99,6 +99,12 @@ impl GreptimeConnection {
         Ok(())
     }
 
+    pub async fn mark_table_deleted(&self, key: &str, table_name: &str) -> Result<(), sqlx::Error> {
+        let table_name_deleted = format!("{table_name}___deleted");
+        self.rename_table(key, table_name, &table_name_deleted)
+            .await
+    }
+
     pub async fn list_tables(&self, key: &str) -> Result<Vec<String>, sqlx::Error> {
         let psql = self
             .connect_db(key)
@@ -174,11 +180,7 @@ mod tests {
         inserter.finish().await.unwrap();
 
         // rename table
-        let table_name_deleted = format!("{table_name}___deleted");
-        greptime
-            .rename_table(&db, &table_name, &table_name_deleted)
-            .await
-            .unwrap();
+        greptime.mark_table_deleted(&db, &table_name).await.unwrap();
         let table_names = greptime.list_tables(&db).await?;
 
         // assert rename success
@@ -187,7 +189,7 @@ mod tests {
             "Original table should not exist"
         );
         assert!(
-            table_names.contains(&table_name_deleted),
+            table_names.contains(&format!("{table_name}___deleted")),
             "Deleted table should exist"
         );
         Ok(())
