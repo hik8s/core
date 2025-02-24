@@ -1,3 +1,4 @@
+use crate::constant::GREPTIME_TABLE_KEY;
 use crate::log_error;
 use crate::ConfigError;
 
@@ -105,15 +106,22 @@ impl GreptimeConnection {
             .await
     }
 
-    pub async fn list_tables(&self, key: &str) -> Result<Vec<String>, sqlx::Error> {
+    pub async fn list_tables(
+        &self,
+        key: &str,
+        filter: Option<&str>,
+    ) -> Result<Vec<String>, sqlx::Error> {
         let psql = self
             .connect_db(key)
             .await
             .map_err(|e| log_error!(e))
             .unwrap();
-        let query = "SHOW TABLES";
-        let rows = psql.fetch_all(query).await?;
-        let tables = rows.iter().map(|row| row.get("Tables")).collect();
+        let query = match filter {
+            Some(filter) => format!("SHOW TABLES WHERE {GREPTIME_TABLE_KEY} LIKE '%{filter}%'"),
+            None => "SHOW TABLES".to_string(),
+        };
+        let rows = psql.fetch_all(query.as_str()).await?;
+        let tables = rows.iter().map(|row| row.get(GREPTIME_TABLE_KEY)).collect();
         Ok(tables)
     }
 }
@@ -181,7 +189,7 @@ mod tests {
 
         // rename table
         greptime.mark_table_deleted(&db, &table_name).await.unwrap();
-        let table_names = greptime.list_tables(&db).await?;
+        let table_names = greptime.list_tables(&db, None).await?;
 
         // assert rename success
         assert!(
@@ -192,6 +200,23 @@ mod tests {
             table_names.contains(&format!("{table_name}___deleted")),
             "Deleted table should exist"
         );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_list_tables() -> Result<(), sqlx::Error> {
+        setup_tracing(true);
+
+        // greptime connection
+        let greptime = GreptimeConnection::new().await.unwrap();
+        let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
+        let db = DbName::Resource.id(&customer_id);
+        // let uid = Some("b013a9cd-86fb-4d05-a0cc-057d71dd0d08");
+        let uid = None;
+        let table_names = greptime.list_tables(&db, uid).await?;
+        assert!(!table_names.is_empty());
+        tracing::debug!("Tables: {:?}", table_names);
+
         Ok(())
     }
 }

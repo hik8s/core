@@ -10,7 +10,7 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use shared::connections::greptime::middleware::insert::resource_to_insert_request;
 use shared::fluvio::commit_and_flush_offsets;
-use shared::types::kubeapidata::KubeApiData;
+use shared::types::kubeapidata::{KubeApiData, KubeEventType};
 use shared::utils::{
     extract_managed_field_timestamps, extract_timestamp, get_as_option_string, get_as_ref,
     get_as_string,
@@ -84,6 +84,14 @@ pub async fn process_resource(
             "{}__{namespace}__{aggregation_name}__{aggregation_uid}",
             kind.to_lowercase()
         );
+
+        if data.event_type == KubeEventType::Delete {
+            let tables = greptime.list_tables(&db, Some(&uid)).await.unwrap();
+            for table in tables {
+                greptime.mark_table_deleted(&db, &table).await.unwrap();
+            }
+        }
+
         let insert_request = resource_to_insert_request(
             apiversion,
             Some(kind.clone()),

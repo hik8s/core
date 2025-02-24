@@ -41,7 +41,7 @@ impl QdrantConnection {
     pub async fn create_collection(&self, db: &str) -> Result<(), QdrantConnectionError> {
         let collections = self.client.list_collections().await?;
         for collection in collections.collections {
-            if &collection.name == db {
+            if collection.name == db {
                 return Ok(());
             }
         }
