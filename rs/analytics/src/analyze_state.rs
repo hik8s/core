@@ -1,9 +1,9 @@
 use redis::Commands;
 
-use shared::{DbName, RedisConnection};
+use shared::RedisConnection;
 
-pub async fn analyze_state(redis: &mut RedisConnection, customer_id: &str) {
-    let match_key = format!("{}_*", DbName::Log.key(customer_id));
+pub async fn analyze_state(redis: &mut RedisConnection, db: &str) {
+    let match_key = format!("{}_*", db);
     let keys: Vec<String> = redis.connection.keys(&match_key).unwrap();
     tracing::info!(
         "Found {} keys in Redis that match: {}",

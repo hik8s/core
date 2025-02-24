@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use shared::{DbName, QdrantConnection};
+use shared::QdrantConnection;
 
 use crate::{
     histogram::create_histogram,
@@ -11,7 +11,7 @@ pub async fn analyze_resource(
     filter_map: HashMap<String, Option<String>>,
     count_key: &str,
     qdrant: &QdrantConnection,
-    customer_id: &str,
+    db: &str,
     limit: u64,
 ) {
     // write deployment
@@ -23,7 +23,7 @@ pub async fn analyze_resource(
             "Deployment",
             &["status", "metadata", "spec"],
             qdrant,
-            customer_id,
+            db,
             limit,
         )
         .await
@@ -34,20 +34,18 @@ pub async fn analyze_resource(
             "Pod",
             &["status", "metadata", "spec"],
             qdrant,
-            customer_id,
+            db,
             limit,
         )
         .await
         .unwrap();
     }
 
-    let db = &DbName::Resource;
     let top_k = 10;
 
     // histograms
     for (filter_key, filter_value) in filter_map {
-        let groups =
-            group_points_by_key(&filter_key, filter_value, qdrant, db, customer_id, limit).await;
+        let groups = group_points_by_key(&filter_key, filter_value, qdrant, db, limit).await;
         tracing::debug!("unique groups: {:?}", groups.keys());
         tracing::debug!("unique groups len: {:?}", groups.len());
 

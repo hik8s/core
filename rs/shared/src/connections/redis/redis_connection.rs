@@ -38,11 +38,11 @@ impl RedisConnection {
         Ok(redis_connection)
     }
 
-    pub fn key(&self, db: DbName, customer_id: &str, kind: Option<&str>, uid: &str) -> String {
+    pub fn key(&self, key_prefix: &str, kind: Option<&str>, uid: &str) -> String {
         if let Some(kind) = kind {
-            format!("{}_{}_{}", db.key(customer_id), kind, uid)
+            format!("{}_{}_{}", key_prefix, kind, uid)
         } else {
-            format!("{}_{}", db.key(customer_id), uid)
+            format!("{}_{}", key_prefix, uid)
         }
     }
 

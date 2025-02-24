@@ -16,13 +16,12 @@ pub async fn group_points_by_key(
     key: &str,
     value: Option<String>,
     qdrant: &QdrantConnection,
-    db: &DbName,
-    customer_id: &str,
+    db: &str,
     limit: u64,
 ) -> HashMap<String, Vec<ScoredPoint>> {
     let filter = value.map(|v| string_filter(key, &v));
     let points = qdrant
-        .query_points(db, customer_id, filter.clone(), limit, true)
+        .query_points(db, filter.clone(), limit, true)
         .await
         .unwrap();
 
@@ -98,10 +97,9 @@ pub async fn write_resource_yaml(
     kind: &str,
     data_types: &[&str],
     qdrant: &QdrantConnection,
-    customer_id: &str,
+    db: &str,
     limit: u64,
 ) -> Result<(), std::io::Error> {
-    let db = DbName::Resource;
     for data_type in data_types {
         let subdir = format!("{}_{}", kind.to_lowercase(), name.to_lowercase(),);
         let output_dir = Path::new(dir).join(subdir);
@@ -112,7 +110,7 @@ pub async fn write_resource_yaml(
         filter.must.push(string_condition("data_type", data_type));
 
         let points = qdrant
-            .query_points(&db, customer_id, Some(filter), limit, true)
+            .query_points(db, Some(filter), limit, true)
             .await
             .unwrap();
 

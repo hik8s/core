@@ -81,9 +81,8 @@ mod tests {
         let qdrant = QdrantConnection::new().await.unwrap();
         let pod_name = test_data.metadata.pod_name.clone();
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
-        let db = DbName::Log;
-        let key = db.key(&customer_id);
-        qdrant.create_collection(&db, &customer_id).await.unwrap();
+        let db = DbName::Log.key(&customer_id);
+        qdrant.create_collection(&db).await.unwrap();
 
         let start_time = tokio::time::Instant::now();
         let timeout = Duration::from_secs(30);
@@ -92,14 +91,14 @@ mod tests {
 
         while start_time.elapsed() < timeout {
             // check greptime
-            rows = read_records(greptime.clone(), &key, &pod_name)
+            rows = read_records(greptime.clone(), &db, &pod_name)
                 .await
                 .unwrap();
 
             // check qdrant
             let filter = string_filter("key", &pod_name);
             let points = qdrant
-                .query_points(&db, &customer_id, Some(filter), 1000, true)
+                .query_points(&db, Some(filter), 1000, true)
                 .await
                 .unwrap();
             classes = from_scored_point(points).unwrap();
@@ -145,12 +144,19 @@ mod tests {
     #[case(("skiplist-resource", "resources", DbName::Resource, 9, TestType::Update))]
     #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3, TestType::Update))]
     async fn test_e2e_integration(
-        #[case] (subdir, route, db, num_points, test_type): (&str, &str, DbName, usize, TestType),
+        #[case] (subdir, route, dbname, num_points, test_type): (
+            &str,
+            &str,
+            DbName,
+            usize,
+            TestType,
+        ),
     ) -> Result<(), DataIntakeError> {
         let num_cases = 8;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
+        let db_id = dbname.key(&customer_id);
 
         THREAD_RESOURCE_PROCESSING.call_once(|| {
             run_resource_processing().unwrap();
@@ -171,7 +177,7 @@ mod tests {
         let mut json = read_yaml_files(&path).unwrap();
 
         // this assumes that the same resource uid is being sent
-        let resource_uid = replace_resource_uids(&mut json, &db);
+        let resource_uid = replace_resource_uids(&mut json, &dbname);
         tracing::debug!("Resource UID: {}", resource_uid);
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
@@ -184,7 +190,7 @@ mod tests {
         while start_time.elapsed() < timeout {
             let filter = match_any("resource_uid", &[resource_uid.clone()]);
             points = qdrant
-                .query_points(&db, &customer_id, Some(filter), 1000, true)
+                .query_points(&db_id, Some(filter), 1000, true)
                 .await
                 .unwrap();
             if test_type == TestType::Delete {

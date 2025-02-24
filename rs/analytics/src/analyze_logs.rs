@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use qdrant_client::qdrant::ScoredPoint;
-use shared::{DbName, QdrantConnection};
+use shared::QdrantConnection;
 
 use crate::{histogram::create_histogram, utils::group_points_by_key};
 
@@ -9,14 +9,12 @@ pub async fn analyze_logs(
     filter_map: HashMap<String, Option<String>>,
     count_key: &str,
     qdrant: &QdrantConnection,
-    customer_id: &str,
+    db: &str,
     limit: u64,
 ) {
-    let db = &DbName::Log;
     let top_k = 10;
     for (filter_key, filter_value) in filter_map {
-        let groups =
-            group_points_by_key(&filter_key, filter_value, qdrant, db, customer_id, limit).await;
+        let groups = group_points_by_key(&filter_key, filter_value, qdrant, db, limit).await;
         tracing::debug!("unique groups: {:?}", groups.keys());
         tracing::debug!("unique groups len: {:?}", groups.len());
 

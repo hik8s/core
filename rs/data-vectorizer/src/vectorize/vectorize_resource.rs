@@ -48,7 +48,7 @@ pub async fn vectorize_resource(
 
         // Process batch
         for (customer_id, records) in batch.drain() {
-            let key = db.key(&customer_id);
+            let db = db.key(&customer_id);
             let mut chunk: Vec<String> = vec![];
             let mut metachunk: Vec<ResourceQdrantMetadata> = vec![];
             let mut uids_deleted: Vec<String> = vec![];
@@ -76,7 +76,7 @@ pub async fn vectorize_resource(
                 if kind == "Deployment" {
                     let requires_vectorization = log_error_continue!(
                         update_resource_state(
-                            &customer_id,
+                            &db,
                             &kind,
                             &mut redis,
                             &mut kube_api_data,
@@ -106,7 +106,7 @@ pub async fn vectorize_resource(
 
                     let requires_vectorization = log_error_continue!(
                         update_resource_state(
-                            &customer_id,
+                            &db,
                             &kind,
                             &mut redis,
                             &mut kube_api_data,
@@ -173,41 +173,24 @@ pub async fn vectorize_resource(
 
                 if total_token_count > 100000 {
                     limiter.check_rate_limit(total_token_count).await;
-                    vectorize_chunk(
-                        &mut chunk,
-                        &mut metachunk,
-                        &qdrant,
-                        &customer_id,
-                        &db,
-                        total_token_count,
-                    )
-                    .await;
+                    vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &db, total_token_count)
+                        .await;
                     total_token_count = 0;
                 }
             }
 
             limiter.check_rate_limit(total_token_count).await;
 
-            vectorize_chunk(
-                &mut chunk,
-                &mut metachunk,
-                &qdrant,
-                &customer_id,
-                &db,
-                total_token_count,
-            )
-            .await;
+            vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &db, total_token_count).await;
 
-            log_error_continue!(
-                update_deleted_resources(&qdrant, &customer_id, &db, &uids_deleted).await
-            );
+            log_error_continue!(update_deleted_resources(&qdrant, &db, &uids_deleted).await);
 
             chunk.clear();
             metachunk.clear();
             uids_deleted.clear();
 
             // commit fluvio offset
-            log_error_continue!(commit_and_flush_offsets(&mut consumer, &key).await);
+            log_error_continue!(commit_and_flush_offsets(&mut consumer, &db).await);
         }
     }
 }

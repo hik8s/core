@@ -32,19 +32,17 @@ pub async fn process_logs(
         let record = log_warn_continue!(result);
 
         let customer_id = log_warn_continue!(get_record_key(&record));
-        let key = db.key(&customer_id);
+        let db = db.key(&customer_id);
         let log = log_warn_continue!(
             LogRecord::try_from(record).map_err(ProcessThreadError::DeserializationError)
         );
 
         // preprocess
-        let preprocessed_message =
-            preprocess_message(&log.message, &customer_id, &log.key, &log.record_id);
+        let preprocessed_message = preprocess_message(&log.message, &db, &log.key, &log.record_id);
         let preprocessed_log = PreprocessedLogRecord::from((log, preprocessed_message));
 
         // classify
-        let (updated_class, _classified_log) =
-            classifier.classify(&preprocessed_log, &customer_id)?;
+        let (updated_class, _classified_log) = classifier.classify(&preprocessed_log, &db)?;
 
         // produce to fluvio
         if updated_class.is_some() {
@@ -74,7 +72,7 @@ pub async fn process_logs(
         }
 
         // commit fluvio offset
-        log_error_continue!(commit_and_flush_offsets(&mut consumer, &key).await);
+        log_error_continue!(commit_and_flush_offsets(&mut consumer, &db).await);
     }
     Ok(())
 }

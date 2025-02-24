@@ -58,7 +58,7 @@ pub async fn log_intake<'a>(
                 // send to fluvio
                 for log in logs.iter_mut() {
                     let max_bytes = fluvio.get_topic(topic).max_bytes;
-                    log.truncate_record(&user.customer_id, max_bytes);
+                    log.truncate_record(&key, max_bytes);
                     let serialized_record = serde_json::to_string(&log).unwrap();
                     if serialized_record.len() > max_bytes {
                         warn!(

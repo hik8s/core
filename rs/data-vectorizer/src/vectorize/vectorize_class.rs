@@ -25,7 +25,7 @@ pub async fn vectorize_class(limiter: Arc<RateLimiter>) -> Result<(), DataVector
 
         // Process batch
         for (customer_id, records) in batch.drain() {
-            let key = db.key(&customer_id);
+            let db = db.key(&customer_id);
             let classes: Vec<Class> = records
                 .into_iter()
                 .map(|record| record.try_into())
@@ -35,7 +35,7 @@ pub async fn vectorize_class(limiter: Arc<RateLimiter>) -> Result<(), DataVector
             let (points, token_count) =
                 log_error_continue!(vectorize_class_batch(&classes, &tokenizer, &limiter).await);
 
-            log_error_continue!(qdrant.upsert_points(points, &db, &customer_id).await);
+            log_error_continue!(qdrant.upsert_points(points, &db).await);
 
             info!(
                 "Vectorized {} classes with {} tokens. Total used tokens: {}, ID: {}",
@@ -44,7 +44,7 @@ pub async fn vectorize_class(limiter: Arc<RateLimiter>) -> Result<(), DataVector
                 limiter.tokens_used.lock().await,
                 customer_id
             );
-            log_error_continue!(commit_and_flush_offsets(&mut consumer, &key).await);
+            log_error_continue!(commit_and_flush_offsets(&mut consumer, &db).await);
         }
     }
 }

@@ -29,7 +29,7 @@ pub async fn vectorize_event(
 
         // Process batch
         for (customer_id, records) in batch.drain() {
-            let key = db.key(&customer_id);
+            let db = db.key(&customer_id);
 
             let mut chunk = vec![];
             let mut metachunk = vec![];
@@ -84,34 +84,19 @@ pub async fn vectorize_event(
 
                 if total_token_count > 100000 {
                     limiter.check_rate_limit(total_token_count).await;
-                    vectorize_chunk(
-                        &mut chunk,
-                        &mut metachunk,
-                        &qdrant,
-                        &customer_id,
-                        &db,
-                        total_token_count,
-                    )
-                    .await;
+                    vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &db, total_token_count)
+                        .await;
                     total_token_count = 0;
                 }
             }
 
             limiter.check_rate_limit(total_token_count).await;
-            vectorize_chunk(
-                &mut chunk,
-                &mut metachunk,
-                &qdrant,
-                &customer_id,
-                &db,
-                total_token_count,
-            )
-            .await;
+            vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &db, total_token_count).await;
             chunk.clear();
             metachunk.clear();
 
             // commit fluvio offset
-            log_error_continue!(commit_and_flush_offsets(&mut consumer, &key).await);
+            log_error_continue!(commit_and_flush_offsets(&mut consumer, &db).await);
         }
     }
 }
