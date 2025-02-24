@@ -25,11 +25,10 @@ pub async fn log_intake<'a>(
 ) -> Result<String, DataIntakeError> {
     let mut multipart = into_multipart(content_type, data).await?;
     let mut metadata: Option<Metadata> = None;
-    let db = DbName::Log;
     let topic = TopicName::Log;
-    let key = db.key(&user.customer_id);
+    let db = DbName::Log.id(&user.customer_id);
 
-    greptime.create_database(&key).await?;
+    greptime.create_database(&db).await?;
     // The loop will exit successfully if the stream field is processed,
     // exit with an error during processing and if no more field is found
     loop {
@@ -50,7 +49,7 @@ pub async fn log_intake<'a>(
                 let mut logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
-                let stream_inserter = greptime.streaming_inserter(&key)?;
+                let stream_inserter = greptime.streaming_inserter(&db)?;
                 let insert_request = logs_to_insert_request(&logs, &metadata.pod_name);
                 stream_inserter.insert(vec![insert_request]).await?;
                 stream_inserter.finish().await?;
@@ -58,7 +57,7 @@ pub async fn log_intake<'a>(
                 // send to fluvio
                 for log in logs.iter_mut() {
                     let max_bytes = fluvio.get_topic(topic).max_bytes;
-                    log.truncate_record(&key, max_bytes);
+                    log.truncate_record(&db, max_bytes);
                     let serialized_record = serde_json::to_string(&log).unwrap();
                     if serialized_record.len() > max_bytes {
                         warn!(

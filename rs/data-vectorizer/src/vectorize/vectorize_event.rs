@@ -15,7 +15,7 @@ use super::vectorizer::vectorize_chunk;
 
 pub async fn vectorize_event(
     limiter: Arc<RateLimiter>,
-    db: DbName,
+    dbname: DbName,
     topic: TopicName,
 ) -> Result<(), DataVectorizationError> {
     let fluvio = FluvioConnection::new().await?;
@@ -29,7 +29,7 @@ pub async fn vectorize_event(
 
         // Process batch
         for (customer_id, records) in batch.drain() {
-            let db = db.key(&customer_id);
+            let db = dbname.id(&customer_id);
 
             let mut chunk = vec![];
             let mut metachunk = vec![];

@@ -32,7 +32,7 @@ mod tests {
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await?;
         let customer_id = "test_customer";
-        let db = DbName::Log.key(customer_id);
+        let db = DbName::Log.id(customer_id);
 
         // Create initial point with multiple fields
         let uid1 = uuid4().to_string();
@@ -54,7 +54,7 @@ mod tests {
         update_deleted_resources(&qdrant, &db, &resource_uids).await?;
 
         // Verify update
-        let db = DbName::Log.key(customer_id);
+        let db = DbName::Log.id(customer_id);
 
         let filter_uid12 = match_any("resource_uid", &resource_uids);
         let points = qdrant

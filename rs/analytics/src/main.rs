@@ -22,8 +22,8 @@ async fn main() {
 
     env::set_var("QDRANT_HOST", "dev.qdrant.hik8s.ai");
     let customer_id = get_env_var("ANALYTICS_CLIENT_ID").unwrap();
-    let db_resource = DbName::Resource.key(&customer_id);
-    let db_log = DbName::Log.key(&customer_id);
+    let db_resource = DbName::Resource.id(&customer_id);
+    let db_log = DbName::Log.id(&customer_id);
     let qdrant = QdrantConnection::new().await.unwrap();
 
     let filter_map = create_map("namespace", Some("examples"));

@@ -30,7 +30,7 @@ mod tests {
             .unwrap()
             .0;
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
-        let db = DbName::Log.key(&customer_id);
+        let db = DbName::Log.id(&customer_id);
         qdrant.upsert_points(points, &db).await.unwrap();
 
         let tool = Tool::LogRetrieval(LogRetrievalArgs::new(&testdata));

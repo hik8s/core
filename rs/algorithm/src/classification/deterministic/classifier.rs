@@ -6,7 +6,7 @@ use shared::{
         record::{classified::ClassifiedLogRecord, preprocessed::PreprocessedLogRecord},
         tokenizer::Tokenizer,
     },
-    DbName, RedisConnection,
+    RedisConnection,
 };
 use std::env::var;
 

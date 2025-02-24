@@ -449,7 +449,7 @@ if a databases are specified provide the exact yaml."###, application_name = arg
             },
             Tool::LogRetrieval(args) => {
                 tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
-                let db = DbName::Log.key(customer_id);
+                let db = DbName::Log.id(customer_id);
                 let search_prompt = create_search_prompt(user_message, &args);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter(args.namespace.as_ref(), args.application.as_ref());
@@ -463,7 +463,7 @@ if a databases are specified provide the exact yaml."###, application_name = arg
             }, 
             Tool::EventRetrieval(args) => {
                 tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
-                let db = DbName::Event.key(customer_id);
+                let db = DbName::Event.id(customer_id);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter(None, None);
@@ -478,7 +478,7 @@ if a databases are specified provide the exact yaml."###, application_name = arg
             }
             Tool::ResourceStatusRetrieval(args) => {
                 tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
-                let db = DbName::Resource.key(customer_id);
+                let db = DbName::Resource.id(customer_id);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter_with_data_type(None, None, "status");
@@ -491,7 +491,7 @@ if a databases are specified provide the exact yaml."###, application_name = arg
             }
             Tool::ResourceSpecRetrieval(args) => {
                 tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
-                let db = DbName::Resource.key(customer_id);
+                let db = DbName::Resource.id(customer_id);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter_with_data_type(None, None, "spec");
@@ -504,7 +504,7 @@ if a databases are specified provide the exact yaml."###, application_name = arg
             }
             Tool::CustomResourceStatusRetrieval(args) => {
                 tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
-                let db = DbName::CustomResource.key(customer_id);
+                let db = DbName::CustomResource.id(customer_id);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter_with_data_type(None, None, "status");
@@ -517,7 +517,7 @@ if a databases are specified provide the exact yaml."###, application_name = arg
             }
             Tool::CustomResourceSpecRetrieval(args) => {
                 tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
-                let db = DbName::CustomResource.key(customer_id);
+                let db = DbName::CustomResource.id(customer_id);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter_with_data_type(None, None, "spec");

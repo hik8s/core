@@ -81,7 +81,7 @@ mod tests {
         let qdrant = QdrantConnection::new().await.unwrap();
         let pod_name = test_data.metadata.pod_name.clone();
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
-        let db = DbName::Log.key(&customer_id);
+        let db = DbName::Log.id(&customer_id);
         qdrant.create_collection(&db).await.unwrap();
 
         let start_time = tokio::time::Instant::now();
@@ -156,7 +156,7 @@ mod tests {
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
-        let db_id = dbname.key(&customer_id);
+        let db_id = dbname.id(&customer_id);
 
         THREAD_RESOURCE_PROCESSING.call_once(|| {
             run_resource_processing().unwrap();

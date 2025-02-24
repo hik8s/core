@@ -22,15 +22,15 @@ use super::error::ProcessThreadError;
 pub async fn process_resource(
     mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>>,
     producer: Arc<TopicProducer<SpuSocketPool>>,
-    db: DbName,
+    dbname: DbName,
 ) -> Result<(), ProcessThreadError> {
     let greptime = GreptimeConnection::new().await?;
     while let Some(result) = consumer.next().await {
         let record = log_warn_continue!(result);
         let customer_id = log_warn_continue!(get_record_key(&record));
-        let key = db.key(&customer_id);
+        let db = dbname.id(&customer_id);
 
-        greptime.create_database(&key).await?;
+        greptime.create_database(&db).await?;
 
         let data: KubeApiData = log_warn_continue!(record
             .try_into()
@@ -67,7 +67,7 @@ pub async fn process_resource(
             kind,
             latest_timestamp.to_owned(),
         );
-        let stream_inserter = greptime.streaming_inserter(&key)?;
+        let stream_inserter = greptime.streaming_inserter(&db)?;
         stream_inserter.insert(vec![insert_request]).await?;
         stream_inserter.finish().await?;
 
@@ -81,7 +81,7 @@ pub async fn process_resource(
             .ok();
         producer.flush().await.map_err(|e| log_warn!(e)).ok();
 
-        commit_and_flush_offsets(&mut consumer, &key)
+        commit_and_flush_offsets(&mut consumer, &db)
             .await
             .map_err(|e| log_error!(e))?;
     }

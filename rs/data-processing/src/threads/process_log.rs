@@ -25,14 +25,13 @@ pub async fn process_logs(
     mut consumer: impl ConsumerStream<Item = Result<ConsumerRecord, ErrorCode>>,
     producer: Arc<TopicProducer<SpuSocketPool>>,
 ) -> Result<(), ProcessThreadError> {
-    let db = DbName::Log;
     let redis = RedisConnection::new().map_err(ProcessThreadError::RedisInit)?;
     let mut classifier = Classifier::new(None, redis)?;
     while let Some(result) = consumer.next().await {
         let record = log_warn_continue!(result);
 
         let customer_id = log_warn_continue!(get_record_key(&record));
-        let db = db.key(&customer_id);
+        let db = DbName::Log.id(&customer_id);
         let log = log_warn_continue!(
             LogRecord::try_from(record).map_err(ProcessThreadError::DeserializationError)
         );

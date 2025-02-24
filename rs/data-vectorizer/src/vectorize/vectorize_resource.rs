@@ -31,7 +31,7 @@ use crate::{
 
 pub async fn vectorize_resource(
     limiter: Arc<RateLimiter>,
-    db: DbName,
+    dbname: DbName,
     topic: TopicName,
     skiplist: Option<Vec<String>>,
 ) -> Result<(), DataVectorizationError> {
@@ -48,7 +48,7 @@ pub async fn vectorize_resource(
 
         // Process batch
         for (customer_id, records) in batch.drain() {
-            let db = db.key(&customer_id);
+            let db = dbname.id(&customer_id);
             let mut chunk: Vec<String> = vec![];
             let mut metachunk: Vec<ResourceQdrantMetadata> = vec![];
             let mut uids_deleted: Vec<String> = vec![];

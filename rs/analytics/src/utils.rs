@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::Path};
 use qdrant_client::qdrant::ScoredPoint;
 use shared::{
     qdrant_util::{parse_qdrant_value, string_condition, string_filter},
-    DbName, QdrantConnection,
+    QdrantConnection,
 };
 
 pub fn create_map(key: &str, value: Option<&str>) -> HashMap<String, Option<String>> {

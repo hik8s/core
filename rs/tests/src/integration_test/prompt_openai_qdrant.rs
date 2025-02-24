@@ -28,7 +28,7 @@ mod tests {
     #[case(UserTestData::new(UserTest::PodKillOutOffMemory), DbName::Log)]
     async fn test_process_user_message(
         #[case] testdata: UserTestData,
-        #[case] db: DbName,
+        #[case] dbname: DbName,
     ) -> Result<(), OpenAIError> {
         setup_tracing(false);
         let qdrant = QdrantConnection::new().await.unwrap();
@@ -41,7 +41,7 @@ mod tests {
             .unwrap()
             .0;
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
-        let db = db.key(&customer_id);
+        let db = dbname.id(&customer_id);
         qdrant.upsert_points(points, &db).await.unwrap();
 
         // Prompt processing
@@ -138,7 +138,7 @@ mod tests {
         // Data ingestion
         let event = get_event_qdrant_metadata();
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
-        let db_id = dbname.key(&customer_id);
+        let db_id = dbname.id(&customer_id);
         vectorize_chunk(
             &mut vec![event.data.clone()],
             &mut vec![event],
