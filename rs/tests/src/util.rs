@@ -75,10 +75,11 @@ pub async fn process_resource_files(client: Client, route: &str) -> Result<(), D
     Ok(())
 }
 
-pub fn replace_resource_uids(resources: &mut [serde_json::Value], dbname: &DbName) -> String {
-    let resource_uid = uuid4().to_string();
-
-    let mut owner_uids_map: HashMap<String, String> = HashMap::new();
+pub fn replace_resource_uids(
+    resources: &mut [serde_json::Value],
+    dbname: &DbName,
+) -> HashMap<String, String> {
+    let mut uid_map: HashMap<String, String> = HashMap::new();
 
     for resource in resources.iter_mut() {
         if let Some(json) = resource.get_mut("json") {
@@ -90,9 +91,18 @@ pub fn replace_resource_uids(resources: &mut [serde_json::Value], dbname: &DbNam
             };
             if let Some(metadata) = json.as_object_mut().and_then(|obj| obj.get_mut(key)) {
                 if let Some(metadata_obj) = metadata.as_object_mut() {
+                    let current_uid = metadata_obj
+                        .get("uid")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let new_uid = uid_map
+                        .entry(current_uid)
+                        .or_insert_with(|| uuid4().to_string())
+                        .clone();
                     metadata_obj.insert(
                         "uid".to_string(),
-                        serde_json::Value::String(resource_uid.clone()),
+                        serde_json::Value::String(new_uid.clone()),
                     );
                     if dbname == &DbName::Resource {
                         if let Some(owner_refs) = metadata_obj.get_mut("ownerReferences") {
@@ -105,7 +115,7 @@ pub fn replace_resource_uids(resources: &mut [serde_json::Value], dbname: &DbNam
                                             .unwrap_or("")
                                             .to_string();
 
-                                        let owner_uid = owner_uids_map
+                                        let owner_uid = uid_map
                                             .entry(original_owner_uid)
                                             .or_insert_with(|| uuid4().to_string())
                                             .clone();
@@ -124,5 +134,5 @@ pub fn replace_resource_uids(resources: &mut [serde_json::Value], dbname: &DbNam
         }
     }
 
-    resource_uid
+    uid_map
 }

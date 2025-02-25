@@ -130,7 +130,8 @@ mod tests {
     static THREAD_RESOURCE_PROCESSING: Once = Once::new();
 
     lazy_static::lazy_static! {
-        static ref RECEIVED_RESOURCES: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
+        static ref RECEIVED_QDRANT: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
+        static ref RECEIVED_GREPTIME: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
     }
 
     #[tokio::test]
@@ -155,8 +156,9 @@ mod tests {
         let num_cases = 8;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
+        let greptime = GreptimeConnection::new().await?;
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
-        let db_id = dbname.id(&customer_id);
+        let db = dbname.id(&customer_id);
 
         THREAD_RESOURCE_PROCESSING.call_once(|| {
             run_resource_processing().unwrap();
@@ -177,8 +179,14 @@ mod tests {
         let mut json = read_yaml_files(&path).unwrap();
 
         // this assumes that the same resource uid is being sent
-        let resource_uid = replace_resource_uids(&mut json, &dbname);
-        tracing::debug!("Resource UID: {}", resource_uid);
+        let uid_map = replace_resource_uids(&mut json, &dbname);
+        let resource_uid = uid_map
+            .get("00000000-0000-0000-0000-000000000000")
+            .unwrap()
+            .to_string();
+
+        tracing::debug!("Resource UID: {resource_uid}");
+        tracing::info!("test: {subdir} Owner UID map: {uid_map:?}");
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
         assert_eq!(status.code, 200);
@@ -186,11 +194,13 @@ mod tests {
         let start_time = Instant::now();
         let timeout = Duration::from_secs(30);
 
+        let mut received_greptime = false;
+        let mut received_qdrant = false;
         let mut points = Vec::<ScoredPoint>::new();
         while start_time.elapsed() < timeout {
             let filter = match_any("resource_uid", &[resource_uid.clone()]);
             points = qdrant
-                .query_points(&db_id, Some(filter), 1000, true)
+                .query_points(&db, Some(filter), 1000, true)
                 .await
                 .unwrap();
             if test_type == TestType::Delete {
@@ -202,15 +212,39 @@ mod tests {
                 points.len(),
                 num_points
             );
-            if points.len() == num_points {
-                RECEIVED_RESOURCES
-                    .lock()
-                    .unwrap()
-                    .insert(subdir.to_string());
+
+            let owner_uid = uid_map
+                .get("11111111-1111-1111-1111-111111111111")
+                .map(ToOwned::to_owned)
+                .unwrap_or_default();
+
+            let tables = greptime
+                .list_tables(&db, Some(&owner_uid))
+                .await
+                .unwrap_or(vec![]);
+
+            tracing::info!("test: {subdir} Tables: {:?}", tables);
+
+            let key = match test_type {
+                TestType::Delete => format!("{owner_uid}___deleted"),
+                TestType::Update => owner_uid.to_owned(),
+            };
+
+            if !received_greptime && tables.iter().any(|table| table.contains(&key)) {
+                RECEIVED_GREPTIME.lock().unwrap().insert(subdir.to_string());
+                received_greptime = true;
+            }
+
+            if !received_qdrant && points.len() == num_points {
+                RECEIVED_QDRANT.lock().unwrap().insert(subdir.to_string());
+                received_qdrant = true;
+            }
+
+            if received_qdrant && received_greptime {
                 break;
             }
 
-            sleep(Duration::from_secs(3)).await;
+            sleep(Duration::from_secs(5)).await;
         }
         for point in points.clone() {
             if point.payload.get("data_type") == Some(&Value::from("status")) {
@@ -219,13 +253,24 @@ mod tests {
             }
         }
 
-        while RECEIVED_RESOURCES.lock().unwrap().len() < num_cases && start_time.elapsed() < timeout
+        while RECEIVED_QDRANT.lock().unwrap().len() < num_cases
+            && RECEIVED_GREPTIME.lock().unwrap().len() < num_cases
+            && start_time.elapsed() < timeout
         {
-            let res = RECEIVED_RESOURCES.lock().unwrap().clone();
-            info!("{}/{}: Received data from: {:?}", res.len(), num_cases, res);
+            let res_qdrant = RECEIVED_QDRANT.lock().unwrap().clone();
+            let res_greptime = RECEIVED_GREPTIME.lock().unwrap().clone();
+            info!(
+                "qdrant({}/{}) | greptime ({}/{})",
+                res_qdrant.len(),
+                num_cases,
+                res_greptime.len(),
+                num_cases
+            );
             sleep(Duration::from_secs(1)).await;
         }
         assert_eq!(points.len(), num_points);
+        assert!(received_qdrant);
+        assert!(received_greptime);
         Ok(())
     }
 }
