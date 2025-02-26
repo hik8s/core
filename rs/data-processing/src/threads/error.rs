@@ -1,8 +1,7 @@
 use std::str::Utf8Error;
 
 use shared::{
-    fluvio::OffsetError, types::classifier::error::ClassifierError, GreptimeConnectionError,
-    RedisConnectionError,
+    types::classifier::error::ClassifierError, GreptimeConnectionError, RedisConnectionError,
 };
 use thiserror::Error;
 
@@ -24,8 +23,6 @@ pub enum ProcessThreadError {
     FluvioProducer(#[from] anyhow::Error),
     #[error("UTF-8 error: {0}")]
     Utf8Error(#[from] Utf8Error),
-    #[error("Fluvio offset error: {0}")]
-    OffsetError(#[from] OffsetError),
     #[error("Invalid json: {0}")]
     InvalidJson(String),
     #[error("Serialization error: {0}")]

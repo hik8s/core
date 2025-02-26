@@ -24,12 +24,8 @@ pub enum FluvioConnectionError {
     ConsumerError(#[source] Error),
     #[error("Utf8 error: {0}")]
     Utf8Error(#[from] Utf8Error),
-}
-
-#[derive(Error, Debug)]
-pub enum OffsetError {
-    #[error("Failed to commit offset for key {1}: {0}")]
-    Commit(ErrorCode, String),
-    #[error("Failed to flush offset for key {1}: {0}")]
-    Flush(ErrorCode, String),
+    #[error("Offset commit error: {0}")]
+    OffsetCommit(#[source] ErrorCode),
+    #[error("Offset flush error: {0}")]
+    OffsetFlush(#[source] ErrorCode),
 }

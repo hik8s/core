@@ -22,7 +22,7 @@ pub async fn process_event(
     while let Some(result) = consumer.next().await {
         let record = log_warn_continue!(result);
         let customer_id = log_warn_continue!(get_record_key(&record));
-        let db = DbName::Event.id(&customer_id);
+        // let db = DbName::Event.id(&customer_id);
 
         let data: KubeApiData = log_warn_continue!(record
             .try_into()
@@ -44,7 +44,7 @@ pub async fn process_event(
         producer.flush().await.map_err(|e| log_error!(e)).ok();
 
         // commit fluvio offset
-        log_error_continue!(commit_and_flush_offsets(&mut consumer, &db).await);
+        log_error_continue!(commit_and_flush_offsets(&mut consumer).await);
     }
     Ok(())
 }
