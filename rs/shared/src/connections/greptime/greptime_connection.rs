@@ -50,30 +50,30 @@ impl GreptimeConnection {
             config,
         })
     }
-    pub fn streaming_inserter(&self, key: &str) -> Result<StreamInserter, GreptimeConnectionError> {
-        let database = Database::new_with_dbname(key, self.client.clone());
+    pub fn streaming_inserter(&self, db: &str) -> Result<StreamInserter, GreptimeConnectionError> {
+        let database = Database::new_with_dbname(db, self.client.clone());
         database
             .streaming_inserter()
             .map_err(|e| log_error!(e).into())
     }
 
-    pub async fn create_database(&self, key: &str) -> Result<(), GreptimeConnectionError> {
-        let result = sqlx::query(&format!("CREATE DATABASE {}", key))
+    pub async fn create_database(&self, db: &str) -> Result<(), GreptimeConnectionError> {
+        let result = sqlx::query(&format!("CREATE DATABASE {}", db))
             .execute(&self.admin_psql)
             .await;
         if let Err(e) = result {
             match e {
                 Error::Database(ref db_err) if db_err.code() == Some(Cow::Borrowed("22023")) => {
                     // this could happen if the database was created between the check and the create
-                    tracing::debug!("Database {} already exists.", key);
+                    tracing::debug!("Database {} already exists.", db);
                 }
                 e => return Err(log_error!(e).into()),
             }
         }
         Ok(())
     }
-    pub async fn connect_db(&self, key: &str) -> Result<Pool<Postgres>, GreptimeConnectionError> {
-        let psql_uri = self.config.get_psql_uri(key);
+    pub async fn connect_db(&self, db: &str) -> Result<Pool<Postgres>, GreptimeConnectionError> {
+        let psql_uri = self.config.get_psql_uri(db);
         PgPoolOptions::new()
             .max_connections(5)
             .connect(&psql_uri)
@@ -83,12 +83,12 @@ impl GreptimeConnection {
 
     pub async fn rename_table(
         &self,
-        key: &str,
+        db: &str,
         table_name: &str,
         new_table_name: &str,
     ) -> Result<(), sqlx::Error> {
         let psql = self
-            .connect_db(key)
+            .connect_db(db)
             .await
             .map_err(|e| log_error!(e))
             .unwrap();
@@ -100,19 +100,18 @@ impl GreptimeConnection {
         Ok(())
     }
 
-    pub async fn mark_table_deleted(&self, key: &str, table_name: &str) -> Result<(), sqlx::Error> {
+    pub async fn mark_table_deleted(&self, db: &str, table_name: &str) -> Result<(), sqlx::Error> {
         let table_name_deleted = format!("{table_name}___deleted");
-        self.rename_table(key, table_name, &table_name_deleted)
-            .await
+        self.rename_table(db, table_name, &table_name_deleted).await
     }
 
     pub async fn list_tables(
         &self,
-        key: &str,
+        db: &str,
         filter: Option<&str>,
     ) -> Result<Vec<String>, sqlx::Error> {
         // TODO: handle error gracefully
-        let psql = match self.connect_db(key).await.map_err(|e| log_error!(e)) {
+        let psql = match self.connect_db(db).await.map_err(|e| log_error!(e)) {
             Ok(psql) => psql,
             Err(e) => {
                 error!("Failed to connect to PostgreSQL: {}", e);

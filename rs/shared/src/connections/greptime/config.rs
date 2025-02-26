@@ -21,10 +21,10 @@ impl GreptimeConfig {
         let GreptimeConfig { host, port, .. } = self;
         format!("{host}:{port}")
     }
-    pub fn get_psql_uri(&self, key: &str) -> String {
+    pub fn get_psql_uri(&self, db: &str) -> String {
         let GreptimeConfig {
             host, psql_port, ..
         } = self;
-        format!("postgresql://{host}:{psql_port}/{key}")
+        format!("postgresql://{host}:{psql_port}/{db}")
     }
 }
