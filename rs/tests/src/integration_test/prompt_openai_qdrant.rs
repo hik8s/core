@@ -138,12 +138,12 @@ mod tests {
         // Data ingestion
         let event = get_event_qdrant_metadata();
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
-        let db_id = dbname.id(&customer_id);
+        let db = dbname.id(&customer_id);
         vectorize_chunk(
             &mut vec![event.data.clone()],
             &mut vec![event],
             &qdrant,
-            &db_id,
+            &db,
             0,
         )
         .await;
