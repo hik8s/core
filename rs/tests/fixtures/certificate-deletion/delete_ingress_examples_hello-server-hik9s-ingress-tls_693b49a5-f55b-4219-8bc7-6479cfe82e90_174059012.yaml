@@ -1,0 +1,108 @@
+apiVersion: cert-manager.io/v1
+kind: Ingress
+metadata:
+  creationTimestamp: 2025-01-05T17:10:22Z
+  generation: 1
+  labels:
+    kustomize.toolkit.fluxcd.io/name: app
+    kustomize.toolkit.fluxcd.io/namespace: flux-system
+  managedFields:
+  - apiVersion: cert-manager.io/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:status:
+        f:nextPrivateKeySecretName: {}
+    manager: cert-manager-certificates-key-manager
+    operation: Update
+    subresource: status
+    time: 2025-01-05T17:10:22Z
+  - apiVersion: cert-manager.io/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:status:
+        .: {}
+        f:conditions:
+          .: {}
+          k:{"type":"Ready"}:
+            .: {}
+            f:lastTransitionTime: {}
+            f:message: {}
+            f:observedGeneration: {}
+            f:reason: {}
+            f:status: {}
+            f:type: {}
+    manager: cert-manager-certificates-readiness
+    operation: Update
+    subresource: status
+    time: 2025-01-05T17:10:22Z
+  - apiVersion: cert-manager.io/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:status:
+        f:conditions:
+          k:{"type":"Issuing"}:
+            .: {}
+            f:lastTransitionTime: {}
+            f:message: {}
+            f:observedGeneration: {}
+            f:reason: {}
+            f:status: {}
+            f:type: {}
+    manager: cert-manager-certificates-trigger
+    operation: Update
+    subresource: status
+    time: 2025-01-05T17:10:22Z
+  - apiVersion: cert-manager.io/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:labels:
+          .: {}
+          f:kustomize.toolkit.fluxcd.io/name: {}
+          f:kustomize.toolkit.fluxcd.io/namespace: {}
+        f:ownerReferences:
+          .: {}
+          k:{"uid":"8eb24ce9-3f3a-487e-ae38-5e1399c613dc"}: {}
+      f:spec:
+        .: {}
+        f:dnsNames: {}
+        f:issuerRef:
+          .: {}
+          f:group: {}
+          f:kind: {}
+          f:name: {}
+        f:secretName: {}
+        f:usages: {}
+    manager: cert-manager-ingress-shim
+    operation: Update
+    time: 2025-01-05T17:10:22Z
+  name: hello-server-hik9s
+  namespace: examples
+  resourceVersion: '174059012'
+  uid: 11111111-1111-1111-1111-111111111111
+spec:
+  dnsNames:
+  - hello-server.hik9s.ai
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-production
+  secretName: hello-server-hik9s-ingress-tls
+  usages:
+  - digital signature
+  - key encipherment
+status:
+  conditions:
+  - lastTransitionTime: 2025-01-05T17:10:22Z
+    message: Issuing certificate as Secret does not exist
+    observedGeneration: 1
+    reason: DoesNotExist
+    status: 'False'
+    type: Ready
+  - lastTransitionTime: 2025-01-05T17:10:22Z
+    message: Issuing certificate as Secret does not exist
+    observedGeneration: 1
+    reason: DoesNotExist
+    status: 'True'
+    type: Issuing
+  nextPrivateKeySecretName: hello-server-hik9s-ingress-tls-vgmsc
