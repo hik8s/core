@@ -8,7 +8,7 @@ involvedObject:
   name: hello-server-597dbdc58-bz6zv
   namespace: examples
   resourceVersion: '101248071'
-  uid: 7dba1255-b6bc-4c0b-8aef-2c66611ed157
+  uid: 11111111-1111-1111-1111-111111111111
 kind: Event
 lastTimestamp: 2024-11-18T08:59:45Z
 message: Stopping container hello-server
@@ -17,7 +17,7 @@ metadata:
   name: hello-server-597dbdc58-bz6zv.1809046a11754b30
   namespace: examples
   resourceVersion: '102473422'
-  uid: 56e57436-3137-4e46-b9c1-18eb79ff0237
+  uid: 00000000-0000-0000-0000-000000000000
 reason: Killing
 reportingComponent: kubelet
 reportingInstance: prod1-node1

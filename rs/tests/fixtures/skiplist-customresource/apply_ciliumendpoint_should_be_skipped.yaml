@@ -64,7 +64,7 @@ metadata:
     name: redis-master-0
     uid: 2c0e423c-62e9-41cf-afaf-d81e58ab3d4c
   resourceVersion: '131170305'
-  uid: dbb76575-bd31-4e26-b401-118ac82e8870
+  uid: 00000000-0000-0000-0000-000000000000
 status:
   encryption: {}
   external-identifiers:

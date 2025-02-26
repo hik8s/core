@@ -18,7 +18,7 @@ metadata:
           f:pod-template-hash: {}
         f:ownerReferences:
           .: {}
-          k:{"uid":"cdad9290-6568-4192-8c34-e076a372ebdb"}: {}
+          k:{"uid":"11111111-1111-1111-1111-111111111111"}: {}
       f:spec:
         f:containers:
           k:{"name":"test1"}:
@@ -118,9 +118,9 @@ metadata:
     controller: true
     kind: ReplicaSet
     name: test1-656b95f57
-    uid: cdad9290-6568-4192-8c34-e076a372ebdb
+    uid: 11111111-1111-1111-1111-111111111111
   resourceVersion: '141517097'
-  uid: c4123476-5412-4119-9662-b800f48dfdb2
+  uid: 00000000-0000-0000-0000-000000000000
 spec:
   containers:
   - image: ghcr.io/hik8s/killed-oom:0.1.0

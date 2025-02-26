@@ -83,9 +83,9 @@ metadata:
     controller: true
     kind: Deployment
     name: test1
-    uid: 7eb82c85-4285-40b8-a0db-bb7e705b9ae6
-  resourceVersion: '180091927'
-  uid: b086c2eb-f7c8-4188-991f-ec513a8a6122
+    uid: 11111111-1111-1111-1111-111111111111
+  resourceVersion: '180091926'
+  uid: 00000000-0000-0000-0000-000000000000
 spec:
   replicas: 1
   selector:

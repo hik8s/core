@@ -48,7 +48,7 @@ metadata:
     time: 2024-12-02T10:30:29Z
   name: '62617'
   resourceVersion: '129305975'
-  uid: 0b4aff3f-31bd-4d50-98f2-437e57d9711d
+  uid: 00000000-0000-0000-0000-000000000000
 security-labels:
   k8s:app.kubernetes.io/component: replica
   k8s:app.kubernetes.io/instance: redis

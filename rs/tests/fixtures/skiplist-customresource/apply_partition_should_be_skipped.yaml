@@ -55,7 +55,7 @@ metadata:
     name: logs
     uid: 7f3b0bb1-ac1b-41fa-8737-c7e025828748
   resourceVersion: '146314772'
-  uid: 98c450ad-0c6c-4b6e-8d17-5f3a2f4ff766
+  uid: 00000000-0000-0000-0000-000000000000
 spec:
   compressionType: Zstd
   deduplication: null

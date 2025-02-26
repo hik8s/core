@@ -70,7 +70,7 @@ metadata:
   name: system
   namespace: flux-system
   resourceVersion: '146330832'
-  uid: 4d383599-3850-4091-95eb-d886f5d48f21
+  uid: 00000000-0000-0000-0000-000000000000
 spec:
   decryption:
     provider: sops

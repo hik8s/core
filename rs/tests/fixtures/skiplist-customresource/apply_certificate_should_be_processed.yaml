@@ -63,7 +63,7 @@ metadata:
     name: dashboard
     uid: 8fbb4c6b-8a5b-4772-8a64-d48f32b9e23f
   resourceVersion: '134084304'
-  uid: 0f57c8a1-671c-4f46-aa3f-adb54724f799
+  uid: 00000000-0000-0000-0000-000000000000
 spec:
   dnsNames:
   - dev.qdrant.hik8s.ai
