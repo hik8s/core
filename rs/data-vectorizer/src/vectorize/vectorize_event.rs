@@ -96,7 +96,7 @@ pub async fn vectorize_event(
             metachunk.clear();
 
             // commit fluvio offset
-            log_error_continue!(commit_and_flush_offsets(&mut consumer, &db).await);
+            log_error_continue!(commit_and_flush_offsets(&mut consumer).await);
         }
     }
 }

@@ -15,7 +15,7 @@ use shared::utils::{
     extract_managed_field_timestamps, extract_timestamp, get_as_option_string, get_as_ref,
     get_as_string,
 };
-use shared::{log_error, log_error_continue, log_warn, log_warn_continue, GreptimeConnection};
+use shared::{log_error_continue, log_warn, log_warn_continue, GreptimeConnection};
 
 use super::error::ProcessThreadError;
 
@@ -120,9 +120,7 @@ pub async fn process_resource(
             .ok();
         producer.flush().await.map_err(|e| log_warn!(e)).ok();
 
-        commit_and_flush_offsets(&mut consumer, &db)
-            .await
-            .map_err(|e| log_error!(e))?;
+        log_error_continue!(commit_and_flush_offsets(&mut consumer).await);
     }
     Ok(())
 }

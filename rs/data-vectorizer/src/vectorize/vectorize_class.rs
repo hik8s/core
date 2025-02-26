@@ -44,7 +44,7 @@ pub async fn vectorize_class(limiter: Arc<RateLimiter>) -> Result<(), DataVector
                 limiter.tokens_used.lock().await,
                 customer_id
             );
-            log_error_continue!(commit_and_flush_offsets(&mut consumer, &db).await);
+            log_error_continue!(commit_and_flush_offsets(&mut consumer).await);
         }
     }
 }
