@@ -111,11 +111,14 @@ impl GreptimeConnection {
         key: &str,
         filter: Option<&str>,
     ) -> Result<Vec<String>, sqlx::Error> {
-        let psql = self
-            .connect_db(key)
-            .await
-            .map_err(|e| log_error!(e))
-            .unwrap();
+        // TODO: handle error gracefully
+        let psql = match self.connect_db(key).await.map_err(|e| log_error!(e)) {
+            Ok(psql) => psql,
+            Err(e) => {
+                error!("Failed to connect to PostgreSQL: {}", e);
+                return Ok(vec![]);
+            }
+        };
         let query = match filter {
             Some(filter) => format!("SHOW TABLES WHERE {GREPTIME_TABLE_KEY} LIKE '%{filter}%'"),
             None => "SHOW TABLES".to_string(),

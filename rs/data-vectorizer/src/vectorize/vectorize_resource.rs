@@ -136,7 +136,7 @@ pub async fn vectorize_resource(
                 if let Some(metadata_obj) = metadata.as_object_mut() {
                     metadata_obj.remove("managedFields");
                 }
-
+                // TODO: unify use of uid with state and processing
                 let metadata_map = create_metadata_map(&name, &namespace, &uid, &resource_version);
 
                 let spec =
