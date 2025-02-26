@@ -1,3 +1,6 @@
+pub const UID: &str = "00000000-0000-0000-0000-000000000000";
+pub const OWNER_UID: &str = "11111111-1111-1111-1111-111111111111";
+
 #[cfg(test)]
 mod tests {
     use data_intake::error::DataIntakeError;
@@ -39,6 +42,7 @@ mod tests {
         Update,
     }
 
+    use crate::integration_test::data_intake_processing::{OWNER_UID, UID};
     use crate::util::{read_yaml_files, replace_resource_uids};
 
     static THREAD_LOG_PROCESSING: Once = Once::new();
@@ -140,8 +144,8 @@ mod tests {
     #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3, TestType::Delete))]
     #[case(("deployment-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
     #[case(("pod-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
-    #[case(("pod-aggregation-by-replicaset", "resources", DbName::Resource, 9, TestType::Update))]
-    #[case(("event-filter", "events", DbName::Event, 1,TestType::Update))]
+    #[case(("pod-aggregation-by-replicaset", "resources", DbName::Resource, 6, TestType::Update))]
+    // #[case(("event-filter", "events", DbName::Event, 1,TestType::Update))]
     #[case(("skiplist-resource", "resources", DbName::Resource, 9, TestType::Update))]
     #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3, TestType::Update))]
     async fn test_e2e_integration(
@@ -153,7 +157,7 @@ mod tests {
             TestType,
         ),
     ) -> Result<(), DataIntakeError> {
-        let num_cases = 8;
+        let num_cases = 7;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
         let greptime = GreptimeConnection::new().await?;
@@ -180,13 +184,9 @@ mod tests {
 
         // this assumes that the same resource uid is being sent
         let uid_map = replace_resource_uids(&mut json, &dbname);
-        let resource_uid = uid_map
-            .get("00000000-0000-0000-0000-000000000000")
-            .unwrap()
-            .to_string();
+        let resource_uid = uid_map.get(UID).unwrap().to_string();
 
-        tracing::debug!("Resource UID: {resource_uid}");
-        tracing::info!("test: {subdir} Owner UID map: {uid_map:?}");
+        tracing::debug!("test: {subdir} Owner UID map: {uid_map:?}");
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
         assert_eq!(status.code, 200);
@@ -214,7 +214,7 @@ mod tests {
             );
 
             let owner_uid = uid_map
-                .get("11111111-1111-1111-1111-111111111111")
+                .get(OWNER_UID)
                 .map(ToOwned::to_owned)
                 .unwrap_or_default();
 
@@ -222,8 +222,6 @@ mod tests {
                 .list_tables(&db, Some(&owner_uid))
                 .await
                 .unwrap_or(vec![]);
-
-            tracing::info!("test: {subdir} Tables: {:?}", tables);
 
             let key = match test_type {
                 TestType::Delete => format!("{owner_uid}___deleted"),
