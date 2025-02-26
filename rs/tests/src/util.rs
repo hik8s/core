@@ -75,46 +75,56 @@ pub async fn process_resource_files(client: Client, route: &str) -> Result<(), D
     Ok(())
 }
 
-pub fn replace_resource_uids(resources: &mut [serde_json::Value], db: &DbName) -> String {
-    let resource_uid = uuid4().to_string();
+pub fn replace_resource_uids(
+    resources: &mut [serde_json::Value],
+    dbname: &DbName,
+) -> HashMap<String, String> {
+    let mut uid_map: HashMap<String, String> = HashMap::new();
 
-    let mut owner_uids_map: HashMap<String, String> = HashMap::new();
+    let key = match dbname {
+        DbName::Resource => "ownerReferences",
+        DbName::CustomResource => "ownerReferences",
+        DbName::Event => "involvedObject",
+        _ => "",
+    };
 
     for resource in resources.iter_mut() {
         if let Some(json) = resource.get_mut("json") {
-            let key = match db {
-                DbName::Resource => "metadata",
-                DbName::CustomResource => "metadata",
-                DbName::Event => "involvedObject",
-                _ => "",
-            };
-            if let Some(metadata) = json.as_object_mut().and_then(|obj| obj.get_mut(key)) {
+            if let Some(metadata) = json.as_object_mut().and_then(|obj| obj.get_mut("metadata")) {
                 if let Some(metadata_obj) = metadata.as_object_mut() {
+                    let current_uid = metadata_obj
+                        .get("uid")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let new_uid = uid_map
+                        .entry(current_uid)
+                        .or_insert_with(|| uuid4().to_string())
+                        .clone();
                     metadata_obj.insert(
                         "uid".to_string(),
-                        serde_json::Value::String(resource_uid.clone()),
+                        serde_json::Value::String(new_uid.clone()),
                     );
-                    if db == &DbName::Resource {
-                        if let Some(owner_refs) = metadata_obj.get_mut("ownerReferences") {
-                            if let Some(owner_refs_array) = owner_refs.as_array_mut() {
-                                for owner_ref in owner_refs_array {
-                                    if let Some(owner_ref_obj) = owner_ref.as_object_mut() {
-                                        let original_owner_uid = owner_ref_obj
-                                            .get("uid")
-                                            .and_then(|v| v.as_str())
-                                            .unwrap_or("")
-                                            .to_string();
 
-                                        let owner_uid = owner_uids_map
-                                            .entry(original_owner_uid)
-                                            .or_insert_with(|| uuid4().to_string())
-                                            .clone();
+                    if let Some(owner_refs) = metadata_obj.get_mut(key) {
+                        if let Some(owner_refs_array) = owner_refs.as_array_mut() {
+                            for owner_ref in owner_refs_array {
+                                if let Some(owner_ref_obj) = owner_ref.as_object_mut() {
+                                    let original_owner_uid = owner_ref_obj
+                                        .get("uid")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("")
+                                        .to_string();
 
-                                        owner_ref_obj.insert(
-                                            "uid".to_string(),
-                                            serde_json::Value::String(owner_uid),
-                                        );
-                                    }
+                                    let owner_uid = uid_map
+                                        .entry(original_owner_uid)
+                                        .or_insert_with(|| uuid4().to_string())
+                                        .clone();
+
+                                    owner_ref_obj.insert(
+                                        "uid".to_string(),
+                                        serde_json::Value::String(owner_uid),
+                                    );
                                 }
                             }
                         }
@@ -124,5 +134,5 @@ pub fn replace_resource_uids(resources: &mut [serde_json::Value], db: &DbName) -
         }
     }
 
-    resource_uid
+    uid_map
 }

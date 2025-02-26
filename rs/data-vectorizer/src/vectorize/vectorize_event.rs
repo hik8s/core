@@ -15,7 +15,7 @@ use super::vectorizer::vectorize_chunk;
 
 pub async fn vectorize_event(
     limiter: Arc<RateLimiter>,
-    db: DbName,
+    dbname: DbName,
     topic: TopicName,
 ) -> Result<(), DataVectorizationError> {
     let fluvio = FluvioConnection::new().await?;
@@ -29,7 +29,7 @@ pub async fn vectorize_event(
 
         // Process batch
         for (customer_id, records) in batch.drain() {
-            // tracing::info!("ID {} | resources: {}", customer_id, records.len());
+            let db = dbname.id(&customer_id);
 
             let mut chunk = vec![];
             let mut metachunk = vec![];
@@ -84,33 +84,19 @@ pub async fn vectorize_event(
 
                 if total_token_count > 100000 {
                     limiter.check_rate_limit(total_token_count).await;
-                    vectorize_chunk(
-                        &mut chunk,
-                        &mut metachunk,
-                        &qdrant,
-                        &customer_id,
-                        &db,
-                        total_token_count,
-                    )
-                    .await;
+                    vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &db, total_token_count)
+                        .await;
                     total_token_count = 0;
                 }
             }
 
             limiter.check_rate_limit(total_token_count).await;
-            vectorize_chunk(
-                &mut chunk,
-                &mut metachunk,
-                &qdrant,
-                &customer_id,
-                &db,
-                total_token_count,
-            )
-            .await;
+            vectorize_chunk(&mut chunk, &mut metachunk, &qdrant, &db, total_token_count).await;
             chunk.clear();
             metachunk.clear();
+
+            // commit fluvio offset
+            log_error_continue!(commit_and_flush_offsets(&mut consumer, &db).await);
         }
-        // commit fluvio offset
-        log_error_continue!(commit_and_flush_offsets(&mut consumer, "".to_string()).await);
     }
 }

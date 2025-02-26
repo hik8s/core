@@ -1057,6 +1057,7 @@ dependencies = [
  "dotenv",
  "fluvio",
  "futures-util",
+ "greptimedb-ingester",
  "rstest",
  "serde_json",
  "shared",

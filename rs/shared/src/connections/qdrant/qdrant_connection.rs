@@ -14,7 +14,7 @@ use tracing::info;
 
 use crate::{
     constant::{EMBEDDING_SIZE, EMBEDDING_USIZE},
-    DbName, QdrantConnectionError,
+    QdrantConnectionError,
 };
 
 use super::config::QdrantConfig;
@@ -38,14 +38,10 @@ impl QdrantConnection {
         Ok(connection)
     }
 
-    pub async fn create_collection(
-        &self,
-        db: &DbName,
-        customer_id: &str,
-    ) -> Result<(), QdrantConnectionError> {
+    pub async fn create_collection(&self, db: &str) -> Result<(), QdrantConnectionError> {
         let collections = self.client.list_collections().await?;
         for collection in collections.collections {
-            if collection.name == db.id(customer_id) {
+            if collection.name == db {
                 return Ok(());
             }
         }
@@ -53,7 +49,7 @@ impl QdrantConnection {
         match self
             .client
             .create_collection(
-                CreateCollectionBuilder::new(db.id(customer_id))
+                CreateCollectionBuilder::new(db)
                     .vectors_config(VectorParamsBuilder::new(EMBEDDING_SIZE, Distance::Cosine)),
             )
             .await
@@ -71,12 +67,11 @@ impl QdrantConnection {
 
     pub async fn upsert_points(
         &self,
-        qdrant_point: Vec<PointStruct>,
-        db: &DbName,
-        customer_id: &str,
+        points: Vec<PointStruct>,
+        db: &str,
     ) -> Result<PointsOperationResponse, QdrantConnectionError> {
-        self.create_collection(db, customer_id).await?;
-        let request = UpsertPointsBuilder::new(db.id(customer_id), qdrant_point).wait(false);
+        self.create_collection(db).await?;
+        let request = UpsertPointsBuilder::new(db, points).wait(false);
         self.client
             .upsert_points(request)
             .await
@@ -84,14 +79,13 @@ impl QdrantConnection {
     }
     pub async fn set_payload(
         &self,
-        db: &DbName,
-        customer_id: &str,
+        db: &str,
         filter: Filter,
         new_payload: Payload,
     ) -> Result<PointsOperationResponse, QdrantError> {
         self.client
             .set_payload(
-                SetPayloadPointsBuilder::new(db.id(customer_id), new_payload)
+                SetPayloadPointsBuilder::new(db, new_payload)
                     .points_selector(filter)
                     .wait(true),
             )
@@ -99,15 +93,14 @@ impl QdrantConnection {
     }
     pub async fn search_points(
         &self,
-        db: &DbName,
-        customer_id: &str,
+        db: &str,
         array: [f32; EMBEDDING_USIZE],
         mut filter: Filter,
         limit: u64,
     ) -> Result<Vec<ScoredPoint>, QdrantConnectionError> {
-        self.create_collection(db, customer_id).await?;
+        self.create_collection(db).await?;
         filter.must_not.push(Condition::matches("deleted", true));
-        let request = SearchPointsBuilder::new(db.id(customer_id), array.to_vec(), limit)
+        let request = SearchPointsBuilder::new(db, array.to_vec(), limit)
             .filter(filter)
             .with_payload(true);
         let response = self.client.search_points(request).await?;
@@ -115,13 +108,12 @@ impl QdrantConnection {
     }
     pub async fn query_points(
         &self,
-        db: &DbName,
-        customer_id: &str,
+        db: &str,
         filter: Option<Filter>,
         limit: u64,
         with_payload: bool,
     ) -> Result<Vec<ScoredPoint>, QdrantConnectionError> {
-        let mut request = QueryPointsBuilder::new(db.id(customer_id))
+        let mut request = QueryPointsBuilder::new(db)
             .limit(limit)
             .with_payload(with_payload);
 
@@ -172,8 +164,7 @@ pub fn match_any(key: &str, values: &[String]) -> Filter {
 
 pub async fn update_deleted_resources(
     qdrant: &QdrantConnection,
-    customer_id: &str,
-    db: &DbName,
+    db: &str,
     uids: &[String],
 ) -> Result<(), QdrantConnectionError> {
     // Skip if no points to update
@@ -190,7 +181,7 @@ pub async fn update_deleted_resources(
 
     // Update points in batch
     qdrant
-        .set_payload(db, customer_id, filter, payload)
+        .set_payload(db, filter, payload)
         .await
         .map_err(QdrantConnectionError::SetPayload)?;
 

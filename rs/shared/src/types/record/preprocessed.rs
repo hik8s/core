@@ -1,4 +1,4 @@
-use crate::{preprocessing::log::preprocess_message, types::metadata::Metadata};
+use crate::{preprocessing::log::preprocess_message, types::metadata::Metadata, DbName};
 
 use super::log::LogRecord;
 
@@ -18,8 +18,8 @@ pub struct PreprocessedLogRecord {
 impl From<(&String, &String, &Metadata)> for PreprocessedLogRecord {
     fn from((customer_id, raw_message, metadata): (&String, &String, &Metadata)) -> Self {
         let log = LogRecord::from((raw_message, metadata));
-        let preprocessed_message =
-            preprocess_message(&log.message, customer_id, &log.key, &log.record_id);
+        let db = DbName::Log.id(customer_id);
+        let preprocessed_message = preprocess_message(&log.message, &db, &log.key, &log.record_id);
         PreprocessedLogRecord::from((log, preprocessed_message))
     }
 }

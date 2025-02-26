@@ -10,7 +10,7 @@ use shared::{
         },
         tokenizer::Tokenizer,
     },
-    DbName, QdrantConnection, RateLimiter,
+    QdrantConnection, RateLimiter,
 };
 use tracing::info;
 
@@ -20,13 +20,12 @@ async fn try_vectorize_chunk<T: Serialize + Id>(
     chunk: &mut Vec<String>,
     metachunk: &mut Vec<T>,
     qdrant: &QdrantConnection,
-    customer_id: &str,
-    db: &DbName,
+    db: &str,
 ) -> Result<usize, DataVectorizationError> {
     let arrays = request_embedding(chunk).await?;
     let qdrant_points = to_qdrant_points(metachunk, &arrays)
         .map_err(DataVectorizationError::QdrantPointsConversion)?;
-    qdrant.upsert_points(qdrant_points, db, customer_id).await?;
+    qdrant.upsert_points(qdrant_points, db).await?;
     let chunk_len = chunk.len();
     chunk.clear();
     metachunk.clear();
@@ -37,17 +36,16 @@ pub async fn vectorize_chunk<T: Serialize + Id>(
     chunk: &mut Vec<String>,
     metachunk: &mut Vec<T>,
     qdrant: &QdrantConnection,
-    customer_id: &str,
-    db: &DbName,
+    db: &str,
     count: usize,
 ) {
     // unify chunk and metachunk
     if chunk.is_empty() {
         return;
     }
-    match try_vectorize_chunk(chunk, metachunk, qdrant, customer_id, db).await {
+    match try_vectorize_chunk(chunk, metachunk, qdrant, db).await {
         Ok(chunk_len) => {
-            info!("Vectorized {chunk_len} {db} with {count} tokens. ID: {customer_id}")
+            info!("Vectorized {chunk_len} {db} with {count} tokens. ID: {db}")
         }
         Err(e) => {
             let message = format!("Failed to vectorize chunk for db: {db} with error");

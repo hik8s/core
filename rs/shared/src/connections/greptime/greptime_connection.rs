@@ -1,12 +1,12 @@
+use crate::constant::GREPTIME_TABLE_KEY;
 use crate::log_error;
 use crate::ConfigError;
-use crate::DbName;
 
 use super::config::GreptimeConfig;
 use greptimedb_ingester::{Client as GreptimeClient, ClientBuilder, Database, StreamInserter};
 use rocket::{request::FromRequest, State};
 use sqlx::Error as SqlxError;
-use sqlx::{postgres::PgPoolOptions, Error, Pool, Postgres};
+use sqlx::{postgres::PgPoolOptions, Error, Executor, Pool, Postgres, Row};
 use std::borrow::Cow;
 use thiserror::Error;
 use tracing::error;
@@ -50,48 +50,81 @@ impl GreptimeConnection {
             config,
         })
     }
-    pub fn streaming_inserter(
-        &self,
-        db: &DbName,
-        customer_id: &str,
-    ) -> Result<StreamInserter, GreptimeConnectionError> {
-        let database = Database::new_with_dbname(db.id(customer_id), self.client.clone());
+    pub fn streaming_inserter(&self, db: &str) -> Result<StreamInserter, GreptimeConnectionError> {
+        let database = Database::new_with_dbname(db, self.client.clone());
         database
             .streaming_inserter()
             .map_err(|e| log_error!(e).into())
     }
 
-    pub async fn create_database(
-        &self,
-        db: &DbName,
-        customer_id: &str,
-    ) -> Result<(), GreptimeConnectionError> {
-        let db_id = db.id(customer_id);
-        let result = sqlx::query(&format!("CREATE DATABASE {}", db_id))
+    pub async fn create_database(&self, db: &str) -> Result<(), GreptimeConnectionError> {
+        let result = sqlx::query(&format!("CREATE DATABASE {}", db))
             .execute(&self.admin_psql)
             .await;
         if let Err(e) = result {
             match e {
                 Error::Database(ref db_err) if db_err.code() == Some(Cow::Borrowed("22023")) => {
                     // this could happen if the database was created between the check and the create
-                    tracing::debug!("Database {} already exists.", db_id);
+                    tracing::debug!("Database {} already exists.", db);
                 }
                 e => return Err(log_error!(e).into()),
             }
         }
         Ok(())
     }
-    pub async fn connect_db(
-        &self,
-        db: &DbName,
-        customer_id: &str,
-    ) -> Result<Pool<Postgres>, GreptimeConnectionError> {
-        let psql_uri = self.config.get_psql_uri(&db.id(customer_id));
+    pub async fn connect_db(&self, db: &str) -> Result<Pool<Postgres>, GreptimeConnectionError> {
+        let psql_uri = self.config.get_psql_uri(db);
         PgPoolOptions::new()
             .max_connections(5)
             .connect(&psql_uri)
             .await
             .map_err(|e| log_error!(e).into())
+    }
+
+    pub async fn rename_table(
+        &self,
+        db: &str,
+        table_name: &str,
+        new_table_name: &str,
+    ) -> Result<(), sqlx::Error> {
+        let psql = self
+            .connect_db(db)
+            .await
+            .map_err(|e| log_error!(e))
+            .unwrap();
+        let query = format!(
+            "ALTER TABLE \"{}\" RENAME \"{}\"",
+            table_name, new_table_name
+        );
+        psql.execute(query.as_str()).await?;
+        Ok(())
+    }
+
+    pub async fn mark_table_deleted(&self, db: &str, table_name: &str) -> Result<(), sqlx::Error> {
+        let table_name_deleted = format!("{table_name}___deleted");
+        self.rename_table(db, table_name, &table_name_deleted).await
+    }
+
+    pub async fn list_tables(
+        &self,
+        db: &str,
+        filter: Option<&str>,
+    ) -> Result<Vec<String>, sqlx::Error> {
+        // TODO: handle error gracefully
+        let psql = match self.connect_db(db).await.map_err(|e| log_error!(e)) {
+            Ok(psql) => psql,
+            Err(e) => {
+                error!("Failed to connect to PostgreSQL: {}", e);
+                return Ok(vec![]);
+            }
+        };
+        let query = match filter {
+            Some(filter) => format!("SHOW TABLES WHERE {GREPTIME_TABLE_KEY} LIKE '%{filter}%'"),
+            None => "SHOW TABLES".to_string(),
+        };
+        let rows = psql.fetch_all(query.as_str()).await?;
+        let tables = rows.iter().map(|row| row.get(GREPTIME_TABLE_KEY)).collect();
+        Ok(tables)
     }
 }
 
@@ -107,7 +140,6 @@ impl<'r> FromRequest<'r> for GreptimeConnection {
     }
 }
 
-// Define a CRUD middleware
 #[rocket::async_trait]
 impl rocket::fairing::Fairing for GreptimeConnection {
     fn info(&self) -> rocket::fairing::Info {
@@ -119,5 +151,74 @@ impl rocket::fairing::Fairing for GreptimeConnection {
 
     async fn on_ignite(&self, rocket: rocket::Rocket<rocket::Build>) -> rocket::fairing::Result {
         Ok(rocket.manage(self.clone()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+    use crate::{
+        connections::greptime::middleware::insert::{create_insert_request, create_string_columns},
+        get_env_var, setup_tracing,
+        utils::mock::mock_client::generate_podname,
+        DbName,
+    };
+
+    #[tokio::test]
+    async fn test_table_rename_delete() -> Result<(), sqlx::Error> {
+        setup_tracing(true);
+
+        // greptime connection
+        let greptime = GreptimeConnection::new().await.unwrap();
+        let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
+        let db = DbName::Resource.id(&customer_id);
+
+        // test table
+        let mut map = HashMap::<&str, String>::new();
+        map.insert("apiVersion", "v1".to_string());
+        map.insert("kind", "Pod".to_string());
+        let columns = create_string_columns(map, Some(1620000000));
+
+        let table_name = generate_podname("test-pod");
+        let req = create_insert_request(&table_name, columns, 1);
+
+        // insert data
+        let inserter = greptime.streaming_inserter(&db).unwrap();
+        inserter.insert(vec![req]).await.unwrap();
+        inserter.finish().await.unwrap();
+
+        // rename table
+        greptime.mark_table_deleted(&db, &table_name).await.unwrap();
+        let table_names = greptime.list_tables(&db, None).await?;
+
+        // assert rename success
+        assert!(
+            !table_names.contains(&table_name),
+            "Original table should not exist"
+        );
+        assert!(
+            table_names.contains(&format!("{table_name}___deleted")),
+            "Deleted table should exist"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_list_tables() -> Result<(), sqlx::Error> {
+        setup_tracing(true);
+
+        // greptime connection
+        let greptime = GreptimeConnection::new().await.unwrap();
+        let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
+        let db = DbName::Resource.id(&customer_id);
+        // let uid = Some("b013a9cd-86fb-4d05-a0cc-057d71dd0d08");
+        let uid = None;
+        let table_names = greptime.list_tables(&db, uid).await?;
+        assert!(!table_names.is_empty());
+        tracing::debug!("Tables: {:?}", table_names);
+
+        Ok(())
     }
 }

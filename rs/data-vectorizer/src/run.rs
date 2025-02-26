@@ -30,10 +30,10 @@ pub fn run_vectorize_resource(
 
     let skiplist = get_env_var_as_vec("RESOURCE_SKIPLIST")?;
     threads.push(tokio::spawn(async move {
-        let db = DbName::Resource;
+        let dbname = DbName::Resource;
         let topic = TopicName::ProcessedResource;
         // TODO process inital replicaset
-        vectorize_resource(limiter, db, topic, skiplist)
+        vectorize_resource(limiter, dbname, topic, skiplist)
             .await
             .map_err(|e| {
                 log_error_with_message!("Resource vectorizer thread exited with error", e)
@@ -51,9 +51,9 @@ pub fn run_vectorize_customresource(
 
     let skiplist = get_env_var_as_vec("CUSTOMRESOURCE_SKIPLIST")?;
     threads.push(tokio::spawn(async move {
-        let db = DbName::CustomResource;
+        let dbname = DbName::CustomResource;
         let topic = TopicName::ProcessedCustomResource;
-        vectorize_resource(limiter, db, topic, skiplist)
+        vectorize_resource(limiter, dbname, topic, skiplist)
             .await
             .map_err(|e| {
                 log_error_with_message!("Custom resource vectorizer thread exited with error", e)
@@ -70,9 +70,9 @@ pub fn run_vectorize_event(
     let mut threads: Vec<JoinHandle<Result<(), DataVectorizationError>>> = Vec::new();
 
     threads.push(tokio::spawn(async move {
-        let db = DbName::Event;
+        let dbname = DbName::Event;
         let topic = TopicName::ProcessedEvent;
-        vectorize_event(limiter, db, topic)
+        vectorize_event(limiter, dbname, topic)
             .await
             .map_err(|e| log_error_with_message!("Event vectorizer thread exited with error", e))?;
         Ok(())

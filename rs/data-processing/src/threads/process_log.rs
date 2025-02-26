@@ -6,7 +6,7 @@ use shared::connections::fluvio::util::get_record_key;
 use shared::constant::TOPIC_CLASS_BYTES_PER_RECORD;
 use shared::fluvio::commit_and_flush_offsets;
 use shared::preprocessing::log::preprocess_message;
-use shared::{log_error, log_warn_continue};
+use shared::{log_error, log_error_continue, log_warn_continue, DbName};
 
 use std::sync::Arc;
 
@@ -31,18 +31,17 @@ pub async fn process_logs(
         let record = log_warn_continue!(result);
 
         let customer_id = log_warn_continue!(get_record_key(&record));
+        let db = DbName::Log.id(&customer_id);
         let log = log_warn_continue!(
             LogRecord::try_from(record).map_err(ProcessThreadError::DeserializationError)
         );
 
         // preprocess
-        let preprocessed_message =
-            preprocess_message(&log.message, &customer_id, &log.key, &log.record_id);
+        let preprocessed_message = preprocess_message(&log.message, &db, &log.key, &log.record_id);
         let preprocessed_log = PreprocessedLogRecord::from((log, preprocessed_message));
 
         // classify
-        let (updated_class, _classified_log) =
-            classifier.classify(&preprocessed_log, &customer_id)?;
+        let (updated_class, _classified_log) = classifier.classify(&preprocessed_log, &db)?;
 
         // produce to fluvio
         if updated_class.is_some() {
@@ -71,10 +70,8 @@ pub async fn process_logs(
             producer.flush().await.map_err(|e| log_error!(e))?;
         }
 
-        // commit consumed offsets
-        commit_and_flush_offsets(&mut consumer, customer_id)
-            .await
-            .map_err(|e| log_error!(e))?;
+        // commit fluvio offset
+        log_error_continue!(commit_and_flush_offsets(&mut consumer, &db).await);
     }
     Ok(())
 }

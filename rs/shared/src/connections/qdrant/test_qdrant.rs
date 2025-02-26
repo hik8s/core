@@ -32,7 +32,7 @@ mod tests {
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await?;
         let customer_id = "test_customer";
-        let db = DbName::Log;
+        let db = DbName::Log.id(customer_id);
 
         // Create initial point with multiple fields
         let uid1 = uuid4().to_string();
@@ -45,20 +45,20 @@ mod tests {
 
         // Insert point
         qdrant
-            .upsert_points(vec![point1, point2, point3], &db, customer_id)
+            .upsert_points(vec![point1, point2, point3], &db)
             .await?;
 
         // Update deleted field
         let mut resource_uids = vec![uid1, uid2];
 
-        update_deleted_resources(&qdrant, customer_id, &db, &resource_uids).await?;
+        update_deleted_resources(&qdrant, &db, &resource_uids).await?;
 
         // Verify update
-        let db = DbName::Log;
+        let db = DbName::Log.id(customer_id);
 
         let filter_uid12 = match_any("resource_uid", &resource_uids);
         let points = qdrant
-            .query_points(&db, customer_id, Some(filter_uid12), 1000, true)
+            .query_points(&db, Some(filter_uid12), 1000, true)
             .await?;
         assert_eq!(points.len(), 2);
         for point in points.iter() {
@@ -73,7 +73,7 @@ mod tests {
         let filter_uid123 = match_any("resource_uid", &resource_uids);
 
         let points = qdrant
-            .search_points(&db, customer_id, array, filter_uid123, 1000)
+            .search_points(&db, array, filter_uid123, 1000)
             .await?;
         for point in points.iter() {
             let payload = &point.payload;

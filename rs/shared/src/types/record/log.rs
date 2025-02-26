@@ -49,12 +49,12 @@ impl LogRecord {
             container: metadata.container.to_owned(),
         }
     }
-    pub fn truncate_record(&mut self, customer_id: &str, max_bytes: usize) {
+    pub fn truncate_record(&mut self, db: &str, max_bytes: usize) {
         let max_len = max_bytes - FLUVIO_BYTES_SAFTY_MARGIN;
         if self.message.len() > max_len {
             info!(
-                "Data too large for record, will be truncated. customer_id: {}, key: {}, record_id: {}, len: {}",
-                customer_id,
+                "Data too large for record, will be truncated. db: {}, key: {}, record_id: {}, len: {}",
+                db,
                 self.key,
                 self.record_id,
                 self.message.len()

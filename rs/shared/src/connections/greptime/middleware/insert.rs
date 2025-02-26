@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use greptimedb_ingester::api::v1::{column, Column, ColumnDataType, InsertRequest, SemanticType};
 
 use crate::types::record::{classified::ClassifiedLogRecord, log::LogRecord};
@@ -111,7 +113,30 @@ pub fn resource_to_insert_request(
     }
 }
 
-fn timestamp_column(timestamps: Vec<i64>) -> Column {
+pub fn create_string_columns(map: HashMap<&str, String>, ts: Option<i64>) -> Vec<Column> {
+    let mut columns: Vec<Column> = vec![];
+    if let Some(ts) = ts {
+        columns.push(timestamp_column(vec![ts]));
+    }
+    for (k, v) in map {
+        columns.push(string_column(k, vec![v]));
+    }
+    columns
+}
+
+pub fn create_insert_request(
+    table_name: &str,
+    columns: Vec<Column>,
+    row_count: u32,
+) -> InsertRequest {
+    InsertRequest {
+        table_name: table_name.to_string(),
+        columns,
+        row_count,
+    }
+}
+
+pub fn timestamp_column(timestamps: Vec<i64>) -> Column {
     Column {
         column_name: "timestamp".to_owned(),
         values: Some(column::Values {

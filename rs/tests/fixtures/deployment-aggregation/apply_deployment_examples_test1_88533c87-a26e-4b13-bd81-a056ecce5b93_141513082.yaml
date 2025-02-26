@@ -79,7 +79,7 @@ metadata:
   name: test1
   namespace: examples
   resourceVersion: '141513082'
-  uid: 88533c87-a26e-4b13-bd81-a056ecce5b93
+  uid: 00000000-0000-0000-0000-000000000000
 spec:
   progressDeadlineSeconds: 600
   replicas: 1

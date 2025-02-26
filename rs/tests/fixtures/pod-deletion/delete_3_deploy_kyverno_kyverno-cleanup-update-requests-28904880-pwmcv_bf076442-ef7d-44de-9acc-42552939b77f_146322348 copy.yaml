@@ -1,11 +1,15 @@
 apiVersion: v1
-kind: Pod
+kind: Deployment
 metadata:
-  creationTimestamp: 2024-12-01T10:33:09Z
-  generateName: test1-656b95f57-
+  creationTimestamp: 2024-12-15T20:00:00Z
+  deletionGracePeriodSeconds: 0
+  deletionTimestamp: 2024-12-15T20:10:04Z
+  generateName: kyverno-cleanup-update-requests-28904880-
   labels:
-    app: test1
-    pod-template-hash: 656b95f57
+    batch.kubernetes.io/controller-uid: f5fd0d47-b75d-425d-ad48-72a88801b2ba
+    batch.kubernetes.io/job-name: kyverno-cleanup-update-requests-28904880
+    controller-uid: f5fd0d47-b75d-425d-ad48-72a88801b2ba
+    job-name: kyverno-cleanup-update-requests-28904880
   managedFields:
   - apiVersion: v1
     fieldsType: FieldsV1
@@ -14,58 +18,47 @@ metadata:
         f:generateName: {}
         f:labels:
           .: {}
-          f:app: {}
-          f:pod-template-hash: {}
+          f:batch.kubernetes.io/controller-uid: {}
+          f:batch.kubernetes.io/job-name: {}
+          f:controller-uid: {}
+          f:job-name: {}
         f:ownerReferences:
           .: {}
-          k:{"uid":"11111111-1111-1111-1111-111111111111"}: {}
+          k:{"uid":"f5fd0d47-b75d-425d-ad48-72a88801b2ba"}: {}
       f:spec:
         f:containers:
-          k:{"name":"test1"}:
+          k:{"name":"cleanup"}:
             .: {}
+            f:command: {}
             f:image: {}
             f:imagePullPolicy: {}
             f:name: {}
-            f:resources:
+            f:resources: {}
+            f:securityContext:
               .: {}
-              f:limits:
+              f:allowPrivilegeEscalation: {}
+              f:capabilities:
                 .: {}
-                f:memory: {}
-              f:requests:
+                f:drop: {}
+              f:privileged: {}
+              f:readOnlyRootFilesystem: {}
+              f:runAsNonRoot: {}
+              f:seccompProfile:
                 .: {}
-                f:memory: {}
+                f:type: {}
             f:terminationMessagePath: {}
             f:terminationMessagePolicy: {}
         f:dnsPolicy: {}
         f:enableServiceLinks: {}
-        f:imagePullSecrets:
-          .: {}
-          k:{"name":"hik8s-bot-ghcr-read-token"}: {}
         f:restartPolicy: {}
         f:schedulerName: {}
         f:securityContext: {}
+        f:serviceAccount: {}
+        f:serviceAccountName: {}
         f:terminationGracePeriodSeconds: {}
     manager: kube-controller-manager
     operation: Update
-    time: 2024-12-01T10:33:09Z
-  - apiVersion: v1
-    fieldsType: FieldsV1
-    fieldsV1:
-      f:status:
-        f:conditions:
-          .: {}
-          k:{"type":"PodScheduled"}:
-            .: {}
-            f:lastProbeTime: {}
-            f:lastTransitionTime: {}
-            f:message: {}
-            f:reason: {}
-            f:status: {}
-            f:type: {}
-    manager: kube-scheduler
-    operation: Update
-    subresource: status
-    time: 2024-12-01T10:33:09Z
+    time: 2024-12-15T20:00:00Z
   - apiVersion: v1
     fieldsType: FieldsV1
     fieldsV1:
@@ -75,12 +68,14 @@ metadata:
             .: {}
             f:lastProbeTime: {}
             f:lastTransitionTime: {}
+            f:reason: {}
             f:status: {}
             f:type: {}
           k:{"type":"Initialized"}:
             .: {}
             f:lastProbeTime: {}
             f:lastTransitionTime: {}
+            f:reason: {}
             f:status: {}
             f:type: {}
           k:{"type":"PodReadyToStartContainers"}:
@@ -93,6 +88,7 @@ metadata:
             .: {}
             f:lastProbeTime: {}
             f:lastTransitionTime: {}
+            f:reason: {}
             f:status: {}
             f:type: {}
         f:containerStatuses: {}
@@ -102,53 +98,69 @@ metadata:
         f:podIP: {}
         f:podIPs:
           .: {}
-          k:{"ip":"10.244.1.254"}:
+          k:{"ip":"10.244.1.148"}:
             .: {}
             f:ip: {}
         f:startTime: {}
     manager: kubelet
     operation: Update
     subresource: status
-    time: 2024-12-11T16:59:39Z
-  name: test1-656b95f57-mddjc
-  namespace: examples
+    time: 2024-12-15T20:00:04Z
+  name: kyverno-cleanup-update-requests-28904880-pwmcv
+  namespace: kyverno
   ownerReferences:
-  - apiVersion: apps/v1
+  - apiVersion: batch/v1
     blockOwnerDeletion: true
     controller: true
-    kind: ReplicaSet
-    name: test1-656b95f57
-    uid: 11111111-1111-1111-1111-111111111111
-  resourceVersion: '141508814'
-  uid: 00000000-0000-0000-0000-000000000000
+    kind: Deployment
+    name: kyverno-cleanup-update-requests-28904880
+    uid: 12345678-b75d-425d-ad48-425d425d425d
+  resourceVersion: '146322348'
+  uid: 11111111-1111-1111-1111-111111111111
 spec:
   containers:
-  - image: ghcr.io/hik8s/killed-oom:0.1.0
+  - command:
+    - /bin/bash
+    - -c
+    - |
+      set -euo pipefail
+      COUNT=$(kubectl get updaterequests.kyverno.io -A | wc -l)
+      if [ "$COUNT" -gt 10000 ]; then
+        echo "too many updaterequests found ($COUNT), cleaning up..."
+        kubectl delete updaterequests.kyverno.io --all -n kyverno
+      else
+        echo "($COUNT) reports found, no clean up needed"
+      fi
+    image: bitnami/kubectl:1.28.5
     imagePullPolicy: IfNotPresent
-    name: test1
-    resources:
-      limits:
-        memory: 1Gi
-      requests:
-        memory: 256Mi
+    name: cleanup
+    resources: {}
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      privileged: false
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
     terminationMessagePath: /dev/termination-log
     terminationMessagePolicy: File
     volumeMounts:
     - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-      name: kube-api-access-snt7v
+      name: kube-api-access-jvmd2
       readOnly: true
   dnsPolicy: ClusterFirst
   enableServiceLinks: true
-  imagePullSecrets:
-  - name: hik8s-bot-ghcr-read-token
   nodeName: prod1-node1
   preemptionPolicy: PreemptLowerPriority
   priority: 0
-  restartPolicy: Always
+  restartPolicy: OnFailure
   schedulerName: default-scheduler
   securityContext: {}
-  serviceAccount: default
-  serviceAccountName: default
+  serviceAccount: kyverno-cleanup-jobs
+  serviceAccountName: kyverno-cleanup-jobs
   terminationGracePeriodSeconds: 30
   tolerations:
   - effect: NoExecute
@@ -160,7 +172,7 @@ spec:
     operator: Exists
     tolerationSeconds: 300
   volumes:
-  - name: kube-api-access-snt7v
+  - name: kube-api-access-jvmd2
     projected:
       defaultMode: 420
       sources:
@@ -179,46 +191,5 @@ spec:
               fieldPath: metadata.namespace
             path: namespace
 status:
-  conditions:
-  - lastTransitionTime: 2024-12-02T10:30:39Z
-    status: 'True'
-    type: PodReadyToStartContainers
-  - lastTransitionTime: 2024-12-02T10:30:15Z
-    status: 'True'
-    type: Initialized
-  - lastTransitionTime: 2024-12-11T16:59:39Z
-    status: 'True'
-    type: Ready
-  - lastTransitionTime: 2024-12-11T16:59:39Z
-    status: 'True'
-    type: ContainersReady
-  - lastTransitionTime: 2024-12-02T10:30:15Z
-    status: 'True'
-    type: PodScheduled
-  containerStatuses:
-  - containerID: containerd://a5122f2a7deea0328712398cb43d9f736755d6a55d7a916f8003bb0dee8645c6
-    image: ghcr.io/hik8s/killed-oom:0.1.0
-    imageID: ghcr.io/hik8s/killed-oom@sha256:8eed681b3f6105258de3c10704973b18d355f1845a949bf7495d1cda22b25c5c
-    lastState:
-      terminated:
-        containerID: containerd://2037d5166436bafb81edca7048c5d70471a3b7185548ba783e2005d642618e0d
-        exitCode: 137
-        finishedAt: 2024-12-11T16:54:29Z
-        reason: OOMKilled
-        startedAt: 2024-12-11T16:54:28Z
-    name: test1
-    ready: true
-    restartCount: 2605
-    started: true
-    state:
-      running:
-        startedAt: 2024-12-11T16:59:39Z
-  hostIP: 142.132.214.164
-  hostIPs:
-  - ip: 142.132.214.164
-  phase: Running
-  podIP: 10.244.1.254
-  podIPs:
-  - ip: 10.244.1.254
-  qosClass: Burstable
-  startTime: 2024-12-02T10:30:15Z
+  phase: Pending
+  qosClass: BestEffort

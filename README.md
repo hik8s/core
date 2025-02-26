@@ -43,10 +43,10 @@ fluvio cluster resume
 ## Qdrant
 
 ```bash
-docker pull qdrant/qdrant:v1.9.7
+docker pull qdrant/qdrant:v1.11.3
 docker run -d -p 6333:6333 -p 6334:6334 \
     -v $(pwd)/qdrant_storage:/qdrant/storage:z \
-    qdrant/qdrant:v1.9.7
+    qdrant/qdrant:v1.11.3
 ```
 
 ## Data Intake

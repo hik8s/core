@@ -1,11 +1,11 @@
 use k8s_openapi::serde::{de::DeserializeOwned, Serialize};
-use shared::{types::kubeapidata::KubeApiData, DbName, RedisConnection};
+use shared::{types::kubeapidata::KubeApiData, RedisConnection};
 
 use crate::error::DataVectorizationError;
 
 // TODO: use a wrapped type that implements F, G, H
 pub async fn update_resource_state<T, F, G, H>(
-    customer_id: &str,
+    db: &str,
     kind: &str,
     redis: &mut RedisConnection,
     data: &mut KubeApiData,
@@ -25,7 +25,7 @@ where
 
     let mut requires_vectorization = false;
     let uid = get_uid(&new_state)?;
-    let key = redis.key(DbName::Resource, customer_id, Some(kind), &uid);
+    let key = redis.key(db, Some(kind), &uid);
     match redis
         .get_with_retry::<String>(&key)
         .await

@@ -84,9 +84,9 @@ metadata:
     controller: true
     kind: Ingress
     name: hello-server-hik9s
-    uid: 8eb24ce9-3f3a-487e-ae38-5e1399c613dc
+    uid: 11111111-1111-1111-1111-111111111111
   resourceVersion: '174059012'
-  uid: 693b49a5-f55b-4219-8bc7-6479cfe82e90
+  uid: 00000000-0000-0000-0000-000000000000
 spec:
   dnsNames:
   - hello-server.hik9s.ai

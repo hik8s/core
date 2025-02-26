@@ -9,7 +9,7 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use shared::fluvio::commit_and_flush_offsets;
 use shared::types::kubeapidata::KubeApiData;
-use shared::{log_error, log_warn_continue};
+use shared::{log_error, log_error_continue, log_warn_continue, DbName};
 
 use shared::utils::get_as_string;
 
@@ -22,6 +22,7 @@ pub async fn process_event(
     while let Some(result) = consumer.next().await {
         let record = log_warn_continue!(result);
         let customer_id = log_warn_continue!(get_record_key(&record));
+        let db = DbName::Event.id(&customer_id);
 
         let data: KubeApiData = log_warn_continue!(record
             .try_into()
@@ -42,9 +43,8 @@ pub async fn process_event(
             .ok();
         producer.flush().await.map_err(|e| log_error!(e)).ok();
 
-        commit_and_flush_offsets(&mut consumer, customer_id)
-            .await
-            .map_err(|e| log_error!(e))?;
+        // commit fluvio offset
+        log_error_continue!(commit_and_flush_offsets(&mut consumer, &db).await);
     }
     Ok(())
 }

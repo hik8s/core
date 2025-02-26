@@ -6,7 +6,7 @@ use shared::{
         record::{classified::ClassifiedLogRecord, preprocessed::PreprocessedLogRecord},
         tokenizer::Tokenizer,
     },
-    DbName, RedisConnection,
+    RedisConnection,
 };
 use std::env::var;
 
@@ -42,11 +42,11 @@ impl Classifier {
     pub fn classify(
         &mut self,
         log: &PreprocessedLogRecord,
-        customer_id: &str,
+        db: &str,
     ) -> Result<(Option<Class>, ClassifiedLogRecord), ClassifierError> {
         let mut best_match: Option<&mut Class> = None;
         let mut highest_similarity = 0 as f64;
-        let key = self.redis.key(DbName::Log, customer_id, None, &log.key);
+        let key = self.redis.key(db, None, &log.key);
         let state = &mut self.redis.get(&key)?;
 
         for class in state.classes.iter_mut() {

@@ -1,11 +1,6 @@
 use serde_json::Value;
 
-pub fn preprocess_message(
-    message: &str,
-    customer_id: &str,
-    key: &str,
-    record_id: &str,
-) -> Vec<String> {
+pub fn preprocess_message(message: &str, db: &str, key: &str, record_id: &str) -> Vec<String> {
     let mut result = Vec::new();
 
     // Check if the input string contains a JSON object
@@ -27,9 +22,9 @@ pub fn preprocess_message(
             }
             Err(e) => {
                 tracing::debug!(
-                    "Could not parse as json, continue with split. Error: {}, id: {}, key: {}, record: {}",
+                    "Could not parse as json, continue with split. Error: {}, db: {}, key: {}, record: {}",
                     e,
-                    customer_id,
+                    db,
                     key,
                     record_id
                 );

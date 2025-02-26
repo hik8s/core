@@ -9,7 +9,7 @@ use std::env;
 use analyze_logs::analyze_logs;
 use analyze_resource::analyze_resource;
 use analyze_state::analyze_state;
-use shared::{get_env_var, setup_tracing, QdrantConnection, RedisConnection};
+use shared::{get_env_var, setup_tracing, DbName, QdrantConnection, RedisConnection};
 use utils::create_map;
 
 #[tokio::main]
@@ -22,21 +22,23 @@ async fn main() {
 
     env::set_var("QDRANT_HOST", "dev.qdrant.hik8s.ai");
     let customer_id = get_env_var("ANALYTICS_CLIENT_ID").unwrap();
+    let db_resource = DbName::Resource.id(&customer_id);
+    let db_log = DbName::Log.id(&customer_id);
     let qdrant = QdrantConnection::new().await.unwrap();
 
     let filter_map = create_map("namespace", Some("examples"));
     if run_analyze_resource {
-        analyze_resource(filter_map, "name", &qdrant, &customer_id, limit).await;
+        analyze_resource(filter_map, "name", &qdrant, &db_resource, limit).await;
     }
 
     let filter_map = create_map("namespace", Some("examples"));
     if run_analyze_log {
-        analyze_logs(filter_map, "key", &qdrant, &customer_id, limit).await;
+        analyze_logs(filter_map, "key", &qdrant, &db_log, limit).await;
     }
 
     // env::set_var("REDIS_HOST", "dev.qdrant.hik8s.ai");
     let mut redis = RedisConnection::new().unwrap();
     if run_analyze_state {
-        analyze_state(&mut redis, &customer_id).await;
+        analyze_state(&mut redis, &db_log).await;
     }
 }
