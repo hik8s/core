@@ -109,6 +109,8 @@ impl GreptimeConnection {
         &self,
         db: &str,
         filter: Option<&str>,
+        resource_filter: Option<&str>,
+        exclude_deleted: bool,
     ) -> Result<Vec<String>, sqlx::Error> {
         // TODO: handle error gracefully
         let psql = match self.connect_db(db).await.map_err(|e| log_error!(e)) {
@@ -118,10 +120,33 @@ impl GreptimeConnection {
                 return Ok(vec![]);
             }
         };
-        let query = match filter {
-            Some(filter) => format!("SHOW TABLES WHERE {GREPTIME_TABLE_KEY} LIKE '%{filter}%'"),
-            None => "SHOW TABLES".to_string(),
+
+        let key = GREPTIME_TABLE_KEY;
+        let mut conditions = Vec::new();
+
+        // Add filter condition if provided
+        if let Some(filter) = filter {
+            conditions.push(format!("{key} LIKE '%{filter}%'"));
+        }
+
+        // Add resource_filter condition if provided
+        if let Some(resource_filter) = resource_filter {
+            conditions.push(format!("{key} LIKE '{resource_filter}__%'"));
+        }
+
+        // Add exclude_deleted condition if needed
+        if exclude_deleted {
+            conditions.push(format!("{key} NOT LIKE '%___deleted'"));
+        }
+
+        // Build the query
+        let query = if conditions.is_empty() {
+            "SHOW TABLES".to_string()
+        } else {
+            format!("SHOW TABLES WHERE {}", conditions.join(" and "))
         };
+
+        // Execute query and return results
         let rows = psql.fetch_all(query.as_str()).await?;
         let tables = rows.iter().map(|row| row.get(GREPTIME_TABLE_KEY)).collect();
         Ok(tables)
