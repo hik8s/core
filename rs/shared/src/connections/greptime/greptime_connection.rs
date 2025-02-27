@@ -179,6 +179,37 @@ impl rocket::fairing::Fairing for GreptimeConnection {
     }
 }
 
+#[derive(Debug)]
+pub struct GreptimeTable {
+    pub kind: String,
+    pub namespace: String,
+    pub name: String,
+    pub uid: String,
+    pub is_deleted: bool,
+}
+
+pub fn parse_resource_name(resource_name: &str) -> Option<GreptimeTable> {
+    let parts: Vec<&str> = resource_name.split("__").collect();
+
+    if parts.len() >= 4 {
+        let (uid, is_deleted) = if let Some((uid, _)) = parts[3].split_once("___deleted") {
+            (uid.to_string(), true)
+        } else {
+            (parts[3].to_string(), false)
+        };
+
+        Some(GreptimeTable {
+            kind: parts[0].to_string(),
+            namespace: parts[1].to_string(),
+            name: parts[2].to_string(),
+            uid,
+            is_deleted,
+        })
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
