@@ -312,8 +312,8 @@ mod tests {
         let active = parsed_resources.len();
 
         assert!(!parsed_resources.is_empty());
-        tracing::info!("Total resources: {}, Active resources: {}", total, active);
-        tracing::info!(
+        tracing::debug!("Total resources: {}, Active resources: {}", total, active);
+        tracing::debug!(
             "Active resources: {:?}",
             parsed_resources
                 .iter()
