@@ -219,7 +219,7 @@ mod tests {
                 .unwrap_or_default();
 
             let tables = greptime
-                .list_tables(&db, Some(&owner_uid))
+                .list_tables(&db, Some(&owner_uid), None, false)
                 .await
                 .unwrap_or(vec![]);
 

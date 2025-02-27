@@ -247,7 +247,7 @@ mod tests {
 
         // rename table
         greptime.mark_table_deleted(&db, &table_name).await.unwrap();
-        let table_names = greptime.list_tables(&db, None).await?;
+        let table_names = greptime.list_tables(&db, None, None, false).await?;
 
         // assert rename success
         assert!(
@@ -262,6 +262,38 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_filter_deleted_tables() -> Result<(), sqlx::Error> {
+        setup_tracing(true);
+
+        // Setup
+        let greptime = GreptimeConnection::new().await.unwrap();
+        let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
+        let db = DbName::Resource.id(&customer_id);
+
+        // Query all tables and active tables
+        let all_tables = greptime.list_tables(&db, None, None, false).await?;
+        let active_tables = greptime.list_tables(&db, None, None, true).await?;
+
+        // Check if delete filter filters all deleted tables
+        let active_tables_filtered_len = active_tables
+            .iter()
+            .filter_map(|name| parse_resource_name(name))
+            .filter(|i| !i.is_deleted)
+            .count();
+        assert_eq!(
+            active_tables.len(),
+            active_tables_filtered_len,
+            "Expect to active tables to filter all deleted tables"
+        );
+        assert!(
+            all_tables.len() > active_tables.len(),
+            "Total number of tables should be larger than active tables"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_list_tables() -> Result<(), sqlx::Error> {
         setup_tracing(true);
 
@@ -269,11 +301,25 @@ mod tests {
         let greptime = GreptimeConnection::new().await.unwrap();
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
         let db = DbName::Resource.id(&customer_id);
-        // let uid = Some("b013a9cd-86fb-4d05-a0cc-057d71dd0d08");
-        let uid = None;
-        let table_names = greptime.list_tables(&db, uid).await?;
-        assert!(!table_names.is_empty());
-        tracing::debug!("Tables: {:?}", table_names);
+        let table_names: Vec<String> = greptime.list_tables(&db, None, None, false).await?;
+        let mut parsed_resources = table_names
+            .iter()
+            .filter_map(|name| parse_resource_name(name))
+            .collect::<Vec<GreptimeTable>>();
+
+        let total = parsed_resources.len();
+        parsed_resources.retain(|r| !r.is_deleted);
+        let active = parsed_resources.len();
+
+        assert!(!parsed_resources.is_empty());
+        tracing::info!("Total resources: {}, Active resources: {}", total, active);
+        tracing::info!(
+            "Active resources: {:?}",
+            parsed_resources
+                .iter()
+                .map(|i| i.name.clone())
+                .collect::<Vec<String>>()
+        );
 
         Ok(())
     }
