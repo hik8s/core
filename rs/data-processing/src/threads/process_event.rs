@@ -9,7 +9,7 @@ use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use shared::fluvio::commit_and_flush_offsets;
 use shared::types::kubeapidata::KubeApiData;
-use shared::{log_error, log_error_continue, log_warn_continue, DbName};
+use shared::{log_error, log_error_continue, log_warn_continue};
 
 use shared::utils::get_as_string;
 

@@ -251,21 +251,24 @@ mod tests {
             }
         }
 
-        while RECEIVED_QDRANT.lock().unwrap().len() < num_cases
-            && RECEIVED_GREPTIME.lock().unwrap().len() < num_cases
+        let mut res_qdrant_len = 0;
+        let mut res_greptime_len = 0;
+
+        while (res_qdrant_len < num_cases || res_greptime_len < num_cases)
             && start_time.elapsed() < timeout
         {
-            let res_qdrant = RECEIVED_QDRANT.lock().unwrap().clone();
-            let res_greptime = RECEIVED_GREPTIME.lock().unwrap().clone();
             info!(
                 "qdrant({}/{}) | greptime ({}/{})",
-                res_qdrant.len(),
-                num_cases,
-                res_greptime.len(),
-                num_cases
+                res_qdrant_len, num_cases, res_greptime_len, num_cases
             );
             sleep(Duration::from_secs(1)).await;
+            res_qdrant_len = RECEIVED_QDRANT.lock().unwrap().len();
+            res_greptime_len = RECEIVED_GREPTIME.lock().unwrap().len();
         }
+        tracing::info!(
+            "Received greptime: {:?}",
+            RECEIVED_GREPTIME.lock().unwrap().len()
+        );
         assert_eq!(points.len(), num_points);
         assert!(received_qdrant);
         assert!(received_greptime);
