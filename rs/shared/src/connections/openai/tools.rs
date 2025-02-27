@@ -10,12 +10,7 @@ use serde_json::json;
 use std::fmt;
 
 use crate::{
-    connections::qdrant::{EventQdrantMetadata, ResourceQdrantMetadata},
-    log_error,
-    qdrant_util::{create_filter, create_filter_with_data_type},
-    testdata::UserTestData,
-    types::class::vectorized::{from_scored_point, VectorizedClass},
-    DbName, QdrantConnection, QdrantConnectionError,
+    connections::qdrant::{EventQdrantMetadata, ResourceQdrantMetadata}, log_error, qdrant_util::{create_filter, create_filter_with_data_type}, testdata::UserTestData, types::class::vectorized::{from_scored_point, VectorizedClass}, DbName, GreptimeConnection, QdrantConnection, QdrantConnectionError
 };
 
 use super::embeddings::request_embedding;
@@ -414,6 +409,7 @@ impl Tool {
     }
     pub async fn request(
         self,
+        _greptime: &GreptimeConnection,
         qdrant: &QdrantConnection,
         user_message: &str,
         customer_id: &str,
