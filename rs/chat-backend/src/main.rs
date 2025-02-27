@@ -14,9 +14,9 @@ pub enum ChatBackendError {
     #[error("Greptime error: {0}")]
     Greptime(#[from] GreptimeConnectionError),
     #[error("Qdrant error: {0}")]
-    QdrantError(#[from] QdrantConnectionError),
+    Qdrant(#[from] QdrantConnectionError),
     #[error("Rocket error: {0}")]
-    RocketError(#[from] rocket::Error),
+    Rocket(#[from] rocket::Error),
 }
 
 #[main]
