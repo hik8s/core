@@ -86,21 +86,11 @@ pub async fn process_resource(
             kind.to_lowercase()
         );
 
-        if data.event_type == KubeEventType::Delete {
-            let tables = greptime
-                .list_tables(&db, Some(&uid), None, false)
-                .await
-                .unwrap();
-            for table in tables {
-                greptime.mark_table_deleted(&db, &table).await.unwrap();
-            }
-        }
-
         let insert_request = resource_to_insert_request(
             apiversion,
             Some(kind.clone()),
             Some(name),
-            Some(uid),
+            Some(uid.clone()),
             Some(metadata.to_string()),
             Some(namespace),
             spec,
@@ -113,6 +103,17 @@ pub async fn process_resource(
         let stream_inserter = greptime.streaming_inserter(&db)?;
         stream_inserter.insert(vec![insert_request]).await?;
         stream_inserter.finish().await?;
+
+        if data.event_type == KubeEventType::Delete {
+            let tables = greptime
+                .list_tables(&db, Some(&uid), None, false)
+                .await
+                .unwrap();
+            for table in tables {
+                tracing::info!("Marking table as deleted: {}", table);
+                greptime.mark_table_deleted(&db, &table).await.unwrap();
+            }
+        }
 
         let data_serialized: Vec<u8> = log_warn_continue!(data
             .try_into()
