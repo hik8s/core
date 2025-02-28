@@ -15,6 +15,7 @@ mod tests {
     use data_vectorizer::vectorize_class;
     use qdrant_client::qdrant::{ScoredPoint, Value};
     use rstest::rstest;
+    use shared::connections::greptime::greptime_connection::{parse_resource_name, GreptimeTable};
     use shared::connections::greptime::middleware::query::read_records;
     use shared::constant::OPENAI_EMBEDDING_TOKEN_LIMIT;
     use shared::mock::rocket::get_test_client;
@@ -140,21 +141,22 @@ mod tests {
 
     #[tokio::test]
     #[rstest]
-    #[case(("pod-deletion", "resources", DbName::Resource, 3, TestType::Delete))]
-    #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3, TestType::Delete))]
-    #[case(("deployment-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
-    #[case(("pod-aggregation", "resources", DbName::Resource, 6, TestType::Update))]
-    #[case(("pod-aggregation-by-replicaset", "resources", DbName::Resource, 6, TestType::Update))]
+    #[case(("pod-deletion", "resources", DbName::Resource, 3, TestType::Delete, 1))]
+    #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3, TestType::Delete, 2))]
+    #[case(("deployment-aggregation", "resources", DbName::Resource, 6, TestType::Update, 1))]
+    #[case(("pod-aggregation", "resources", DbName::Resource, 6, TestType::Update, 1))]
+    #[case(("pod-aggregation-by-replicaset", "resources", DbName::Resource, 6, TestType::Update, 1))]
     // #[case(("event-filter", "events", DbName::Event, 1,TestType::Update))]
-    #[case(("skiplist-resource", "resources", DbName::Resource, 9, TestType::Update))]
-    #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3, TestType::Update))]
+    #[case(("skiplist-resource", "resources", DbName::Resource, 3, TestType::Update, 3))]
+    #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3, TestType::Update, 1))]
     async fn test_e2e_integration(
-        #[case] (subdir, route, dbname, num_points, test_type): (
+        #[case] (subdir, route, dbname, num_points, test_type, num_tables): (
             &str,
             &str,
             DbName,
             usize,
             TestType,
+            usize,
         ),
     ) -> Result<(), DataIntakeError> {
         let num_cases = 7;
@@ -192,11 +194,12 @@ mod tests {
         assert_eq!(status.code, 200);
 
         let start_time = Instant::now();
-        let timeout = Duration::from_secs(30);
+        let timeout = Duration::from_secs(10);
 
         let mut received_greptime = false;
         let mut received_qdrant = false;
         let mut points = Vec::<ScoredPoint>::new();
+        let mut tables = Vec::<String>::new();
         while start_time.elapsed() < timeout {
             let filter = match_any("resource_uid", &[resource_uid.clone()]);
             points = qdrant
@@ -213,19 +216,19 @@ mod tests {
                 num_points
             );
 
-            let owner_uid = uid_map
+            let search_uid = uid_map
                 .get(OWNER_UID)
                 .map(ToOwned::to_owned)
-                .unwrap_or_default();
+                .unwrap_or(resource_uid.clone());
 
-            let tables = greptime
-                .list_tables(&db, Some(&owner_uid), None, false)
+            tables = greptime
+                .list_tables(&db, Some(&search_uid), None, false)
                 .await
-                .unwrap_or(vec![]);
+                .unwrap();
 
             let key = match test_type {
-                TestType::Delete => format!("{owner_uid}___deleted"),
-                TestType::Update => owner_uid.to_owned(),
+                TestType::Delete => format!("{search_uid}___deleted"),
+                TestType::Update => search_uid.to_owned(),
             };
 
             if !received_greptime && tables.iter().any(|table| table.contains(&key)) {
@@ -270,6 +273,37 @@ mod tests {
             RECEIVED_GREPTIME.lock().unwrap().len()
         );
         assert_eq!(points.len(), num_points);
+        assert_eq!(tables.len(), num_tables);
+        if test_type == TestType::Delete {
+            // Log for debugging
+            tracing::debug!(
+                "Verified all {} tables are properly marked as deleted: {:?}",
+                tables.len(),
+                tables
+            );
+
+            // Parse all table names and ensure they're all marked as deleted
+            let parsed_tables: Vec<GreptimeTable> = tables
+                .iter()
+                .filter_map(|table| parse_resource_name(table))
+                .collect();
+
+            assert!(
+                !parsed_tables.is_empty(),
+                "Should have at least one table to check"
+            );
+
+            // Verify each table is marked as deleted
+            let all_deleted = parsed_tables.iter().all(|table| table.is_deleted);
+            assert!(
+                all_deleted,
+                "All tables should be marked as deleted, found non-deleted tables: {:?}",
+                parsed_tables
+                    .iter()
+                    .filter(|t| !t.is_deleted)
+                    .collect::<Vec<_>>()
+            );
+        }
         assert!(received_qdrant);
         assert!(received_greptime);
         Ok(())
