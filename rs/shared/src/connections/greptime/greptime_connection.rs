@@ -222,6 +222,25 @@ mod tests {
         DbName,
     };
 
+    #[test]
+    fn test_parse_resource_name() {
+        setup_tracing(false);
+        let table_name =
+        "certificate__examples__hello-server-hik9s__692cf3ae-680c-4b00-949d-e26dbf781a40___deleted";
+        let parsed = parse_resource_name(table_name).unwrap();
+        tracing::debug!("{:?}", parsed);
+        assert_eq!(parsed.kind, "certificate");
+        assert_eq!(parsed.namespace, "examples");
+        assert_eq!(parsed.name, "hello-server-hik9s");
+        assert_eq!(parsed.uid, "692cf3ae-680c-4b00-949d-e26dbf781a40");
+        assert!(parsed.is_deleted, "Table should be marked as deleted");
+
+        // Test a non-deleted table
+        let non_deleted = "pod__default__nginx__abcd1234";
+        let parsed = parse_resource_name(non_deleted).unwrap();
+        assert!(!parsed.is_deleted, "Table should not be marked as deleted");
+    }
+
     #[tokio::test]
     async fn test_table_rename_delete() -> Result<(), sqlx::Error> {
         setup_tracing(true);
