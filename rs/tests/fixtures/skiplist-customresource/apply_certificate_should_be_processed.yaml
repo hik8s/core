@@ -61,7 +61,7 @@ metadata:
     controller: true
     kind: Ingress
     name: dashboard
-    uid: 8fbb4c6b-8a5b-4772-8a64-d48f32b9e23f
+    uid: 11111111-1111-1111-1111-111111111111
   resourceVersion: '134084304'
   uid: 00000000-0000-0000-0000-000000000000
 spec:

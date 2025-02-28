@@ -11,7 +11,7 @@ mod tests {
     use shared::{
         connections::qdrant::EventQdrantMetadata,
         testdata::{UserTest, UserTestData},
-        DbName, OpenAIConnection, QdrantConnection,
+        DbName, GreptimeConnection, OpenAIConnection, QdrantConnection,
     };
     use tokio::sync::mpsc;
 
@@ -31,6 +31,7 @@ mod tests {
         #[case] dbname: DbName,
     ) -> Result<(), OpenAIError> {
         setup_tracing(false);
+        let greptime = GreptimeConnection::new().await.unwrap();
         let qdrant = QdrantConnection::new().await.unwrap();
         let tokenizer = Tokenizer::new().unwrap();
         let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
@@ -48,7 +49,7 @@ mod tests {
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-        process_user_message(&qdrant, &mut messages, &tx, request_option)
+        process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
             .await
             .unwrap();
 
@@ -134,6 +135,7 @@ mod tests {
         #[case] dbname: DbName,
     ) -> Result<(), OpenAIError> {
         setup_tracing(false);
+        let greptime = GreptimeConnection::new().await.unwrap();
         let qdrant = QdrantConnection::new().await.unwrap();
         // Data ingestion
         let event = get_event_qdrant_metadata();
@@ -152,7 +154,7 @@ mod tests {
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-        process_user_message(&qdrant, &mut messages, &tx, request_option)
+        process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
             .await
             .unwrap();
 
@@ -212,6 +214,7 @@ mod tests {
         #[case] testdata: UserTestData,
     ) -> Result<(), OpenAIError> {
         setup_tracing(false);
+        let greptime = GreptimeConnection::new().await.unwrap();
         let qdrant = QdrantConnection::new().await.unwrap();
 
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
@@ -220,7 +223,7 @@ mod tests {
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-        process_user_message(&qdrant, &mut messages, &tx, request_option)
+        process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
             .await
             .unwrap();
 
@@ -280,6 +283,7 @@ mod tests {
         #[case] testdata: UserTestData,
     ) -> Result<(), OpenAIError> {
         setup_tracing(false);
+        let greptime = GreptimeConnection::new().await.unwrap();
         let qdrant = QdrantConnection::new().await.unwrap();
 
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
@@ -288,7 +292,7 @@ mod tests {
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-        process_user_message(&qdrant, &mut messages, &tx, request_option)
+        process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
             .await
             .unwrap();
 
@@ -344,6 +348,7 @@ mod tests {
     #[tokio::test]
     async fn prompt_playground() -> Result<(), OpenAIError> {
         setup_tracing(false);
+        let greptime = GreptimeConnection::new().await.unwrap();
         let qdrant = QdrantConnection::new().await.unwrap();
 
         // let prompt = "Can u create a deployment for my application?";
@@ -358,7 +363,7 @@ mod tests {
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
 
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-        process_user_message(&qdrant, &mut messages, &tx, request_option)
+        process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
             .await
             .unwrap();
 

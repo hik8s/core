@@ -109,6 +109,8 @@ impl GreptimeConnection {
         &self,
         db: &str,
         filter: Option<&str>,
+        resource_filter: Option<&str>,
+        exclude_deleted: bool,
     ) -> Result<Vec<String>, sqlx::Error> {
         // TODO: handle error gracefully
         let psql = match self.connect_db(db).await.map_err(|e| log_error!(e)) {
@@ -118,10 +120,33 @@ impl GreptimeConnection {
                 return Ok(vec![]);
             }
         };
-        let query = match filter {
-            Some(filter) => format!("SHOW TABLES WHERE {GREPTIME_TABLE_KEY} LIKE '%{filter}%'"),
-            None => "SHOW TABLES".to_string(),
+
+        let key = GREPTIME_TABLE_KEY;
+        let mut conditions = Vec::new();
+
+        // Add filter condition if provided
+        if let Some(filter) = filter {
+            conditions.push(format!("{key} LIKE '%{filter}%'"));
+        }
+
+        // Add resource_filter condition if provided
+        if let Some(resource_filter) = resource_filter {
+            conditions.push(format!("{key} LIKE '{resource_filter}__%'"));
+        }
+
+        // Add exclude_deleted condition if needed
+        if exclude_deleted {
+            conditions.push(format!("{key} NOT LIKE '%___deleted'"));
+        }
+
+        // Build the query
+        let query = if conditions.is_empty() {
+            "SHOW TABLES".to_string()
+        } else {
+            format!("SHOW TABLES WHERE {}", conditions.join(" and "))
         };
+
+        // Execute query and return results
         let rows = psql.fetch_all(query.as_str()).await?;
         let tables = rows.iter().map(|row| row.get(GREPTIME_TABLE_KEY)).collect();
         Ok(tables)
@@ -154,6 +179,42 @@ impl rocket::fairing::Fairing for GreptimeConnection {
     }
 }
 
+#[derive(Debug)]
+pub struct GreptimeTable {
+    pub kind: String,
+    pub namespace: String,
+    pub name: String,
+    pub uid: String,
+    pub is_deleted: bool,
+}
+
+pub fn parse_resource_name(resource_name: &str) -> Option<GreptimeTable> {
+    // First check if the entire name contains the deleted suffix
+    let is_deleted = resource_name.contains("___deleted");
+
+    // Split by double underscore
+    let parts: Vec<&str> = resource_name.split("__").collect();
+
+    if parts.len() >= 4 {
+        // Handle the UID part which might contain the deleted suffix
+        let uid_part = parts[3];
+        let uid = match uid_part.split_once("___deleted") {
+            Some((uid, _)) => uid.to_string(),
+            None => uid_part.to_string(),
+        };
+
+        Some(GreptimeTable {
+            kind: parts[0].to_string(),
+            namespace: parts[1].to_string(),
+            name: parts[2].to_string(),
+            uid,
+            is_deleted,
+        })
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -165,6 +226,25 @@ mod tests {
         utils::mock::mock_client::generate_podname,
         DbName,
     };
+
+    #[test]
+    fn test_parse_resource_name() {
+        setup_tracing(false);
+        let table_name =
+        "certificate__examples__hello-server-hik9s__692cf3ae-680c-4b00-949d-e26dbf781a40___deleted";
+        let parsed = parse_resource_name(table_name).unwrap();
+        tracing::debug!("{:?}", parsed);
+        assert_eq!(parsed.kind, "certificate");
+        assert_eq!(parsed.namespace, "examples");
+        assert_eq!(parsed.name, "hello-server-hik9s");
+        assert_eq!(parsed.uid, "692cf3ae-680c-4b00-949d-e26dbf781a40");
+        assert!(parsed.is_deleted, "Table should be marked as deleted");
+
+        // Test a non-deleted table
+        let non_deleted = "pod__default__nginx__abcd1234";
+        let parsed = parse_resource_name(non_deleted).unwrap();
+        assert!(!parsed.is_deleted, "Table should not be marked as deleted");
+    }
 
     #[tokio::test]
     async fn test_table_rename_delete() -> Result<(), sqlx::Error> {
@@ -191,7 +271,7 @@ mod tests {
 
         // rename table
         greptime.mark_table_deleted(&db, &table_name).await.unwrap();
-        let table_names = greptime.list_tables(&db, None).await?;
+        let table_names = greptime.list_tables(&db, None, None, false).await?;
 
         // assert rename success
         assert!(
@@ -206,6 +286,38 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_filter_deleted_tables() -> Result<(), sqlx::Error> {
+        setup_tracing(true);
+
+        // Setup
+        let greptime = GreptimeConnection::new().await.unwrap();
+        let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
+        let db = DbName::Resource.id(&customer_id);
+
+        // Query all tables and active tables
+        let all_tables = greptime.list_tables(&db, None, None, false).await?;
+        let active_tables = greptime.list_tables(&db, None, None, true).await?;
+
+        // Check if delete filter filters all deleted tables
+        let active_tables_filtered_len = active_tables
+            .iter()
+            .filter_map(|name| parse_resource_name(name))
+            .filter(|i| !i.is_deleted)
+            .count();
+        assert_eq!(
+            active_tables.len(),
+            active_tables_filtered_len,
+            "Expect to active tables to filter all deleted tables"
+        );
+        assert!(
+            all_tables.len() > active_tables.len(),
+            "Total number of tables should be larger than active tables"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_list_tables() -> Result<(), sqlx::Error> {
         setup_tracing(true);
 
@@ -213,11 +325,25 @@ mod tests {
         let greptime = GreptimeConnection::new().await.unwrap();
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
         let db = DbName::Resource.id(&customer_id);
-        // let uid = Some("b013a9cd-86fb-4d05-a0cc-057d71dd0d08");
-        let uid = None;
-        let table_names = greptime.list_tables(&db, uid).await?;
-        assert!(!table_names.is_empty());
-        tracing::debug!("Tables: {:?}", table_names);
+        let table_names: Vec<String> = greptime.list_tables(&db, None, None, false).await?;
+        let mut parsed_resources = table_names
+            .iter()
+            .filter_map(|name| parse_resource_name(name))
+            .collect::<Vec<GreptimeTable>>();
+
+        let total = parsed_resources.len();
+        parsed_resources.retain(|r| !r.is_deleted);
+        let active = parsed_resources.len();
+
+        assert!(!parsed_resources.is_empty());
+        tracing::debug!("Total resources: {}, Active resources: {}", total, active);
+        tracing::debug!(
+            "Active resources: {:?}",
+            parsed_resources
+                .iter()
+                .map(|i| i.name.clone())
+                .collect::<Vec<String>>()
+        );
 
         Ok(())
     }

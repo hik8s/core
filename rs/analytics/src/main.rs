@@ -16,9 +16,9 @@ use utils::create_map;
 async fn main() {
     setup_tracing(false);
     let limit = 1000000;
-    let run_analyze_resource = false;
-    let run_analyze_log = true;
-    let run_analyze_state = true;
+    let run_analyze_resource = true;
+    let run_analyze_log = false;
+    let run_analyze_state = false;
 
     env::set_var("QDRANT_HOST", "dev.qdrant.hik8s.ai");
     let customer_id = get_env_var("ANALYTICS_CLIENT_ID").unwrap();
@@ -26,14 +26,18 @@ async fn main() {
     let db_log = DbName::Log.id(&customer_id);
     let qdrant = QdrantConnection::new().await.unwrap();
 
-    let filter_map = create_map("namespace", Some("examples"));
+    // group by namespace and filter "examples"
+    // let group_by = create_map("namespace", Some("examples"));
+
+    // group by kind and filter "Namespace"
+    let group_by = create_map("kind", Some("Namespace"));
     if run_analyze_resource {
-        analyze_resource(filter_map, "name", &qdrant, &db_resource, limit).await;
+        analyze_resource(group_by, "name", &qdrant, &db_resource, limit).await;
     }
 
-    let filter_map = create_map("namespace", Some("examples"));
+    let group_by = create_map("namespace", Some("examples"));
     if run_analyze_log {
-        analyze_logs(filter_map, "key", &qdrant, &db_log, limit).await;
+        analyze_logs(group_by, "key", &qdrant, &db_log, limit).await;
     }
 
     // env::set_var("REDIS_HOST", "dev.qdrant.hik8s.ai");

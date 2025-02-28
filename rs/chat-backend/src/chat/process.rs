@@ -6,7 +6,7 @@ use shared::{
         collect_tool_call_chunks, create_assistant_message, create_system_message,
         create_tool_message, create_user_message, extract_last_user_text_message, Tool,
     },
-    OpenAIConnection, QdrantConnection,
+    GreptimeConnection, OpenAIConnection, QdrantConnection,
 };
 use tokio::sync::mpsc;
 
@@ -59,6 +59,7 @@ pub struct Message {
 }
 
 pub async fn process_user_message(
+    greptime: &GreptimeConnection,
     qdrant: &QdrantConnection,
     messages: &mut Vec<ChatCompletionRequestMessage>,
     tx: &mpsc::UnboundedSender<String>,
@@ -92,7 +93,7 @@ pub async fn process_user_message(
         for tool_call in tool_calls {
             let tool = Tool::try_from(tool_call.function).unwrap();
             let tool_output = tool
-                .request(qdrant, &user_message, &options.client_id)
+                .request(greptime, qdrant, &user_message, &options.client_id)
                 .await
                 .unwrap();
             let tool_submission = create_tool_message(&tool_output, &tool_call.id);

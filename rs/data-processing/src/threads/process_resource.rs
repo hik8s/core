@@ -9,6 +9,7 @@ use shared::connections::fluvio::util::get_record_key;
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
 use shared::connections::greptime::middleware::insert::resource_to_insert_request;
+use shared::constant::{DEFAULT_NAME, DEFAULT_NS};
 use shared::fluvio::commit_and_flush_offsets;
 use shared::types::kubeapidata::{KubeApiData, KubeEventType};
 use shared::utils::{
@@ -42,8 +43,8 @@ pub async fn process_resource(
 
         let metadata = log_warn_continue!(get_as_ref(&data.json, "metadata"));
         let uid = log_error_continue!(get_as_string(metadata, "uid"));
-        let name = get_as_string(metadata, "name").unwrap_or("no-name".to_string());
-        let namespace = get_as_string(metadata, "namespace").unwrap_or("no-namespace".to_string());
+        let name = get_as_string(metadata, "name").unwrap_or(DEFAULT_NAME.to_string());
+        let namespace = get_as_string(metadata, "namespace").unwrap_or(DEFAULT_NS.to_string());
 
         let mut timestamps = extract_managed_field_timestamps(metadata);
         timestamps.push(extract_timestamp(metadata, "creationTimestamp"));
@@ -85,18 +86,11 @@ pub async fn process_resource(
             kind.to_lowercase()
         );
 
-        if data.event_type == KubeEventType::Delete {
-            let tables = greptime.list_tables(&db, Some(&uid)).await.unwrap();
-            for table in tables {
-                greptime.mark_table_deleted(&db, &table).await.unwrap();
-            }
-        }
-
         let insert_request = resource_to_insert_request(
             apiversion,
             Some(kind.clone()),
             Some(name),
-            Some(uid),
+            Some(uid.clone()),
             Some(metadata.to_string()),
             Some(namespace),
             spec,
@@ -109,6 +103,16 @@ pub async fn process_resource(
         let stream_inserter = greptime.streaming_inserter(&db)?;
         stream_inserter.insert(vec![insert_request]).await?;
         stream_inserter.finish().await?;
+
+        if data.event_type == KubeEventType::Delete {
+            let tables = greptime
+                .list_tables(&db, Some(&uid), None, false)
+                .await
+                .unwrap();
+            for table in tables {
+                greptime.mark_table_deleted(&db, &table).await.unwrap();
+            }
+        }
 
         let data_serialized: Vec<u8> = log_warn_continue!(data
             .try_into()

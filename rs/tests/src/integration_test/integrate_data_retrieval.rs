@@ -8,7 +8,7 @@ mod tests {
         get_env_var, setup_tracing,
         testdata::{UserTest, UserTestData},
         types::tokenizer::Tokenizer,
-        DbName, QdrantConnection, QdrantConnectionError, RateLimiter,
+        DbName, GreptimeConnection, QdrantConnection, QdrantConnectionError, RateLimiter,
     };
     use tracing::info;
 
@@ -20,6 +20,7 @@ mod tests {
     ) -> Result<(), QdrantConnectionError> {
         // Prep
         setup_tracing(false);
+        let greptime = GreptimeConnection::new().await.unwrap();
         let qdrant = QdrantConnection::new().await.unwrap();
         let tokenizer = Tokenizer::new().unwrap();
         let rate_limiter = RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT);
@@ -35,7 +36,7 @@ mod tests {
 
         let tool = Tool::LogRetrieval(LogRetrievalArgs::new(&testdata));
         let result = tool
-            .request(&qdrant, &testdata.prompt, &customer_id)
+            .request(&greptime, &qdrant, &testdata.prompt, &customer_id)
             .await?;
 
         info!(result);
