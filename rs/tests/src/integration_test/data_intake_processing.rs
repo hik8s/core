@@ -268,10 +268,7 @@ mod tests {
             res_qdrant_len = RECEIVED_QDRANT.lock().unwrap().len();
             res_greptime_len = RECEIVED_GREPTIME.lock().unwrap().len();
         }
-        tracing::info!(
-            "Received greptime: {:?}",
-            RECEIVED_GREPTIME.lock().unwrap().len()
-        );
+
         assert_eq!(points.len(), num_points);
         assert_eq!(tables.len(), num_tables);
         if test_type == TestType::Delete {

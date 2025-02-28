@@ -110,7 +110,6 @@ pub async fn process_resource(
                 .await
                 .unwrap();
             for table in tables {
-                tracing::info!("Marking table as deleted: {}", table);
                 greptime.mark_table_deleted(&db, &table).await.unwrap();
             }
         }
