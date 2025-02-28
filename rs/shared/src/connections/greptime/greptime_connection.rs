@@ -189,13 +189,18 @@ pub struct GreptimeTable {
 }
 
 pub fn parse_resource_name(resource_name: &str) -> Option<GreptimeTable> {
+    // First check if the entire name contains the deleted suffix
+    let is_deleted = resource_name.contains("___deleted");
+
+    // Split by double underscore
     let parts: Vec<&str> = resource_name.split("__").collect();
 
     if parts.len() >= 4 {
-        let (uid, is_deleted) = if let Some((uid, _)) = parts[3].split_once("___deleted") {
-            (uid.to_string(), true)
-        } else {
-            (parts[3].to_string(), false)
+        // Handle the UID part which might contain the deleted suffix
+        let uid_part = parts[3];
+        let uid = match uid_part.split_once("___deleted") {
+            Some((uid, _)) => uid.to_string(),
+            None => uid_part.to_string(),
         };
 
         Some(GreptimeTable {
