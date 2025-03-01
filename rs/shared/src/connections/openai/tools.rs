@@ -10,10 +10,31 @@ use serde_json::json;
 use std::fmt;
 
 use crate::{
-    connections::qdrant::{EventQdrantMetadata, ResourceQdrantMetadata}, log_error, qdrant_util::{create_filter, create_filter_with_data_type}, testdata::UserTestData, types::class::vectorized::{from_scored_point, VectorizedClass}, DbName, GreptimeConnection, QdrantConnection, QdrantConnectionError
+    connections::{
+        greptime::greptime_connection::parse_resource_name,
+        qdrant::{EventQdrantMetadata, ResourceQdrantMetadata},
+    },
+    log_error,
+    qdrant_util::{create_filter, create_filter_with_data_type},
+    testdata::UserTestData,
+    types::class::vectorized::{from_scored_point, VectorizedClass},
+    DbName, GreptimeConnection, QdrantConnection,
 };
 
-use super::embeddings::request_embedding;
+use super::{embeddings::request_embedding, error::ToolRequestError};
+
+pub fn list_all_tools() -> Vec<ChatCompletionTool> {
+    vec![
+        Tool::ClusterOverview(ClusterOverviewArgs::default()).into(),
+        Tool::LogRetrieval(LogRetrievalArgs::default()).into(),
+        Tool::EventRetrieval(EventRetrievalArgs::default()).into(),
+        Tool::ResourceStatusRetrieval(ResourceStatusRetrievalArgs::default()).into(),
+        Tool::CustomResourceStatusRetrieval(ResourceStatusRetrievalArgs::default()).into(),
+        Tool::ResourceSpecRetrieval(ResourceStatusRetrievalArgs::default()).into(),
+        Tool::CustomResourceSpecRetrieval(ResourceStatusRetrievalArgs::default()).into(),
+        Tool::CreateDeployment(CreateDeploymentArgs::default()).into(),
+    ]
+}
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct LogRetrievalArgs {
@@ -126,9 +147,22 @@ impl TryFrom<String> for CreateDeploymentArgs {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct ClusterOverviewArgs {
+    pub resources: Vec<String>,
+}
+
+impl TryFrom<String> for ClusterOverviewArgs {
+    type Error = serde_json::Error;
+
+    fn try_from(json_string: String) -> Result<Self, Self::Error> {
+        serde_json::from_str(&json_string)
+    }
+}
+
 #[derive(Debug)]
 pub enum Tool {
-    ClusterOverview,
+    ClusterOverview(ClusterOverviewArgs),
     CreateDeployment(CreateDeploymentArgs),
     LogRetrieval(LogRetrievalArgs),
     EventRetrieval(EventRetrievalArgs),
@@ -141,7 +175,7 @@ pub enum Tool {
 impl fmt::Display for Tool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let tool_name = match self {
-            Tool::ClusterOverview => "cluster-overview",
+            Tool::ClusterOverview(_) => "cluster-overview",
             Tool::CreateDeployment(_) => "deployment-options",
             Tool::LogRetrieval(_) => "log-retrieval",
             Tool::EventRetrieval(_) => "event-retrieval",
@@ -159,7 +193,7 @@ impl TryFrom<FunctionCall> for Tool {
     fn try_from(call: FunctionCall) -> Result<Self, Self::Error> {
         let FunctionCall { name, arguments } = call;
         match name.as_str() {
-            "cluster-overview" => Ok(Tool::ClusterOverview),
+            "cluster-overview" => Ok(Tool::ClusterOverview(arguments.try_into().unwrap())),
             "deployment-options" => Ok(Tool::CreateDeployment(arguments.try_into().unwrap())),
             "log-retrieval" => Ok(Tool::LogRetrieval(arguments.try_into().unwrap())),
             "event-retrieval" => Ok(Tool::EventRetrieval(arguments.try_into().unwrap())),
@@ -182,7 +216,7 @@ impl TryFrom<FunctionCall> for Tool {
 impl Tool {
     pub fn get_function(&self) -> FunctionObject {
         match self {
-            Tool::ClusterOverview => FunctionObject {
+            Tool::ClusterOverview(_) => FunctionObject {
                 name: self.to_string(),
                 description: Some(
                     "Retrieve an overview of the cluster and its applications".to_string(),
@@ -190,17 +224,21 @@ impl Tool {
                 parameters: Some(json!({
                     "type": "object",
                     "properties": {
-                        "resource": {
-                            "type": ["string", "null"],
-                            "description": "The type of resource to retrieve. For example, 'pods', 'services', 'deployments', etc. None for all resources.",
-                        },
-                        "namespace": {
-                            "type": ["string", "null"],
-                            "description": "Name of the namespace"
+                        "resources": {
+                            "type": ["array", "null"],
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "deployment", "daemonset", "replicaset", "statefulset", "pod", 
+                                    "service", "namespace", "node", "ingress", "serviceaccount", 
+                                    "role", "clusterrole", "clusterrolebinding", "storageclass", "all"
+                                ]
+                            },
+                            "description": "The types of resources to retrieve. For example, 'pods', 'services', 'deployments', etc. select all for search across all resources."
                         },
                     },
                     "additionalProperties": false,
-                    "required": ["resource", "namespace"]
+                    "required": ["resources"]
                 })),
                 strict: Some(true),
             },
@@ -409,17 +447,54 @@ impl Tool {
     }
     pub async fn request(
         self,
-        _greptime: &GreptimeConnection,
+        greptime: &GreptimeConnection,
         qdrant: &QdrantConnection,
         user_message: &str,
         customer_id: &str,
-    ) -> Result<String, QdrantConnectionError> {
+    ) -> Result<String, ToolRequestError> {
+        // TODO: add meaningful error types with context
         let tool_name = self.to_string();
         match self {
-            Tool::ClusterOverview => Ok("We got a bunch of pods here and then theres this huge pile of containers in this corner of the cluster".to_string()),
+            Tool::ClusterOverview(args) => {
+                let exclude_deleted = true;
+                let db = DbName::Resource.id(customer_id);
+
+                // Define what resources to query
+                let resources_to_query =
+                    if args.resources.is_empty() || args.resources.contains(&"all".to_string()) {
+                        vec![None] // Just a single query with None to get everything
+                    } else {
+                        // Map each resource to a Some(resource)
+                        args.resources.iter().map(|r| Some(r.as_str())).collect()
+                    };
+
+                let mut result = String::new();
+                for resource in resources_to_query {
+                    // TODO: handle error graceful
+                    let tables_raw: Vec<String> = greptime
+                        .list_tables(&db, None, resource, exclude_deleted)
+                        .await?;
+                    let tables = tables_raw
+                        .iter()
+                        .filter_map(|name| parse_resource_name(name))
+                        .map(|table| table.print_table())
+                        .collect::<Vec<String>>();
+
+                    // Create header for this resource type
+                    let header = match resource {
+                        Some(r) => format!("Found {} resources of type {}", tables.len(), r),
+                        None => format!("Found {} resources across all types", tables.len()),
+                    };
+                    result.push_str(&header);
+                    result.push_str(&tables.join("\n"));
+                }
+
+                Ok(result)
+            }
             Tool::CreateDeployment(args) => {
                 tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
-                let message = format!(r###"
+                let message = format!(
+                    r###"
 These are the options for a deployment on kubernetes:
 
 # Application metadata
@@ -440,23 +515,27 @@ KAFKA_URL: "kafka://broker:9092"
 
 Create a Deployment with the provided information and without adding anything that was not asked.
 If the user did not specify any databases, ask wheter they want to add a database connection or, 
-if a databases are specified provide the exact yaml."###, application_name = args.name, namespace = args.namespace, image_name = args.image_name);
+if a databases are specified provide the exact yaml."###,
+                    application_name = args.name,
+                    namespace = args.namespace,
+                    image_name = args.image_name
+                );
                 Ok(message.to_string())
-            },
+            }
             Tool::LogRetrieval(args) => {
                 tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let db = DbName::Log.id(customer_id);
                 let search_prompt = create_search_prompt(user_message, &args);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter(args.namespace.as_ref(), args.application.as_ref());
-                let points = qdrant.search_points(&db,  array, filter, 30).await?;
+                let points = qdrant.search_points(&db, array, filter, 30).await?;
                 let classes = from_scored_point(points)?;
                 let result = classes
                     .into_iter()
                     .map(|vc| format_log_entry(&vc))
                     .collect::<String>();
                 Ok(result)
-            }, 
+            }
             Tool::EventRetrieval(args) => {
                 tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let db = DbName::Event.id(customer_id);
@@ -464,7 +543,7 @@ if a databases are specified provide the exact yaml."###, application_name = arg
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter(None, None);
                 let events = qdrant.search_points(&db, array, filter, 10).await?;
-                
+
                 let header = "These are events in the format. Namespace: Object: kind/name, Type: ..., Reason: ..., Message: ..., Score: ...".to_string();
                 let result = events
                     .into_iter()
@@ -478,10 +557,14 @@ if a databases are specified provide the exact yaml."###, application_name = arg
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter_with_data_type(None, None, "status");
-                let resource_status = qdrant.search_points(&db,  array, filter, 10).await?;
+                let resource_status = qdrant.search_points(&db, array, filter, 10).await?;
                 let result = resource_status
                     .into_iter()
-                    .map(|sp| format_resource_status(sp).map_err(|e| log_error!(e)).unwrap_or_default())
+                    .map(|sp| {
+                        format_resource_status(sp)
+                            .map_err(|e| log_error!(e))
+                            .unwrap_or_default()
+                    })
                     .collect::<String>();
                 Ok(result)
             }
@@ -494,7 +577,11 @@ if a databases are specified provide the exact yaml."###, application_name = arg
                 let resource_status = qdrant.search_points(&db, array, filter, 10).await?;
                 let result = resource_status
                     .into_iter()
-                    .map(|sp| format_resource_status(sp).map_err(|e| log_error!(e)).unwrap_or_default())
+                    .map(|sp| {
+                        format_resource_status(sp)
+                            .map_err(|e| log_error!(e))
+                            .unwrap_or_default()
+                    })
                     .collect::<String>();
                 Ok(result)
             }
@@ -504,10 +591,14 @@ if a databases are specified provide the exact yaml."###, application_name = arg
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
                 let filter = create_filter_with_data_type(None, None, "status");
-                let resource_status = qdrant.search_points(&db,  array, filter, 10).await?;
+                let resource_status = qdrant.search_points(&db, array, filter, 10).await?;
                 let result = resource_status
                     .into_iter()
-                    .map(|sp| format_resource_status(sp).map_err(|e| log_error!(e)).unwrap_or_default())
+                    .map(|sp| {
+                        format_resource_status(sp)
+                            .map_err(|e| log_error!(e))
+                            .unwrap_or_default()
+                    })
                     .collect::<String>();
                 Ok(result)
             }
@@ -520,7 +611,11 @@ if a databases are specified provide the exact yaml."###, application_name = arg
                 let resource_status = qdrant.search_points(&db, array, filter, 10).await?;
                 let result = resource_status
                     .into_iter()
-                    .map(|sp| format_resource_status(sp).map_err(|e| log_error!(e)).unwrap_or_default())
+                    .map(|sp| {
+                        format_resource_status(sp)
+                            .map_err(|e| log_error!(e))
+                            .unwrap_or_default()
+                    })
                     .collect::<String>();
                 Ok(result)
             }
@@ -528,12 +623,20 @@ if a databases are specified provide the exact yaml."###, application_name = arg
     }
     pub fn test_request(&self) -> String {
         match self {
-            Tool::ClusterOverview => "We got a bunch of pods here and then theres this huge pile of containers in this corner of the cluster".to_string(),
+            Tool::ClusterOverview(_) => {
+                "You have these resources in the cluster: pod examples test1".to_string()
+            }
             Tool::CreateDeployment(_) => "Deployment Options".to_string(),
             Tool::LogRetrieval(_) => "OOMKilled exit code 137".to_owned(),
-            Tool::EventRetrieval(_) => "message: Stopping container hello-server\nreason: Killing".to_owned(),
-            Tool::ResourceStatusRetrieval(_) => "Resource status: OOMKilled exit code 137".to_owned(),
-            Tool::CustomResourceStatusRetrieval(_) => "Custom resource status: certificate not ready".to_owned(),
+            Tool::EventRetrieval(_) => {
+                "message: Stopping container hello-server\nreason: Killing".to_owned()
+            }
+            Tool::ResourceStatusRetrieval(_) => {
+                "Resource status: OOMKilled exit code 137".to_owned()
+            }
+            Tool::CustomResourceStatusRetrieval(_) => {
+                "Custom resource status: certificate not ready".to_owned()
+            }
             Tool::ResourceSpecRetrieval(_) => "Resource spec: image abc".to_owned(),
             Tool::CustomResourceSpecRetrieval(_) => "Custom spec: image abc".to_owned(),
         }
@@ -662,12 +765,38 @@ mod tests {
 
     #[tokio::test]
     #[rstest]
+    #[case(UserTestData::new(UserTest::ClusterOverview))]
+    async fn test_tool_call_syntax(#[case] testdata: UserTestData) {
+        setup_tracing(false);
+        let openai = OpenAIConnection::new();
+        let num_choices = 1;
+
+        // base request
+        let messages = vec![
+            create_system_message(),
+            create_user_message(&testdata.prompt),
+        ];
+        let request =
+            openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, num_choices);
+        let response = openai
+            .create_completion(request)
+            .await
+            .expect("Failed to create completion");
+
+        // check response
+        assert!(response.choices.len() == 1);
+        tracing::debug!("Response: {:#?}", response.choices.first().unwrap().message);
+    }
+
+    #[tokio::test]
+    #[rstest]
     #[case(UserTestData::new(UserTest::Logs), 0.9)]
     #[case(UserTestData::new(UserTest::RetrieveLogs), 0.9)]
     #[case(UserTestData::new(UserTest::RetrieveLogsForMe), 0.9)]
     #[case(UserTestData::new(UserTest::RetrieveLogsForClusterForMe), 0.9)]
     #[case(UserTestData::new(UserTest::RetrieveLogsAppNamespace), 0.9)]
     #[case(UserTestData::new(UserTest::LogsAppNamespace), 0.9)]
+    #[case(UserTestData::new(UserTest::LogsAppNamespaceForMe), 0.9)]
     #[case(UserTestData::new(UserTest::LogsAppNamespaceForMe), 0.9)]
     async fn test_completion_log_retrieval(
         #[case] testdata: UserTestData,
@@ -688,7 +817,6 @@ mod tests {
             .create_completion(request)
             .await
             .expect("Failed to create completion");
-
         // tool processing
         let mut success_counter: f32 = 0.0;
         for choice in response.choices {
@@ -725,6 +853,7 @@ mod tests {
     #[tokio::test]
     #[rstest]
     #[case(UserTestData::new(UserTest::PodKillOutOffMemory))]
+    #[case(UserTestData::new(UserTest::ClusterOverview))]
     async fn test_stream_completion_tools(
         #[case] testdata: UserTestData,
     ) -> Result<(), OpenAIError> {

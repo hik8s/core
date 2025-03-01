@@ -3,12 +3,15 @@ mod tests {
     use data_vectorizer::vectorize::vectorizer::vectorize_class_batch;
     use rstest::rstest;
     use shared::{
-        connections::openai::tools::{LogRetrievalArgs, Tool},
+        connections::openai::{
+            error::ToolRequestError,
+            tools::{LogRetrievalArgs, Tool},
+        },
         constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
         get_env_var, setup_tracing,
         testdata::{UserTest, UserTestData},
         types::tokenizer::Tokenizer,
-        DbName, GreptimeConnection, QdrantConnection, QdrantConnectionError, RateLimiter,
+        DbName, GreptimeConnection, QdrantConnection, RateLimiter,
     };
     use tracing::info;
 
@@ -17,7 +20,7 @@ mod tests {
     #[case(UserTestData::new(UserTest::PodKillOutOffMemory))]
     async fn test_retrieval_integration(
         #[case] testdata: UserTestData,
-    ) -> Result<(), QdrantConnectionError> {
+    ) -> Result<(), ToolRequestError> {
         // Prep
         setup_tracing(false);
         let greptime = GreptimeConnection::new().await.unwrap();
