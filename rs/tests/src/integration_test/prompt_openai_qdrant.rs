@@ -210,6 +210,7 @@ mod tests {
     #[tokio::test]
     #[rstest]
     #[case(UserTestData::new(UserTest::RetrieveResourceStatus))]
+    #[case(UserTestData::new(UserTest::ClusterOverview))]
     async fn test_process_user_input_resource_status(
         #[case] testdata: UserTestData,
     ) -> Result<(), OpenAIError> {

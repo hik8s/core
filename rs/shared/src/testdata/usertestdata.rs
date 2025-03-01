@@ -10,6 +10,7 @@ use strum::{EnumIter, EnumString, IntoEnumIterator};
 #[derive(Debug, EnumIter, EnumString)]
 #[strum(serialize_all = "kebab-case")]
 pub enum UserTest {
+    ClusterOverview,
     Logs,
     RetrieveLogs,
     RetrieveLogsForMe,
@@ -26,6 +27,7 @@ pub enum UserTest {
 impl UserTest {
     fn prompt(&self, meta: &Metadata) -> String {
         match self {
+            UserTest::ClusterOverview => String::from("Can you provide an overview of the cluster? Can u show me all pods"),
             UserTest::Logs => String::from("logs"),
             UserTest::RetrieveLogs => String::from("Could you retrieve logs?"),
             UserTest::RetrieveLogsForMe => String::from("Could you retrieve logs for me?"),

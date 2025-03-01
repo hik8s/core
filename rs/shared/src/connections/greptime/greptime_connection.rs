@@ -188,6 +188,17 @@ pub struct GreptimeTable {
     pub is_deleted: bool,
 }
 
+impl GreptimeTable {
+    pub fn print_table(&self) -> String {
+        format!(
+            "{} {} {}",
+            self.namespace,
+            self.name,
+            if self.is_deleted { " (deleted)" } else { "" }
+        )
+    }
+}
+
 pub fn parse_resource_name(resource_name: &str) -> Option<GreptimeTable> {
     // First check if the entire name contains the deleted suffix
     let is_deleted = resource_name.contains("___deleted");
@@ -211,6 +222,10 @@ pub fn parse_resource_name(resource_name: &str) -> Option<GreptimeTable> {
             is_deleted,
         })
     } else {
+        tracing::warn!(
+            "Invalid resource name could not be converted to GreptimeTable and is skipped: {}",
+            resource_name
+        );
         None
     }
 }
