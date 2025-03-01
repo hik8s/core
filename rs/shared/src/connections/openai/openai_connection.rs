@@ -63,6 +63,10 @@ impl OpenAIConnection {
         model: &str,
         num_choices: u8,
     ) -> CreateChatCompletionRequest {
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+        //////////////// TODO: inject current state / topology of the cluster here  ///////////////////
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
         // the args are not required for ChatCompletionTool
         let log_retrieval: ChatCompletionTool =
             Tool::LogRetrieval(LogRetrievalArgs::default()).into();
