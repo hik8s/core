@@ -16,9 +16,7 @@ use tokio::sync::mpsc;
 use crate::constant::OPENAI_CHAT_MODEL_MINI;
 
 use super::messages::create_simple_system_message;
-use super::tools::{
-    CreateDeploymentArgs, EventRetrievalArgs, LogRetrievalArgs, ResourceStatusRetrievalArgs, Tool,
-};
+use super::tools::list_all_tools;
 
 pub struct OpenAIConnection {
     pub client: Client<OpenAIConfig>,
@@ -67,32 +65,7 @@ impl OpenAIConnection {
         //////////////// TODO: inject current state / topology of the cluster here  ///////////////////
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-        // the args are not required for ChatCompletionTool
-        let log_retrieval: ChatCompletionTool =
-            Tool::LogRetrieval(LogRetrievalArgs::default()).into();
-        // let cluster_overview = Tool::ClusterOverview.into();
-        let event_retrieval: ChatCompletionTool =
-            Tool::EventRetrieval(EventRetrievalArgs::default()).into();
-        let resource_status_retrieval: ChatCompletionTool =
-            Tool::ResourceStatusRetrieval(ResourceStatusRetrievalArgs::default()).into();
-        let customresource_status_retrieval: ChatCompletionTool =
-            Tool::CustomResourceStatusRetrieval(ResourceStatusRetrievalArgs::default()).into();
-        let resource_spec_retrieval: ChatCompletionTool =
-            Tool::ResourceSpecRetrieval(ResourceStatusRetrievalArgs::default()).into();
-        let customresource_spec_retrieval: ChatCompletionTool =
-            Tool::CustomResourceSpecRetrieval(ResourceStatusRetrievalArgs::default()).into();
-        let create_deployment: ChatCompletionTool =
-            Tool::CreateDeployment(CreateDeploymentArgs::default()).into();
-
-        let tools: Vec<ChatCompletionTool> = vec![
-            log_retrieval,
-            create_deployment,
-            event_retrieval,
-            resource_status_retrieval,
-            customresource_status_retrieval,
-            resource_spec_retrieval,
-            customresource_spec_retrieval,
-        ];
+        let tools = list_all_tools();
         self.request_builder(messages, model, 1024, Some(num_choices), None, Some(tools))
     }
     // CHAT COMPLETION
