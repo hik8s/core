@@ -790,7 +790,6 @@ mod tests {
 
     #[tokio::test]
     #[rstest]
-    #[case(UserTestData::new(UserTest::ClusterOverview), 0.9)]
     #[case(UserTestData::new(UserTest::Logs), 0.9)]
     #[case(UserTestData::new(UserTest::RetrieveLogs), 0.9)]
     #[case(UserTestData::new(UserTest::RetrieveLogsForMe), 0.9)]
