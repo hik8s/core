@@ -18,10 +18,10 @@ use crate::{
     qdrant_util::{create_filter, create_filter_with_data_type},
     testdata::UserTestData,
     types::class::vectorized::{from_scored_point, VectorizedClass},
-    DbName, GreptimeConnection, QdrantConnection, QdrantConnectionError,
+    DbName, GreptimeConnection, QdrantConnection,
 };
 
-use super::embeddings::request_embedding;
+use super::{embeddings::request_embedding, error::ToolRequestError};
 
 pub fn list_all_tools() -> Vec<ChatCompletionTool> {
     vec![
@@ -451,7 +451,8 @@ impl Tool {
         qdrant: &QdrantConnection,
         user_message: &str,
         customer_id: &str,
-    ) -> Result<String, QdrantConnectionError> {
+    ) -> Result<String, ToolRequestError> {
+        // TODO: add meaningful error types with context
         let tool_name = self.to_string();
         match self {
             Tool::ClusterOverview(args) => {
@@ -469,10 +470,10 @@ impl Tool {
 
                 let mut result = String::new();
                 for resource in resources_to_query {
+                    // TODO: handle error graceful
                     let tables_raw: Vec<String> = greptime
                         .list_tables(&db, None, resource, exclude_deleted)
-                        .await
-                        .unwrap();
+                        .await?;
                     let tables = tables_raw
                         .iter()
                         .filter_map(|name| parse_resource_name(name))

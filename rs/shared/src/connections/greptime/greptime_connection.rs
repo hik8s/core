@@ -111,7 +111,7 @@ impl GreptimeConnection {
         filter: Option<&str>,
         resource_filter: Option<&str>,
         exclude_deleted: bool,
-    ) -> Result<Vec<String>, sqlx::Error> {
+    ) -> Result<Vec<String>, GreptimeConnectionError> {
         // TODO: handle error gracefully
         let psql = match self.connect_db(db).await.map_err(|e| log_error!(e)) {
             Ok(psql) => psql,
@@ -286,7 +286,7 @@ mod tests {
 
         // rename table
         greptime.mark_table_deleted(&db, &table_name).await.unwrap();
-        let table_names = greptime.list_tables(&db, None, None, false).await?;
+        let table_names = greptime.list_tables(&db, None, None, false).await.unwrap();
 
         // assert rename success
         assert!(
@@ -310,8 +310,8 @@ mod tests {
         let db = DbName::Resource.id(&customer_id);
 
         // Query all tables and active tables
-        let all_tables = greptime.list_tables(&db, None, None, false).await?;
-        let active_tables = greptime.list_tables(&db, None, None, true).await?;
+        let all_tables = greptime.list_tables(&db, None, None, false).await.unwrap();
+        let active_tables = greptime.list_tables(&db, None, None, true).await.unwrap();
 
         // Check if delete filter filters all deleted tables
         let active_tables_filtered_len = active_tables
@@ -340,7 +340,7 @@ mod tests {
         let greptime = GreptimeConnection::new().await.unwrap();
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
         let db = DbName::Resource.id(&customer_id);
-        let table_names: Vec<String> = greptime.list_tables(&db, None, None, false).await?;
+        let table_names: Vec<String> = greptime.list_tables(&db, None, None, false).await.unwrap();
         let mut parsed_resources = table_names
             .iter()
             .filter_map(|name| parse_resource_name(name))
