@@ -10,8 +10,8 @@ use tokio::sync::mpsc;
 use tracing::error;
 
 use super::header::LastEventId;
-use super::process::process_user_message;
-use super::process::RequestOptions;
+use super::process_chat::process_user_message;
+use super::process_chat::RequestOptions;
 
 #[post("/chat/completions", format = "json", data = "<payload>")]
 pub fn chat_completion(
