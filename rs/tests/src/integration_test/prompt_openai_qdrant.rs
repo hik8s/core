@@ -4,7 +4,7 @@ mod tests {
 
     use async_openai::{error::OpenAIError, types::ChatCompletionRequestMessage};
     use bm25::{Language, SearchEngineBuilder};
-    use chat_backend::chat::process::{process_user_message, RequestOptions};
+    use chat_backend::chat::process_chat::{process_user_message, RequestOptions};
 
     use data_vectorizer::vectorize::vectorizer::{vectorize_chunk, vectorize_class_batch};
     use rstest::rstest;
@@ -355,7 +355,7 @@ mod tests {
         // let prompt = "Can u create a deployment for my application?";
         let prompt =
         // "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1. What are my options for databases?";
-        "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1.";
+        "What pods do I have running in the cluster?";
         // "I wanna create a deployment for my application anything_else in namespace test1-namespace. The image name is also my_image1. Create the deployment with postgres and kafka";
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
 
@@ -374,8 +374,8 @@ mod tests {
         while let Some(message_delta) = rx.recv().await {
             answer.push_str(&message_delta);
         }
-        tracing::debug!("\nMESSAGE\n: {:#?}", messages);
-        tracing::debug!("\nANSWER\n: {}", answer);
+        tracing::info!("\nMESSAGE\n: {:#?}", messages);
+        tracing::info!("\nANSWER\n: {}", answer);
         Ok(())
     }
 }
