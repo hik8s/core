@@ -3,10 +3,7 @@ mod tests {
     use data_vectorizer::vectorize::vectorizer::vectorize_class_batch;
     use rstest::rstest;
     use shared::{
-        connections::openai::{
-            error::ToolRequestError,
-            tools::{LogRetrievalArgs, Tool},
-        },
+        connections::openai::{error::ToolRequestError, tool_args::LogRetrievalArgs, tools::Tool},
         constant::OPENAI_EMBEDDING_TOKEN_LIMIT,
         get_env_var, setup_tracing,
         testdata::{UserTest, UserTestData},
