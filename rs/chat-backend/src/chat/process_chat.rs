@@ -69,8 +69,6 @@ pub async fn process_user_message(
     // todo: add error type
 ) -> Result<ToolCallTrace, anyhow::Error> {
     let openai = OpenAIConnection::new();
-    let mut counter = 0;
-    let mut trace: Vec<Tool> = Vec::new();
     let user_message = extract_last_user_text_message(messages);
     let mut trace = ToolCallTrace::new(user_message.clone());
     loop {
@@ -85,7 +83,6 @@ pub async fn process_user_message(
             .map_err(|e| log_error!(e))?;
 
         if finish_reason == Some(FinishReason::Stop) && tool_call_chunks.is_empty() {
-            tracing::info!("Finished at depth: {}", counter);
             break;
         }
 
@@ -105,7 +102,7 @@ pub async fn process_user_message(
             let tool_submission = create_tool_message(&tool_output, &tool_call.id);
             messages.push(tool_submission);
         }
-        counter += 1;
+        trace.depth += 1;
     }
     Ok(trace)
 }

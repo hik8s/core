@@ -4,6 +4,7 @@ use shared::{connections::openai::tool_args::format_tool_args, openai_util::Tool
 pub struct ToolCallTrace {
     pub trace: Vec<Tool>,
     pub user_message: String,
+    pub depth: usize,
 }
 
 impl ToolCallTrace {
@@ -12,21 +13,23 @@ impl ToolCallTrace {
         Self {
             trace: Vec::new(),
             user_message,
+            depth: 0,
         }
     }
 
     /// Adds a tool to the trace
-    pub fn add_tool(&mut self, tool: Tool) {
-        self.trace.push(tool);
+    pub fn add_tool(&mut self, tool: &Tool) {
+        self.trace.push(tool.clone());
     }
 
     /// Returns the tool trace as a formatted string for debugging or logging
     pub fn format_trace(&self) -> String {
-        if self.trace.is_empty() {
-            return "No tools were called.".to_string();
-        }
-
-        let mut result = format!("Tool call trace for: \"{}\"\n", self.user_message);
+        let mut result = format!(
+            "Number of tool calls: {}, iteration depth {} for: \"{}\"\n",
+            self.trace.len(),
+            self.depth,
+            self.user_message
+        );
 
         for (i, tool) in self.trace.iter().enumerate() {
             result.push_str(&format!(
