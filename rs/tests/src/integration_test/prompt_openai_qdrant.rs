@@ -374,8 +374,8 @@ mod tests {
         while let Some(message_delta) = rx.recv().await {
             answer.push_str(&message_delta);
         }
-        tracing::info!("\nMESSAGE\n: {:#?}", messages);
-        tracing::info!("\nANSWER\n: {}", answer);
+        tracing::debug!("\nMESSAGE\n: {:#?}", messages);
+        tracing::debug!("\nANSWER\n: {}", answer);
         Ok(())
     }
 }
