@@ -36,7 +36,7 @@ pub fn list_all_tools() -> Vec<ChatCompletionTool> {
     ]
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct LogRetrievalArgs {
     pub namespace: Option<String>,
     pub application: Option<String>,
@@ -59,7 +59,7 @@ impl TryFrom<String> for LogRetrievalArgs {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct EventRetrievalArgs {
     pub namespace: Option<String>,
     pub application: Option<String>,
@@ -98,7 +98,7 @@ impl EventRetrievalArgs {
         prompt
     }
 }
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct ResourceStatusRetrievalArgs {
     pub namespace: Option<String>,
     pub name: Option<String>,
@@ -131,7 +131,7 @@ impl ResourceStatusRetrievalArgs {
         prompt
     }
 }
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct CreateDeploymentArgs {
     pub databases: Vec<String>,
     pub name: String,
@@ -147,7 +147,7 @@ impl TryFrom<String> for CreateDeploymentArgs {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct ClusterOverviewArgs {
     pub resources: Vec<String>,
 }
@@ -160,7 +160,7 @@ impl TryFrom<String> for ClusterOverviewArgs {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Tool {
     ClusterOverview(ClusterOverviewArgs),
     CreateDeployment(CreateDeploymentArgs),

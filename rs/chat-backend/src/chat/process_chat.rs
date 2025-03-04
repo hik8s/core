@@ -64,10 +64,11 @@ pub async fn process_user_message(
     messages: &mut Vec<ChatCompletionRequestMessage>,
     tx: &mpsc::UnboundedSender<String>,
     options: RequestOptions,
-) -> Result<(), anyhow::Error> {
+    // todo: add error type
+) -> Result<Vec<Tool>, anyhow::Error> {
     let openai = OpenAIConnection::new();
     let mut counter = 0;
-
+    let mut trace: Vec<Tool> = Vec::new();
     let user_message = extract_last_user_text_message(messages);
     loop {
         let request = openai.chat_complete_request(messages.clone(), &options.model, 1);
@@ -91,7 +92,9 @@ pub async fn process_user_message(
             create_assistant_message("Tool request", Some(tool_calls.clone()));
         messages.push(assistant_tool_request);
         for tool_call in tool_calls {
+            // TODO: handle errors
             let tool = Tool::try_from(tool_call.function).unwrap();
+            trace.push(tool.clone());
             let tool_output = tool
                 .request(greptime, qdrant, &user_message, &options.client_id)
                 .await
@@ -101,5 +104,5 @@ pub async fn process_user_message(
         }
         counter += 1;
     }
-    Ok(())
+    Ok(trace)
 }
