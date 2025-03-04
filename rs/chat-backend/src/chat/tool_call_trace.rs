@@ -25,7 +25,7 @@ impl ToolCallTrace {
     /// Returns the tool trace as a formatted string for debugging or logging
     pub fn format_trace(&self) -> String {
         let mut result = format!(
-            "Number of tool calls: {}, iteration depth {} for: \"{}\"\n",
+            "Number of tool calls: {}, iteration depth: {}, for: \"{}\"\n",
             self.trace.len(),
             self.depth,
             self.user_message
