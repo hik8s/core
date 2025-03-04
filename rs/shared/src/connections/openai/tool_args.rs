@@ -21,17 +21,7 @@ impl TryFrom<String> for ResourceStatusRetrievalArgs {
 impl ResourceStatusRetrievalArgs {
     pub fn search_prompt(&self, user_message: &str) -> String {
         let mut prompt: String = user_message.to_string();
-        prompt.push_str(format!("\nUser intention: {}", self.intention).as_str());
-
-        if let Some(kind) = &self.kind {
-            prompt.push_str(&format!("\nKind: {}", kind));
-        }
-        if let Some(name) = &self.name {
-            prompt.push_str(&format!("\nName: {}", name));
-        }
-        if let Some(namespace) = &self.namespace {
-            prompt.push_str(&format!("\nNamespace: {}", namespace));
-        }
+        prompt.push_str(&format!("\n{self}"));
         prompt
     }
 }
@@ -107,23 +97,73 @@ impl TryFrom<String> for EventRetrievalArgs {
 impl EventRetrievalArgs {
     pub fn search_prompt(&self, user_message: &str) -> String {
         let mut prompt: String = user_message.to_string();
-        prompt.push_str(format!("\nUser intention: {}", self.intention).as_str());
 
-        if self.application.is_some() {
-            prompt.push_str(&format!(
-                "\nApplication: {}",
-                self.application.as_ref().unwrap()
-            ));
-        }
-        if self.namespace.is_some() {
-            prompt.push_str(&format!(
-                "\nNamespace: {}",
-                self.namespace.as_ref().unwrap()
-            ));
-        }
-        if self.kind.is_some() {
-            prompt.push_str(&format!("\nKind: {}", self.kind.as_ref().unwrap()));
-        }
+        prompt.push_str(&format!("\n{self}"));
+
         prompt
+    }
+}
+use std::fmt;
+
+impl fmt::Display for ResourceStatusRetrievalArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let parts = [
+            format!("kind={}", self.kind.as_deref().unwrap_or("None")),
+            format!("name={}", self.name.as_deref().unwrap_or("None")),
+            format!("namespace={}", self.namespace.as_deref().unwrap_or("None")),
+            format!("intention=\"{}\"", self.intention),
+        ];
+
+        write!(f, "{}", parts.join(", "))
+    }
+}
+
+impl fmt::Display for ClusterOverviewArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "resources=[{}]", self.resources.join(", "))
+    }
+}
+
+impl fmt::Display for CreateDeploymentArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let parts = [
+            format!("name={}", self.name),
+            format!("namespace={}", self.namespace),
+            format!("image={}", self.image_name),
+            format!("databases=[{}]", self.databases.join(", ")),
+        ];
+
+        write!(f, "{}", parts.join(", "))
+    }
+}
+
+impl fmt::Display for LogRetrievalArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let parts = [
+            format!("namespace={}", self.namespace.as_deref().unwrap_or("None")),
+            format!(
+                "application={}",
+                self.application.as_deref().unwrap_or("None")
+            ),
+            format!("intention=\"{}\"", self.intention),
+        ];
+
+        write!(f, "{}", parts.join(", "))
+    }
+}
+
+impl fmt::Display for EventRetrievalArgs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let parts = [
+            format!("namespace={}", self.namespace.as_deref().unwrap_or("None")),
+            format!(
+                "application={}",
+                self.application.as_deref().unwrap_or("None")
+            ),
+            format!("kind={}", self.kind.as_deref().unwrap_or("None")),
+            format!("intention=\"{}\"", self.intention),
+        ];
+
+        write!(f, "{}", parts.join(", "))
     }
 }
