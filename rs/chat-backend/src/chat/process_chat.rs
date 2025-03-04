@@ -10,6 +10,8 @@ use shared::{
 };
 use tokio::sync::mpsc;
 
+use super::tool_call_trace::ToolCallTrace;
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct RequestOptions {
     pub messages: Vec<Message>,
@@ -64,11 +66,11 @@ pub async fn process_user_message(
     messages: &mut Vec<ChatCompletionRequestMessage>,
     tx: &mpsc::UnboundedSender<String>,
     options: RequestOptions,
-) -> Result<(), anyhow::Error> {
+    // todo: add error type
+) -> Result<ToolCallTrace, anyhow::Error> {
     let openai = OpenAIConnection::new();
-    let mut counter = 0;
-
     let user_message = extract_last_user_text_message(messages);
+    let mut trace = ToolCallTrace::new(user_message.clone());
     loop {
         let request = openai.chat_complete_request(messages.clone(), &options.model, 1);
         let stream = openai
@@ -81,7 +83,6 @@ pub async fn process_user_message(
             .map_err(|e| log_error!(e))?;
 
         if finish_reason == Some(FinishReason::Stop) && tool_call_chunks.is_empty() {
-            tracing::info!("Finished at depth: {}", counter);
             break;
         }
 
@@ -91,7 +92,9 @@ pub async fn process_user_message(
             create_assistant_message("Tool request", Some(tool_calls.clone()));
         messages.push(assistant_tool_request);
         for tool_call in tool_calls {
+            // TODO: handle errors
             let tool = Tool::try_from(tool_call.function).unwrap();
+            trace.add_tool(&tool);
             let tool_output = tool
                 .request(greptime, qdrant, &user_message, &options.client_id)
                 .await
@@ -99,7 +102,7 @@ pub async fn process_user_message(
             let tool_submission = create_tool_message(&tool_output, &tool_call.id);
             messages.push(tool_submission);
         }
-        counter += 1;
+        trace.depth += 1;
     }
-    Ok(())
+    Ok(trace)
 }
