@@ -2,6 +2,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::testdata::UserTestData;
 
+pub fn format_tool_args<T: fmt::Display>(args: &T) -> String {
+    args.to_string()
+}
+
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct ResourceStatusRetrievalArgs {
     pub namespace: Option<String>,
@@ -20,10 +24,19 @@ impl TryFrom<String> for ResourceStatusRetrievalArgs {
 
 impl ResourceStatusRetrievalArgs {
     pub fn search_prompt(&self, user_message: &str) -> String {
-        let mut prompt: String = user_message.to_string();
-        prompt.push_str(&format!("\n{self}"));
-        prompt
+        format_search_prompt(self, user_message)
     }
+}
+impl EventRetrievalArgs {
+    pub fn search_prompt(&self, user_message: &str) -> String {
+        format_search_prompt(self, user_message)
+    }
+}
+pub fn format_search_prompt<T: fmt::Display>(args: &T, user_message: &str) -> String {
+    let mut prompt = user_message.to_string();
+    prompt.push('\n');
+    prompt.push_str(&args.to_string());
+    prompt
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
@@ -94,15 +107,6 @@ impl TryFrom<String> for EventRetrievalArgs {
     }
 }
 
-impl EventRetrievalArgs {
-    pub fn search_prompt(&self, user_message: &str) -> String {
-        let mut prompt: String = user_message.to_string();
-
-        prompt.push_str(&format!("\n{self}"));
-
-        prompt
-    }
-}
 use std::fmt;
 
 impl fmt::Display for ResourceStatusRetrievalArgs {
