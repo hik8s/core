@@ -65,6 +65,22 @@ impl fmt::Display for Tool {
         write!(f, "{}", tool_name)
     }
 }
+
+impl Tool {
+    pub fn get_args(&self) -> &dyn std::fmt::Display {
+        match self {
+            Tool::ClusterOverview(args) => args,
+            Tool::ResourceStatusRetrieval(args) => args,
+            Tool::ResourceSpecRetrieval(args) => args,
+            Tool::CustomResourceStatusRetrieval(args) => args,
+            Tool::CustomResourceSpecRetrieval(args) => args,
+            Tool::EventRetrieval(args) => args,
+            Tool::LogRetrieval(args) => args,
+            Tool::CreateDeployment(args) => args,
+        }
+    }
+}
+
 impl TryFrom<FunctionCall> for Tool {
     type Error = String;
 
@@ -370,7 +386,6 @@ impl Tool {
                 Ok(result)
             }
             Tool::CreateDeployment(args) => {
-                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let message = format!(
                     r###"
 These are the options for a deployment on kubernetes:
@@ -401,7 +416,6 @@ if a databases are specified provide the exact yaml."###,
                 Ok(message.to_string())
             }
             Tool::LogRetrieval(args) => {
-                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let db = DbName::Log.id(customer_id);
                 let search_prompt = create_search_prompt(user_message, &args);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
@@ -415,7 +429,6 @@ if a databases are specified provide the exact yaml."###,
                 Ok(result)
             }
             Tool::EventRetrieval(args) => {
-                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let db = DbName::Event.id(customer_id);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
@@ -430,7 +443,6 @@ if a databases are specified provide the exact yaml."###,
                 Ok(format!("{header}\n{result}"))
             }
             Tool::ResourceStatusRetrieval(args) => {
-                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let db = DbName::Resource.id(customer_id);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
@@ -447,7 +459,6 @@ if a databases are specified provide the exact yaml."###,
                 Ok(result)
             }
             Tool::ResourceSpecRetrieval(args) => {
-                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let db = DbName::Resource.id(customer_id);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
@@ -464,7 +475,6 @@ if a databases are specified provide the exact yaml."###,
                 Ok(result)
             }
             Tool::CustomResourceStatusRetrieval(args) => {
-                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let db = DbName::CustomResource.id(customer_id);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];
@@ -481,7 +491,6 @@ if a databases are specified provide the exact yaml."###,
                 Ok(result)
             }
             Tool::CustomResourceSpecRetrieval(args) => {
-                tracing::info!("Requesting tool: {} with args: {:?}", tool_name, args);
                 let db = DbName::CustomResource.id(customer_id);
                 let search_prompt = args.search_prompt(user_message);
                 let array = request_embedding(&vec![search_prompt]).await.unwrap()[0];

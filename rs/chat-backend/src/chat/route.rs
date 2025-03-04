@@ -33,7 +33,7 @@ pub fn chat_completion(
             .map_err(|e| error!("{e}"))
             .ok();
         if let Some(trace) = trace {
-            tracing::info!("Tool call history: {:?}", trace);
+            tracing::info!("{}", trace.format_trace());
         }
     });
 

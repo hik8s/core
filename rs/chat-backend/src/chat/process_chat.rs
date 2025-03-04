@@ -10,6 +10,8 @@ use shared::{
 };
 use tokio::sync::mpsc;
 
+use super::tool_call_trace::ToolCallTrace;
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct RequestOptions {
     pub messages: Vec<Message>,
@@ -65,11 +67,12 @@ pub async fn process_user_message(
     tx: &mpsc::UnboundedSender<String>,
     options: RequestOptions,
     // todo: add error type
-) -> Result<Vec<Tool>, anyhow::Error> {
+) -> Result<ToolCallTrace, anyhow::Error> {
     let openai = OpenAIConnection::new();
     let mut counter = 0;
     let mut trace: Vec<Tool> = Vec::new();
     let user_message = extract_last_user_text_message(messages);
+    let mut trace = ToolCallTrace::new(user_message.clone());
     loop {
         let request = openai.chat_complete_request(messages.clone(), &options.model, 1);
         let stream = openai
@@ -94,7 +97,7 @@ pub async fn process_user_message(
         for tool_call in tool_calls {
             // TODO: handle errors
             let tool = Tool::try_from(tool_call.function).unwrap();
-            trace.push(tool.clone());
+            trace.add_tool(&tool);
             let tool_output = tool
                 .request(greptime, qdrant, &user_message, &options.client_id)
                 .await
