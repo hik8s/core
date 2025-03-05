@@ -56,10 +56,7 @@ pub async fn process_resource(
         let (name, owner_name) = extract_name_and_owner_name(metadata);
         let (uid, owner_uid) = extract_uid_and_owner_uid(metadata);
 
-        let table = format!(
-            "{}__{namespace}__{owner_name}__{owner_uid}",
-            kind.to_lowercase()
-        );
+        let table = greptime.create_table_name(&kind, &namespace, &owner_name, &owner_uid);
 
         let insert_request = resource_to_insert_request(
             apiversion,

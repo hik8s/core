@@ -50,6 +50,11 @@ impl GreptimeConnection {
             config,
         })
     }
+    pub fn create_table_name(&self, kind: &str, namespace: &str, name: &str, uid: &str) -> String {
+        let kind_lc = kind.to_lowercase();
+        format!("{kind_lc}__{namespace}__{name}__{uid}")
+    }
+
     pub fn streaming_inserter(&self, db: &str) -> Result<StreamInserter, GreptimeConnectionError> {
         let database = Database::new_with_dbname(db, self.client.clone());
         database
