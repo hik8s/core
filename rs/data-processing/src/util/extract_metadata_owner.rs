@@ -39,7 +39,7 @@ fn marked_uid() -> String {
 pub fn extract_uid_and_owner_uid(metadata: &serde_json::Value) -> (String, String) {
     let uid = get_as_string(metadata, "uid").unwrap_or(marked_uid());
     let owner_uid =
-        extract_owner_aggregated_value(metadata, "ownerReferences", "name").unwrap_or(uid.clone());
+        extract_owner_aggregated_value(metadata, "ownerReferences", "uid").unwrap_or(uid.clone());
 
     (uid, owner_uid)
 }

@@ -269,8 +269,18 @@ mod tests {
             res_greptime_len = RECEIVED_GREPTIME.lock().unwrap().len();
         }
 
-        assert_eq!(points.len(), num_points);
-        assert_eq!(tables.len(), num_tables);
+        assert_eq!(
+            points.len(),
+            num_points,
+            "Expected {num_points} points in Qdrant for '{subdir}', but found {}",
+            points.len()
+        );
+        assert_eq!(
+            tables.len(),
+            num_tables,
+            "Expected {num_tables} tables in GreptimeDB for '{subdir}', but found {}",
+            tables.len()
+        );
         if test_type == TestType::Delete {
             // Log for debugging
             tracing::debug!(

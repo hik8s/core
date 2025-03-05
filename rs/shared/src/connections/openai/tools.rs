@@ -645,6 +645,7 @@ mod tests {
     fn convert_empty_to_none(input: &Option<String>) -> Option<String> {
         match input {
             Some(s) if s.is_empty() => None,
+            Some(s) if s == "null" => None,
             Some(s) => Some(s.to_owned()),
             None => None,
         }
