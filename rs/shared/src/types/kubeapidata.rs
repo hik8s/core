@@ -55,3 +55,37 @@ impl TryFrom<ConsumerRecord> for KubeApiData {
         serde_json::from_str::<KubeApiData>(&data_str)
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct KubeApiDataTyped<T> {
+    pub timestamp: i64,
+    pub event_type: KubeEventType,
+    pub data: T,
+}
+
+impl<T> From<KubeApiDataTyped<T>> for serde_json::Value
+where
+    T: Serialize,
+{
+    fn from(typed: KubeApiDataTyped<T>) -> Self {
+        // Try to convert the typed data directly to a JSON Value
+        let data_json = match serde_json::to_value(typed.data) {
+            Ok(value) => value,
+            Err(e) => {
+                // Handle serialization error
+                tracing::error!("Failed to serialize typed data: {}", e);
+                serde_json::json!({
+                    "error": "Failed to serialize data",
+                    "message": e.to_string()
+                })
+            }
+        };
+
+        // Create the final JSON structure
+        serde_json::json!({
+            "timestamp": typed.timestamp,
+            "event_type": typed.event_type.to_string(),
+            "json": data_json
+        })
+    }
+}
