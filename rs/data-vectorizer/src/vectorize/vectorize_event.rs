@@ -43,7 +43,11 @@ pub async fn vectorize_event(
                 // let last_timestamp = extract_timestamp(&kube_api_data.json, "lastTimestamp");
                 let message = get_as_option_string(&kube_api_data.json, "message");
                 let reason = get_as_option_string(&kube_api_data.json, "reason");
-                let event_type = get_as_option_string(&kube_api_data.json, "type");
+
+                let event_type = log_warn_continue!(get_as_string(&kube_api_data.json, "type"));
+                if event_type == "Normal" {
+                    continue;
+                }
 
                 let resource =
                     log_warn_continue!(get_as_ref(&kube_api_data.json, "involvedObject"));
@@ -74,7 +78,7 @@ pub async fn vectorize_event(
                         resource_namespace,
                         message.unwrap_or_default(),
                         reason.unwrap_or_default(),
-                        event_type.unwrap_or_default(),
+                        event_type,
                         data,
                     );
                     chunk.push(data_clip);
