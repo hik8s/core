@@ -347,7 +347,6 @@ impl Tool {
         customer_id: &str,
     ) -> Result<String, ToolRequestError> {
         // TODO: add meaningful error types with context
-        let tool_name = self.to_string();
         match self {
             Tool::ClusterOverview(args) => {
                 let exclude_deleted = true;
