@@ -4,7 +4,6 @@ use shared::{
 };
 use uuid7::uuid4;
 
-/// Extract owner references from Kubernetes metadata and return them as vectors
 pub fn extract_owner_aggregated_value(
     metadata: &serde_json::Value,
     key: &str,
@@ -31,7 +30,7 @@ pub fn extract_name_and_owner_name(metadata: &serde_json::Value) -> (String, Str
     (name, owner_name)
 }
 
-fn marked_uid() -> String {
+pub fn marked_uid() -> String {
     let uuid = uuid4().to_string();
     format!("00000000{}", &uuid[8..])
 }

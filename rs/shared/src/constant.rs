@@ -49,6 +49,7 @@ pub const TOPIC_CUSTOM_RESOURCE_BYTES_PER_RECORD: usize = 131072;
 pub const GREPTIME_TABLE_KEY: &str = "Tables";
 pub const DEFAULT_NS: &str = "NON4MESPACE";
 pub const DEFAULT_NAME: &str = "NON4ME";
+pub const DEFAULT_KIND: &str = "NOK1ND";
 
 // prompting
 pub const DEFAULT_SYSTEM_PROMPT: &str = "You are an assistant to a site reliability engineer. \
