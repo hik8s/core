@@ -171,12 +171,10 @@ mod tests {
         THREAD_RESOURCE_PROCESSING.call_once(|| {
             run_resource_processing().unwrap();
             run_customresource_processing().unwrap();
-            run_event_processing().unwrap();
 
             let limiter = Arc::new(RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT));
             run_vectorize_resource(limiter.clone()).unwrap();
             run_vectorize_customresource(limiter.clone()).unwrap();
-            run_vectorize_event(limiter).unwrap();
         });
 
         let server = initialize_data_intake().await.unwrap();
@@ -185,12 +183,14 @@ mod tests {
 
         let path = Path::new("fixtures").join(subdir);
         let mut json = read_yaml_files(&path).unwrap();
-
         // this assumes that the same resource uid is being sent
-        let uid_map = replace_resource_uids(&mut json, &dbname);
+        let uid_map = replace_resource_uids(&mut json);
         let resource_uid = uid_map.get(UID).unwrap().to_string();
 
-        tracing::debug!("test: {subdir} Owner UID map: {uid_map:?}");
+        tracing::info!(
+            "test: {subdir} files: {} Owner UID map: {uid_map:?}",
+            json.len()
+        );
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
         assert_eq!(status.code, 200);
@@ -409,12 +409,18 @@ mod tests {
             };
 
             if !received_greptime && tables.iter().any(|table| table.contains(&key)) {
-                RECEIVED_GREPTIME.lock().unwrap().insert(subdir.to_string());
+                RECEIVED_EVENTS_GREPTIME
+                    .lock()
+                    .unwrap()
+                    .insert(subdir.to_string());
                 received_greptime = true;
             }
 
             if !received_qdrant && points.len() == num_points {
-                RECEIVED_QDRANT.lock().unwrap().insert(subdir.to_string());
+                RECEIVED_EVENTS_QDRANT
+                    .lock()
+                    .unwrap()
+                    .insert(subdir.to_string());
                 received_qdrant = true;
             }
 
@@ -442,8 +448,8 @@ mod tests {
                 res_qdrant_len, num_cases, res_greptime_len, num_cases
             );
             sleep(Duration::from_secs(1)).await;
-            res_qdrant_len = RECEIVED_QDRANT.lock().unwrap().len();
-            res_greptime_len = RECEIVED_GREPTIME.lock().unwrap().len();
+            res_qdrant_len = RECEIVED_EVENTS_QDRANT.lock().unwrap().len();
+            res_greptime_len = RECEIVED_EVENTS_GREPTIME.lock().unwrap().len();
         }
 
         assert_eq!(
