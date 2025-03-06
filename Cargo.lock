@@ -1049,7 +1049,7 @@ dependencies = [
 
 [[package]]
 name = "data-processing"
-version = "0.4.16"
+version = "0.4.17"
 dependencies = [
  "algorithm",
  "anyhow",
