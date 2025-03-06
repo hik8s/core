@@ -8,15 +8,17 @@ use shared::connections::fluvio::util::get_record_key;
 
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
+use shared::connections::greptime::greptime_connection::{parse_resource_name, GreptimeTable};
 use shared::connections::greptime::middleware::insert::resource_to_insert_request;
-use shared::constant::{DEFAULT_NAME, DEFAULT_NS};
+use shared::constant::DEFAULT_NS;
 use shared::fluvio::commit_and_flush_offsets;
 use shared::types::kubeapidata::{KubeApiData, KubeEventType};
 use shared::utils::{
-    extract_managed_field_timestamps, extract_timestamp, get_as_option_string, get_as_ref,
-    get_as_string,
+    extract_managed_field_timestamps, extract_timestamp, get_as_ref, get_as_string,
 };
 use shared::{log_error_continue, log_warn, log_warn_continue, GreptimeConnection};
+
+use crate::util::extract_metadata_owner::{extract_name_and_owner_name, extract_uid_and_owner_uid};
 
 use super::error::ProcessThreadError;
 
@@ -42,8 +44,6 @@ pub async fn process_resource(
         let apiversion = log_warn_continue!(get_as_string(&data.json, "apiVersion"));
 
         let metadata = log_warn_continue!(get_as_ref(&data.json, "metadata"));
-        let uid = log_error_continue!(get_as_string(metadata, "uid"));
-        let name = get_as_string(metadata, "name").unwrap_or(DEFAULT_NAME.to_string());
         let namespace = get_as_string(metadata, "namespace").unwrap_or(DEFAULT_NS.to_string());
 
         let mut timestamps = extract_managed_field_timestamps(metadata);
@@ -54,37 +54,10 @@ pub async fn process_resource(
         let status = data.json.get("status").map(|s| s.to_string());
         let spec = data.json.get("spec").map(|s| s.to_string());
 
-        let owner_names = metadata
-            .get("ownerReferences")
-            .and_then(|owner_references| {
-                owner_references.as_array().map(|refs| {
-                    refs.iter()
-                        .filter_map(|owner| get_as_option_string(owner, "name"))
-                        .collect::<Vec<String>>()
-                })
-            });
-        let owner_uids = metadata
-            .get("ownerReferences")
-            .and_then(|owner_references| {
-                owner_references.as_array().map(|refs| {
-                    refs.iter()
-                        .filter_map(|owner| get_as_option_string(owner, "uid"))
-                        .collect::<Vec<String>>()
-                })
-            });
-        let aggregation_name = match owner_names {
-            Some(names) => names.join("_"),
-            None => name.clone(),
-        };
-        let aggregation_uid = match owner_uids {
-            Some(uids) => uids.join("_"),
-            None => uid.clone(),
-        };
+        let (name, owner_name) = extract_name_and_owner_name(metadata);
+        let (uid, owner_uid) = extract_uid_and_owner_uid(metadata);
 
-        let table = format!(
-            "{}__{namespace}__{aggregation_name}__{aggregation_uid}",
-            kind.to_lowercase()
-        );
+        let table = greptime.create_table_name(&kind, &namespace, &owner_name, &owner_uid);
 
         let insert_request = resource_to_insert_request(
             apiversion,
@@ -105,12 +78,23 @@ pub async fn process_resource(
         stream_inserter.finish().await?;
 
         if data.event_type == KubeEventType::Delete {
+            // TODO: handle errors
             let tables = greptime
                 .list_tables(&db, Some(&uid), None, false)
                 .await
-                .unwrap();
+                .unwrap()
+                .iter()
+                .filter_map(|name| parse_resource_name(name))
+                .collect::<Vec<GreptimeTable>>();
+
             for table in tables {
-                greptime.mark_table_deleted(&db, &table).await.unwrap();
+                if table.is_deleted {
+                    continue;
+                }
+                greptime
+                    .mark_table_deleted(&db, &table.format_name(false))
+                    .await
+                    .unwrap();
             }
         }
 

@@ -347,7 +347,6 @@ impl Tool {
         customer_id: &str,
     ) -> Result<String, ToolRequestError> {
         // TODO: add meaningful error types with context
-        let tool_name = self.to_string();
         match self {
             Tool::ClusterOverview(args) => {
                 let exclude_deleted = true;
@@ -645,6 +644,7 @@ mod tests {
     fn convert_empty_to_none(input: &Option<String>) -> Option<String> {
         match input {
             Some(s) if s.is_empty() => None,
+            Some(s) if s == "null" => None,
             Some(s) => Some(s.to_owned()),
             None => None,
         }

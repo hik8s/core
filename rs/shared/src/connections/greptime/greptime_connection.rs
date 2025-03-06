@@ -50,6 +50,11 @@ impl GreptimeConnection {
             config,
         })
     }
+    pub fn create_table_name(&self, kind: &str, namespace: &str, name: &str, uid: &str) -> String {
+        let kind_lc = kind.to_lowercase();
+        format!("{kind_lc}__{namespace}__{name}__{uid}")
+    }
+
     pub fn streaming_inserter(&self, db: &str) -> Result<StreamInserter, GreptimeConnectionError> {
         let database = Database::new_with_dbname(db, self.client.clone());
         database
@@ -116,6 +121,7 @@ impl GreptimeConnection {
         let psql = match self.connect_db(db).await.map_err(|e| log_error!(e)) {
             Ok(psql) => psql,
             Err(e) => {
+                // add retry logic
                 error!("Failed to connect to PostgreSQL: {}", e);
                 return Ok(vec![]);
             }
@@ -196,6 +202,17 @@ impl GreptimeTable {
             self.name,
             if self.is_deleted { " (deleted)" } else { "" }
         )
+    }
+    pub fn format_name(&self, deleted: bool) -> String {
+        let base_name = format!(
+            "{}__{}__{}__{}",
+            self.kind, self.namespace, self.name, self.uid
+        );
+        if deleted {
+            format!("{base_name}___deleted")
+        } else {
+            base_name
+        }
     }
 }
 

@@ -1049,7 +1049,7 @@ dependencies = [
 
 [[package]]
 name = "data-processing"
-version = "0.4.16"
+version = "0.4.17"
 dependencies = [
  "algorithm",
  "anyhow",
@@ -1058,17 +1058,19 @@ dependencies = [
  "fluvio",
  "futures-util",
  "greptimedb-ingester",
+ "k8s-openapi",
  "rstest",
  "serde_json",
  "shared",
  "thiserror 2.0.3",
  "tokio",
  "tracing",
+ "uuid7",
 ]
 
 [[package]]
 name = "data-vectorizer"
-version = "0.4.18"
+version = "0.4.19"
 dependencies = [
  "anyhow",
  "futures-util",
@@ -5128,10 +5130,12 @@ dependencies = [
  "data-vectorizer",
  "glob",
  "itertools 0.13.0",
+ "k8s-openapi",
  "lazy_static",
  "qdrant-client",
  "rocket",
  "rstest",
+ "serde",
  "serde_json",
  "serde_yaml",
  "shared",
