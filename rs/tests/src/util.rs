@@ -9,9 +9,7 @@ use rocket::{http::Status, local::asynchronous::Client};
 use shared::{
     types::kubeapidata::{KubeApiDataTyped, KubeEventType},
     utils::mock::mock_client::post_test_batch,
-    DbName,
 };
-use uuid7::uuid4;
 
 fn parse_apply_filename(filename: &str) -> Result<KubeEventType, String> {
     if filename.starts_with("apply_") {
