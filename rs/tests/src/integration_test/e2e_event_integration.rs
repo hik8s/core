@@ -2,17 +2,17 @@
 mod tests {
     use data_intake::error::DataIntakeError;
     use data_intake::server::initialize_data_intake;
-    use data_processing::run::{run_customresource_processing, run_resource_processing};
-    use data_vectorizer::run::{run_vectorize_customresource, run_vectorize_resource};
-
+    use data_processing::run::run_event_processing;
+    use data_vectorizer::run::run_vectorize_event;
+    use k8s_openapi::api::core::v1::Event;
     use qdrant_client::qdrant::{ScoredPoint, Value};
     use rstest::rstest;
     use shared::connections::greptime::greptime_connection::{parse_resource_name, GreptimeTable};
-
     use shared::constant::OPENAI_EMBEDDING_TOKEN_LIMIT;
     use shared::mock::rocket::get_test_client;
     use shared::qdrant_util::{match_any, parse_qdrant_value};
     use shared::setup_tracing;
+
     use shared::utils::mock::mock_client::post_test_batch;
     use shared::DbName;
     use shared::GreptimeConnection;
@@ -22,30 +22,23 @@ mod tests {
     use std::path::Path;
     use std::sync::{Arc, Mutex, Once};
     use std::time::{Duration, Instant};
+    use tokio::time::sleep;
     use tracing::info;
 
-    use tokio::time::sleep;
-
     use crate::constant::{OWNER_UID, UID};
-    use crate::util::{read_yaml_files, replace_resource_uids, TestType};
+    use crate::util::{read_yaml_typed, replace_event_uids, TestType};
 
-    static THREAD_RESOURCE_PROCESSING: Once = Once::new();
+    static THREAD_EVENT_PROCESSING: Once = Once::new();
 
     lazy_static::lazy_static! {
-        static ref RECEIVED_QDRANT: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
-        static ref RECEIVED_GREPTIME: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
+        static ref RECEIVED_EVENTS_QDRANT: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
+        static ref RECEIVED_EVENTS_GREPTIME: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
     }
 
     #[tokio::test]
     #[rstest]
-    #[case(("pod-deletion", "resources", DbName::Resource, 3, TestType::Delete, 1))]
-    #[case(("certificate-deletion", "customresources", DbName::CustomResource, 3, TestType::Delete, 2))]
-    #[case(("deployment-aggregation", "resources", DbName::Resource, 6, TestType::Update, 1))]
-    #[case(("pod-aggregation", "resources", DbName::Resource, 6, TestType::Update, 1))]
-    #[case(("pod-aggregation-by-replicaset", "resources", DbName::Resource, 6, TestType::Update, 1))]
-    #[case(("skiplist-resource", "resources", DbName::Resource, 3, TestType::Update, 3))]
-    #[case(("skiplist-customresource", "customresources", DbName::CustomResource, 3, TestType::Update, 1))]
-    async fn e2e_resource_integration(
+    #[case(("event-filter", "events", DbName::Event, 1,TestType::Update, 1))]
+    async fn e2e_event_integration(
         #[case] (subdir, route, dbname, num_points, test_type, num_tables): (
             &str,
             &str,
@@ -55,20 +48,18 @@ mod tests {
             usize,
         ),
     ) -> Result<(), DataIntakeError> {
-        let num_cases = 7;
+        let num_cases = 1;
         setup_tracing(true);
         let qdrant = QdrantConnection::new().await.unwrap();
         let greptime = GreptimeConnection::new().await?;
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
         let db = dbname.id(&customer_id);
 
-        THREAD_RESOURCE_PROCESSING.call_once(|| {
-            run_resource_processing().unwrap();
-            run_customresource_processing().unwrap();
+        THREAD_EVENT_PROCESSING.call_once(|| {
+            run_event_processing().unwrap();
 
             let limiter = Arc::new(RateLimiter::new(OPENAI_EMBEDDING_TOKEN_LIMIT));
-            run_vectorize_resource(limiter.clone()).unwrap();
-            run_vectorize_customresource(limiter.clone()).unwrap();
+            run_vectorize_event(limiter).unwrap();
         });
 
         let server = initialize_data_intake().await.unwrap();
@@ -76,15 +67,15 @@ mod tests {
         let client = get_test_client(server).await?;
 
         let path = Path::new("fixtures").join(subdir);
-        let mut json = read_yaml_files(&path).unwrap();
+        let mut events: Vec<shared::types::kubeapidata::KubeApiDataTyped<Event>> =
+            read_yaml_typed::<Event>(&path).unwrap();
         // this assumes that the same resource uid is being sent
-        let uid_map = replace_resource_uids(&mut json);
+        let uid_map = replace_event_uids(&mut events);
         let resource_uid = uid_map.get(UID).unwrap().to_string();
 
-        tracing::debug!(
-            "test: {subdir} files: {} Owner UID map: {uid_map:?}",
-            json.len()
-        );
+        tracing::debug!("test: {subdir} Owner UID map: {uid_map:?}");
+
+        let json: Vec<serde_json::Value> = events.into_iter().map(Into::into).collect();
 
         let status = post_test_batch(&client, &format!("/{route}"), json).await;
         assert_eq!(status.code, 200);
@@ -97,7 +88,12 @@ mod tests {
         let mut points = Vec::<ScoredPoint>::new();
         let mut tables = Vec::<String>::new();
         while start_time.elapsed() < timeout {
-            let filter = match_any("resource_uid", &[resource_uid.clone()]);
+            let search_uid = uid_map
+                .get(OWNER_UID)
+                .map(ToOwned::to_owned)
+                .unwrap_or(resource_uid.clone());
+
+            let filter = match_any("resource_uid", &[search_uid.clone()]);
             points = qdrant
                 .query_points(&db, Some(filter), 1000, true)
                 .await
@@ -112,11 +108,6 @@ mod tests {
                 num_points
             );
 
-            let search_uid = uid_map
-                .get(OWNER_UID)
-                .map(ToOwned::to_owned)
-                .unwrap_or(resource_uid.clone());
-
             tables = greptime
                 .list_tables(&db, Some(&search_uid), None, false)
                 .await
@@ -128,12 +119,18 @@ mod tests {
             };
 
             if !received_greptime && tables.iter().any(|table| table.contains(&key)) {
-                RECEIVED_GREPTIME.lock().unwrap().insert(subdir.to_string());
+                RECEIVED_EVENTS_GREPTIME
+                    .lock()
+                    .unwrap()
+                    .insert(subdir.to_string());
                 received_greptime = true;
             }
 
             if !received_qdrant && points.len() == num_points {
-                RECEIVED_QDRANT.lock().unwrap().insert(subdir.to_string());
+                RECEIVED_EVENTS_QDRANT
+                    .lock()
+                    .unwrap()
+                    .insert(subdir.to_string());
                 received_qdrant = true;
             }
 
@@ -161,8 +158,8 @@ mod tests {
                 res_qdrant_len, num_cases, res_greptime_len, num_cases
             );
             sleep(Duration::from_secs(1)).await;
-            res_qdrant_len = RECEIVED_QDRANT.lock().unwrap().len();
-            res_greptime_len = RECEIVED_GREPTIME.lock().unwrap().len();
+            res_qdrant_len = RECEIVED_EVENTS_QDRANT.lock().unwrap().len();
+            res_greptime_len = RECEIVED_EVENTS_GREPTIME.lock().unwrap().len();
         }
 
         assert_eq!(
@@ -207,6 +204,7 @@ mod tests {
                     .collect::<Vec<_>>()
             );
         }
+        // random comment for git
         assert!(received_qdrant);
         assert!(received_greptime);
         Ok(())
