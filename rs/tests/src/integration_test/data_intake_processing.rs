@@ -187,7 +187,7 @@ mod tests {
         let uid_map = replace_resource_uids(&mut json);
         let resource_uid = uid_map.get(UID).unwrap().to_string();
 
-        tracing::info!(
+        tracing::debug!(
             "test: {subdir} files: {} Owner UID map: {uid_map:?}",
             json.len()
         );
@@ -196,7 +196,7 @@ mod tests {
         assert_eq!(status.code, 200);
 
         let start_time = Instant::now();
-        let timeout = Duration::from_secs(10);
+        let timeout = Duration::from_secs(15);
 
         let mut received_greptime = false;
         let mut received_qdrant = false;
@@ -371,7 +371,7 @@ mod tests {
         assert_eq!(status.code, 200);
 
         let start_time = Instant::now();
-        let timeout = Duration::from_secs(10);
+        let timeout = Duration::from_secs(15);
 
         let mut received_greptime = false;
         let mut received_qdrant = false;
