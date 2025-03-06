@@ -11,6 +11,12 @@ use shared::{
     utils::mock::mock_client::post_test_batch,
 };
 
+#[derive(PartialEq)]
+pub enum TestType {
+    Delete,
+    Update,
+}
+
 fn parse_apply_filename(filename: &str) -> Result<KubeEventType, String> {
     if filename.starts_with("apply_") {
         return Ok(KubeEventType::Apply);
