@@ -8,6 +8,7 @@ use shared::connections::fluvio::util::get_record_key;
 
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
+use shared::connections::greptime::greptime_connection::{parse_resource_name, GreptimeTable};
 use shared::connections::greptime::middleware::insert::resource_to_insert_request;
 use shared::constant::DEFAULT_NS;
 use shared::fluvio::commit_and_flush_offsets;
@@ -77,12 +78,23 @@ pub async fn process_resource(
         stream_inserter.finish().await?;
 
         if data.event_type == KubeEventType::Delete {
+            // TODO: handle errors
             let tables = greptime
                 .list_tables(&db, Some(&uid), None, false)
                 .await
-                .unwrap();
+                .unwrap()
+                .iter()
+                .filter_map(|name| parse_resource_name(name))
+                .collect::<Vec<GreptimeTable>>();
+
             for table in tables {
-                greptime.mark_table_deleted(&db, &table).await.unwrap();
+                if table.is_deleted {
+                    continue;
+                }
+                greptime
+                    .mark_table_deleted(&db, &table.format_name(false))
+                    .await
+                    .unwrap();
             }
         }
 

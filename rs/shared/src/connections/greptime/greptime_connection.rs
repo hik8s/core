@@ -121,6 +121,7 @@ impl GreptimeConnection {
         let psql = match self.connect_db(db).await.map_err(|e| log_error!(e)) {
             Ok(psql) => psql,
             Err(e) => {
+                // add retry logic
                 error!("Failed to connect to PostgreSQL: {}", e);
                 return Ok(vec![]);
             }
@@ -201,6 +202,17 @@ impl GreptimeTable {
             self.name,
             if self.is_deleted { " (deleted)" } else { "" }
         )
+    }
+    pub fn format_name(&self, deleted: bool) -> String {
+        let base_name = format!(
+            "{}__{}__{}__{}",
+            self.kind, self.namespace, self.name, self.uid
+        );
+        if deleted {
+            format!("{base_name}___deleted")
+        } else {
+            base_name
+        }
     }
 }
 
