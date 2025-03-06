@@ -82,18 +82,10 @@ pub async fn process_resource_files(client: Client, route: &str) -> Result<(), D
     Ok(())
 }
 
-pub fn replace_resource_uids(
-    resources: &mut [serde_json::Value],
-    dbname: &DbName,
-) -> HashMap<String, String> {
+pub fn replace_resource_uids(resources: &mut [serde_json::Value]) -> HashMap<String, String> {
     let mut uid_map: HashMap<String, String> = HashMap::new();
 
-    let key = match dbname {
-        DbName::Resource => "ownerReferences",
-        DbName::CustomResource => "ownerReferences",
-        DbName::Event => "involvedObject",
-        _ => "",
-    };
+    let key = "ownerReferences";
 
     for resource in resources.iter_mut() {
         if let Some(json) = resource.get_mut("json") {
@@ -106,7 +98,7 @@ pub fn replace_resource_uids(
                         .to_string();
                     let new_uid = uid_map
                         .entry(current_uid)
-                        .or_insert_with(|| uuid4().to_string())
+                        .or_insert_with(marked_uid)
                         .clone();
                     metadata_obj.insert(
                         "uid".to_string(),
@@ -125,7 +117,7 @@ pub fn replace_resource_uids(
 
                                     let owner_uid = uid_map
                                         .entry(original_owner_uid)
-                                        .or_insert_with(|| uuid4().to_string())
+                                        .or_insert_with(marked_uid)
                                         .clone();
 
                                     owner_ref_obj.insert(
