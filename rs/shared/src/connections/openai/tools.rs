@@ -117,7 +117,7 @@ impl Tool {
                     "type": "object",
                     "properties": {
                         "resources": {
-                            "type": ["array", "null"],
+                            "type": "array",
                             "items": {
                                 "type": "string",
                                 "enum": [
