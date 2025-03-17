@@ -13,4 +13,6 @@ pub enum ToolRequestError {
     OpenAI(#[from] OpenAIError),
     #[error("JSON serialization/deserialization error: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("Unknown tool called: '{0}'")]
+    UnknownTool(String),
 }

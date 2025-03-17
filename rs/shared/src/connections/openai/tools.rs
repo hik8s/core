@@ -5,6 +5,7 @@ use async_openai::types::{
 
 use qdrant_client::qdrant::ScoredPoint;
 use serde_json::json;
+use tracing::error;
 
 use std::fmt;
 
@@ -82,28 +83,25 @@ impl Tool {
 }
 
 impl TryFrom<FunctionCall> for Tool {
-    type Error = String;
+    type Error = ToolRequestError;
 
     fn try_from(call: FunctionCall) -> Result<Self, Self::Error> {
         let FunctionCall { name, arguments } = call;
+
         match name.as_str() {
-            "cluster-overview" => Ok(Tool::ClusterOverview(arguments.try_into().unwrap())),
-            "deployment-options" => Ok(Tool::CreateDeployment(arguments.try_into().unwrap())),
-            "log-retrieval" => Ok(Tool::LogRetrieval(arguments.try_into().unwrap())),
-            "event-retrieval" => Ok(Tool::EventRetrieval(arguments.try_into().unwrap())),
-            "resource-status-retrieval" => {
-                Ok(Tool::ResourceStatusRetrieval(arguments.try_into().unwrap()))
+            "cluster-overview" => Ok(Tool::ClusterOverview(arguments.into())),
+            "deployment-options" => Ok(Tool::CreateDeployment(arguments.into())),
+            "log-retrieval" => Ok(Tool::LogRetrieval(arguments.into())),
+            "event-retrieval" => Ok(Tool::EventRetrieval(arguments.into())),
+            "resource-status-retrieval" => Ok(Tool::ResourceStatusRetrieval(arguments.into())),
+            "resource-spec-retrieval" => Ok(Tool::ResourceSpecRetrieval(arguments.into())),
+            "customresource-status-retrieval" => {
+                Ok(Tool::CustomResourceStatusRetrieval(arguments.into()))
             }
-            "resource-spec-retrieval" => {
-                Ok(Tool::ResourceSpecRetrieval(arguments.try_into().unwrap()))
+            "customresource-spec-retrieval" => {
+                Ok(Tool::CustomResourceSpecRetrieval(arguments.into()))
             }
-            "customresource-status-retrieval" => Ok(Tool::CustomResourceStatusRetrieval(
-                arguments.try_into().unwrap(),
-            )),
-            "customresource-spec-retrieval" => Ok(Tool::CustomResourceSpecRetrieval(
-                arguments.try_into().unwrap(),
-            )),
-            _ => Err(format!("Could not parse tool name: {}", name)),
+            _ => Err(ToolRequestError::UnknownTool(name)),
         }
     }
 }
