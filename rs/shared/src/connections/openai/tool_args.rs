@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tracing::error;
 
 use crate::testdata::UserTestData;
 
@@ -14,11 +15,15 @@ pub struct ResourceStatusRetrievalArgs {
     pub intention: String,
 }
 
-impl TryFrom<String> for ResourceStatusRetrievalArgs {
-    type Error = serde_json::Error;
-
-    fn try_from(json_string: String) -> Result<Self, Self::Error> {
-        serde_json::from_str(&json_string)
+impl From<String> for ResourceStatusRetrievalArgs {
+    fn from(json_string: String) -> Self {
+        serde_json::from_str(&json_string).unwrap_or_else(|e| {
+            error!(
+                "Failed to parse ResourceStatusRetrievalArgs: {}, using default",
+                e
+            );
+            Self::default()
+        })
     }
 }
 
@@ -44,11 +49,12 @@ pub struct ClusterOverviewArgs {
     pub resources: Vec<String>,
 }
 
-impl TryFrom<String> for ClusterOverviewArgs {
-    type Error = serde_json::Error;
-
-    fn try_from(json_string: String) -> Result<Self, Self::Error> {
-        serde_json::from_str(&json_string)
+impl From<String> for ClusterOverviewArgs {
+    fn from(json_string: String) -> Self {
+        serde_json::from_str(&json_string).unwrap_or_else(|e| {
+            error!("Failed to parse ClusterOverviewArgs: {}, using default", e);
+            Self::default()
+        })
     }
 }
 
@@ -60,11 +66,12 @@ pub struct CreateDeploymentArgs {
     pub image_name: String,
 }
 
-impl TryFrom<String> for CreateDeploymentArgs {
-    type Error = serde_json::Error;
-
-    fn try_from(json_string: String) -> Result<Self, Self::Error> {
-        serde_json::from_str(&json_string)
+impl From<String> for CreateDeploymentArgs {
+    fn from(json_string: String) -> Self {
+        serde_json::from_str(&json_string).unwrap_or_else(|e| {
+            error!("Failed to parse CreateDeploymentArgs: {}, using default", e);
+            Self::default()
+        })
     }
 }
 
@@ -83,11 +90,12 @@ impl LogRetrievalArgs {
         }
     }
 }
-impl TryFrom<String> for LogRetrievalArgs {
-    type Error = serde_json::Error;
-
-    fn try_from(json_string: String) -> Result<Self, Self::Error> {
-        serde_json::from_str(&json_string)
+impl From<String> for LogRetrievalArgs {
+    fn from(json_string: String) -> Self {
+        serde_json::from_str(&json_string).unwrap_or_else(|e| {
+            error!("Failed to parse LogRetrievalArgs: {}, using default", e);
+            Self::default()
+        })
     }
 }
 
@@ -99,11 +107,12 @@ pub struct EventRetrievalArgs {
     pub intention: String,
 }
 
-impl TryFrom<String> for EventRetrievalArgs {
-    type Error = serde_json::Error;
-
-    fn try_from(json_string: String) -> Result<Self, Self::Error> {
-        serde_json::from_str(&json_string)
+impl From<String> for EventRetrievalArgs {
+    fn from(json_string: String) -> Self {
+        serde_json::from_str(&json_string).unwrap_or_else(|e| {
+            error!("Failed to parse EventRetrievalArgs: {}, using default", e);
+            Self::default()
+        })
     }
 }
 

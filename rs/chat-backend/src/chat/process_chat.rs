@@ -9,8 +9,9 @@ use shared::{
     GreptimeConnection, OpenAIConnection, QdrantConnection,
 };
 use tokio::sync::mpsc;
+use tracing::error;
 
-use super::tool_call_trace::ToolCallTrace;
+use super::{error::ChatProcessingError, tool_call_trace::ToolCallTrace};
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct RequestOptions {
@@ -66,8 +67,7 @@ pub async fn process_user_message(
     messages: &mut Vec<ChatCompletionRequestMessage>,
     tx: &mpsc::UnboundedSender<String>,
     options: RequestOptions,
-    // todo: add error type
-) -> Result<ToolCallTrace, anyhow::Error> {
+) -> Result<ToolCallTrace, ChatProcessingError> {
     let openai = OpenAIConnection::new();
     let user_message = extract_last_user_text_message(messages);
     let mut trace = ToolCallTrace::new(user_message.clone());
@@ -92,13 +92,31 @@ pub async fn process_user_message(
             create_assistant_message("Tool request", Some(tool_calls.clone()));
         messages.push(assistant_tool_request);
         for tool_call in tool_calls {
-            // TODO: handle errors
-            let tool = Tool::try_from(tool_call.function).unwrap();
-            trace.add_tool(&tool);
-            let tool_output = tool
-                .request(greptime, qdrant, &user_message, &options.client_id)
-                .await
-                .unwrap();
+            let failure_id = tool_call.id.clone();
+
+            let tool_output = match Tool::try_from(tool_call.function) {
+                Ok(tool) => {
+                    trace.add_tool(&tool);
+                    let tool_output = tool
+                        .request(greptime, qdrant, &user_message, &options.client_id)
+                        .await;
+                    let failure_message = format!(
+                        "Failed to execute tool with ID: {failure_id}. Sorry for the inconvenience."
+                    );
+
+                    tool_output
+                        .inspect_err(|e| error!("{failure_message} Error: '{e}'"))
+                        .unwrap_or(failure_message)
+                }
+                Err(e) => {
+                    let failure_message = format!(
+                        "Failed to parse tool with ID: {failure_id}. Sorry for the inconvenience."
+                    );
+                    error!("{failure_message} Error: '{e}'");
+                    failure_message
+                }
+            };
+
             let tool_submission = create_tool_message(&tool_output, &tool_call.id);
             messages.push(tool_submission);
         }
