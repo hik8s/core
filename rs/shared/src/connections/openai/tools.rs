@@ -536,23 +536,11 @@ impl From<Tool> for ChatCompletionTool {
     }
 }
 
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum ToolCallError {
-    #[error("Missing tool call ID")]
-    MissingId,
-    #[error("Invalid function call: {0}")]
-    InvalidFunction(String),
-    #[error("No tool calls found")]
-    EmptyToolCalls,
-}
-
 pub fn collect_tool_call_chunks(
     tool_call_chunks: Vec<ChatCompletionMessageToolCallChunk>,
-) -> Result<Vec<ChatCompletionMessageToolCall>, ToolCallError> {
+) -> Result<Vec<ChatCompletionMessageToolCall>, ToolRequestError> {
     if tool_call_chunks.is_empty() {
-        return Err(ToolCallError::EmptyToolCalls);
+        return Err(ToolRequestError::EmptyToolCalls);
     }
     let mut tool_calls = Vec::<ChatCompletionMessageToolCall>::new();
 
@@ -568,9 +556,9 @@ pub fn collect_tool_call_chunks(
             });
         }
         if let Some(function_call) = chunk.function {
-            let current_call = tool_calls
-                .last_mut()
-                .ok_or_else(|| ToolCallError::InvalidFunction("No tool call found".to_string()))?;
+            let current_call = tool_calls.last_mut().ok_or_else(|| {
+                ToolRequestError::InvalidFunction("No tool call found".to_string())
+            })?;
 
             if let Some(name) = function_call.name {
                 current_call.function.name.push_str(&name);

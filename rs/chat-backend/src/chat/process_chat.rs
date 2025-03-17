@@ -11,7 +11,7 @@ use shared::{
 use tokio::sync::mpsc;
 use tracing::error;
 
-use super::tool_call_trace::ToolCallTrace;
+use super::{error::ChatProcessingError, tool_call_trace::ToolCallTrace};
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct RequestOptions {
@@ -67,8 +67,7 @@ pub async fn process_user_message(
     messages: &mut Vec<ChatCompletionRequestMessage>,
     tx: &mpsc::UnboundedSender<String>,
     options: RequestOptions,
-    // todo: add error type
-) -> Result<ToolCallTrace, anyhow::Error> {
+) -> Result<ToolCallTrace, ChatProcessingError> {
     let openai = OpenAIConnection::new();
     let user_message = extract_last_user_text_message(messages);
     let mut trace = ToolCallTrace::new(user_message.clone());
