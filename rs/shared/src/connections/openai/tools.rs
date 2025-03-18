@@ -5,7 +5,6 @@ use async_openai::types::{
 
 use qdrant_client::qdrant::ScoredPoint;
 use serde_json::json;
-use tracing::error;
 
 use std::fmt;
 
