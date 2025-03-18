@@ -615,12 +615,14 @@ pub fn format_resource_status(sp: ScoredPoint) -> Result<String, serde_json::Err
 #[cfg(test)]
 mod tests {
     use async_openai::error::OpenAIError;
+    use async_openai::types::CreateChatCompletionStreamResponse;
     use rstest::rstest;
     use tokio::sync::mpsc;
 
     use crate::connections::openai::tool_args::{
         ClusterOverviewArgs, EventRetrievalArgs, LogRetrievalArgs, ResourceStatusRetrievalArgs,
     };
+    use crate::connections::openai::util::aggregate_answer;
     use crate::openai_util::{
         collect_tool_call_chunks, create_assistant_message, create_system_message,
         create_tool_message, create_user_message, Tool,
@@ -737,7 +739,7 @@ mod tests {
     ) -> Result<(), OpenAIError> {
         setup_tracing(false);
         let openai = OpenAIConnection::new();
-        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
 
         // base request
         let mut messages = vec![
@@ -752,11 +754,8 @@ mod tests {
             .await
             .map_err(|e| log_error!(e))?;
 
-        let mut answer = String::new();
         rx.close();
-        while let Some(message_delta) = rx.recv().await {
-            answer.push_str(&message_delta);
-        }
+        let answer = aggregate_answer(rx).await;
 
         assert!(answer.is_empty());
         assert!(!tool_call_chunks.is_empty());
@@ -774,18 +773,15 @@ mod tests {
 
         // tool request
         let request = openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, 1);
-        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
         let stream = openai.create_completion_stream(request).await?;
         let (_, tool_call_chunks) = openai
             .process_completion_stream(&tx, stream)
             .await
             .map_err(|e| log_error!(e))?;
 
-        let mut answer = String::new();
         rx.close();
-        while let Some(message_delta) = rx.recv().await {
-            answer.push_str(&message_delta);
-        }
+        let answer = aggregate_answer(rx).await;
         assert!(!answer.is_empty());
         assert!(tool_call_chunks.is_empty());
         tracing::debug!("Messages: {:#?}", messages);
@@ -806,7 +802,7 @@ mod tests {
     async fn test_tool_call_null_args(#[case] tool_default: Tool) -> Result<(), OpenAIError> {
         setup_tracing(false);
         let openai = OpenAIConnection::new();
-        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
 
         // base request
         let tool_name = tool_default.to_string().replace("-", " ");
@@ -824,11 +820,9 @@ mod tests {
             .await
             .map_err(|e| log_error!(e))?;
 
-        let mut answer = String::new();
+        
         rx.close();
-        while let Some(message_delta) = rx.recv().await {
-            answer.push_str(&message_delta);
-        }
+        let answer = aggregate_answer(rx).await;
 
         assert!(answer.is_empty(), "Expected empty answer, got: {answer}");
         assert!(!tool_call_chunks.is_empty(), "Expected tool calls");

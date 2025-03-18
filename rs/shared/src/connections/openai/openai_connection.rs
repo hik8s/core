@@ -86,7 +86,7 @@ impl OpenAIConnection {
     }
     pub async fn process_completion_stream(
         &self,
-        tx: &mpsc::UnboundedSender<String>,
+        tx: &mpsc::UnboundedSender<CreateChatCompletionStreamResponse>,
         mut stream: Pin<
             Box<dyn Stream<Item = Result<CreateChatCompletionStreamResponse, OpenAIError>> + Send>,
         >,
@@ -111,9 +111,13 @@ impl OpenAIConnection {
             if let Some(ref tool_call_chunk) = choice.delta.tool_calls {
                 tool_call_chunks.extend_from_slice(tool_call_chunk);
             }
-            if let Some(ref delta) = choice.delta.content {
+            let response_clone = response.clone();
+            if let Some(ref _delta) = choice.delta.content {
                 // Only try sending if the client is still connected
-                if !client_disconnected && tx.send(delta.to_owned()).is_err() {
+                // if let Some(ref _delta) = choice.delta.content {
+                //     tx.send(response_clone).unwrap();
+                // }
+                if !client_disconnected && tx.send(response_clone).is_err() {
                     tracing::warn!("Client disconnected. Will still finish reading stream.");
                     client_disconnected = true;
                 }
