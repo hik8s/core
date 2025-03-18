@@ -1,4 +1,4 @@
-use chat_backend::chat::route::chat_completion;
+use chat_backend::chat::route_chat_completion::chat_completion;
 use rocket::{main, routes};
 use shared::{
     constant::CHAT_BACKEND_PORT,
