@@ -5,6 +5,7 @@ use crate::ConfigError;
 use super::config::GreptimeConfig;
 use greptimedb_ingester::{Client as GreptimeClient, ClientBuilder, Database, StreamInserter};
 use rocket::{request::FromRequest, State};
+use sqlx::postgres::PgRow;
 use sqlx::Error as SqlxError;
 use sqlx::{postgres::PgPoolOptions, Error, Executor, Pool, Postgres, Row};
 use std::borrow::Cow;
@@ -156,6 +157,18 @@ impl GreptimeConnection {
         let rows = psql.fetch_all(query.as_str()).await?;
         let tables = rows.iter().map(|row| row.get(GREPTIME_TABLE_KEY)).collect();
         Ok(tables)
+    }
+
+    pub async fn query(
+        &self,
+        db: &str,
+        table: &str,
+        key: &str,
+    ) -> Result<Vec<PgRow>, GreptimeConnectionError> {
+        let psql = self.connect_db(db).await?;
+        let query = format!("SELECT {key} FROM \"{table}\"");
+        let rows = psql.fetch_all(&*query).await?;
+        Ok(rows)
     }
 }
 

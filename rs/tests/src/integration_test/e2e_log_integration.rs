@@ -6,7 +6,6 @@ mod tests {
     use data_vectorizer::vectorize_class;
 
     use rstest::rstest;
-    use shared::connections::greptime::middleware::query::read_records;
     use shared::constant::OPENAI_EMBEDDING_TOKEN_LIMIT;
     use shared::mock::rocket::get_test_client;
     use shared::qdrant_util::string_filter;
@@ -75,9 +74,7 @@ mod tests {
 
         while start_time.elapsed() < timeout {
             // check greptime
-            rows = read_records(greptime.clone(), &db, &pod_name)
-                .await
-                .unwrap();
+            rows = greptime.query(&db, &pod_name, "record_id").await?;
 
             // check qdrant
             let filter = string_filter("key", &pod_name);
