@@ -81,8 +81,8 @@ pub async fn process_resource(
             // TODO: handle errors
             let tables = greptime
                 .list_tables(&db, Some(&uid), None, false)
-                .await
-                .unwrap()
+                // this would cause a thread exit
+                .await?
                 .iter()
                 .filter_map(|name| parse_resource_name(name))
                 .collect::<Vec<GreptimeTable>>();
@@ -93,8 +93,8 @@ pub async fn process_resource(
                 }
                 greptime
                     .mark_table_deleted(&db, &table.format_name(false))
-                    .await
-                    .unwrap();
+                    // this would cause a thread exit
+                    .await?;
             }
         }
 

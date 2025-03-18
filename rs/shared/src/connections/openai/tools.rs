@@ -7,6 +7,7 @@ use qdrant_client::qdrant::ScoredPoint;
 use serde_json::json;
 
 use std::fmt;
+use tracing::error;
 
 use crate::{
     connections::{
@@ -363,7 +364,9 @@ impl Tool {
                     // TODO: handle error graceful
                     let tables_raw: Vec<String> = greptime
                         .list_tables(&db, None, resource, exclude_deleted)
-                        .await?;
+                        .await
+                        .inspect_err(|e| error!("{e:?}. Returning empty list"))
+                        .unwrap_or_default();
                     let tables = tables_raw
                         .iter()
                         .filter_map(|name| parse_resource_name(name))
