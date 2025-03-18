@@ -114,7 +114,7 @@ impl GreptimeConnection {
     pub async fn list_tables(
         &self,
         db: &str,
-        filter: Option<&str>,
+        general_filter: Option<&str>,
         resource_filter: Option<&str>,
         exclude_deleted: bool,
     ) -> Result<Vec<String>, GreptimeConnectionError> {
@@ -128,22 +128,20 @@ impl GreptimeConnection {
             }
         };
 
-        let key = GREPTIME_TABLE_KEY;
-        let mut conditions = Vec::new();
-
         // Add filter condition if provided
-        if let Some(filter) = filter {
-            conditions.push(format!("{key} LIKE '%{filter}%'"));
+        let mut conditions = Vec::new();
+        if let Some(filter) = general_filter {
+            conditions.push(format!("{GREPTIME_TABLE_KEY} LIKE '%{filter}%'"));
         }
 
         // Add resource_filter condition if provided
-        if let Some(resource_filter) = resource_filter {
-            conditions.push(format!("{key} LIKE '{resource_filter}__%'"));
+        if let Some(filter) = resource_filter {
+            conditions.push(format!("{GREPTIME_TABLE_KEY} LIKE '{filter}__%'"));
         }
 
         // Add exclude_deleted condition if needed
         if exclude_deleted {
-            conditions.push(format!("{key} NOT LIKE '%___deleted'"));
+            conditions.push(format!("{GREPTIME_TABLE_KEY} NOT LIKE '%___deleted'"));
         }
 
         // Build the query
