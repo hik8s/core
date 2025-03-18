@@ -5,3 +5,4 @@ qdrant_storage
 .testdata*
 .giant-yaml
 .prod1
+.prod-logs

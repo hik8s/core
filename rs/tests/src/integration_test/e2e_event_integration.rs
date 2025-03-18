@@ -111,7 +111,7 @@ mod tests {
             tables = greptime
                 .list_tables(&db, Some(&search_uid), None, false)
                 .await
-                .unwrap();
+                .unwrap_or_default();
 
             let key = match test_type {
                 TestType::Delete => format!("{search_uid}___deleted"),
