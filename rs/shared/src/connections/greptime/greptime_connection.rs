@@ -318,7 +318,7 @@ mod tests {
     };
 
     #[test]
-    fn test_parse_resource_name() {
+    fn test_greptime_table() {
         setup_tracing(false);
         let table_name =
         "certificate__examples__hello-server-hik9s__692cf3ae-680c-4b00-949d-e26dbf781a40___deleted";
