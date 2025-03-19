@@ -8,7 +8,7 @@ use shared::connections::fluvio::util::get_record_key;
 
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
-use shared::connections::greptime::greptime_connection::{parse_resource_name, GreptimeTable};
+use shared::connections::greptime::greptime_connection::GreptimeTable;
 use shared::connections::greptime::middleware::insert::resource_to_insert_request;
 use shared::constant::DEFAULT_NS;
 use shared::fluvio::commit_and_flush_offsets;
@@ -16,7 +16,7 @@ use shared::types::kubeapidata::{KubeApiData, KubeEventType};
 use shared::utils::{
     extract_managed_field_timestamps, extract_timestamp, get_as_ref, get_as_string,
 };
-use shared::{log_error_continue, log_warn, log_warn_continue, GreptimeConnection};
+use shared::{log_error, log_error_continue, log_warn, log_warn_continue, GreptimeConnection};
 
 use crate::util::extract_metadata_owner::{extract_name_and_owner_name, extract_uid_and_owner_uid};
 
@@ -84,7 +84,7 @@ pub async fn process_resource(
                 // this would cause a thread exit
                 .await?
                 .iter()
-                .filter_map(|name| parse_resource_name(name))
+                .filter_map(|name| log_error!(GreptimeTable::try_from(name)).ok())
                 .collect::<Vec<GreptimeTable>>();
 
             for table in tables {

@@ -7,11 +7,11 @@ mod tests {
     use k8s_openapi::api::core::v1::Event;
     use qdrant_client::qdrant::{ScoredPoint, Value};
     use rstest::rstest;
-    use shared::connections::greptime::greptime_connection::{parse_resource_name, GreptimeTable};
+    use shared::connections::greptime::greptime_connection::GreptimeTable;
     use shared::constant::OPENAI_EMBEDDING_TOKEN_LIMIT;
     use shared::mock::rocket::get_test_client;
     use shared::qdrant_util::{match_any, parse_qdrant_value};
-    use shared::setup_tracing;
+    use shared::{log_error, setup_tracing};
 
     use shared::utils::mock::mock_client::post_test_batch;
     use shared::DbName;
@@ -185,7 +185,7 @@ mod tests {
             // Parse all table names and ensure they're all marked as deleted
             let parsed_tables: Vec<GreptimeTable> = tables
                 .iter()
-                .filter_map(|table| parse_resource_name(table))
+                .filter_map(|name| log_error!(GreptimeTable::try_from(name)).ok())
                 .collect();
 
             assert!(

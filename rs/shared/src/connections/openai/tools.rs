@@ -11,7 +11,7 @@ use tracing::error;
 
 use crate::{
     connections::{
-        greptime::greptime_connection::parse_resource_name,
+        greptime::greptime_connection::GreptimeTable,
         openai::tool_args::{
             ClusterOverviewArgs, CreateDeploymentArgs, EventRetrievalArgs, LogRetrievalArgs,
             ResourceStatusRetrievalArgs,
@@ -369,7 +369,7 @@ impl Tool {
                         .unwrap_or_default();
                     let tables = tables_raw
                         .iter()
-                        .filter_map(|name| parse_resource_name(name))
+                        .filter_map(|name| log_error!(GreptimeTable::try_from(name)).ok())
                         .map(|table| table.print_table())
                         .collect::<Vec<String>>();
 
