@@ -88,7 +88,7 @@ impl GreptimeConnection {
         Ok(pool)
     }
 
-    pub async fn rename_table(
+    async fn rename_table(
         &self,
         db: &str,
         table_name: &str,
@@ -351,7 +351,7 @@ mod tests {
         map.insert("kind", "Pod".to_string());
         let columns = create_string_columns(map, Some(1620000000));
 
-        let table = GreptimeTable::new_test_table("test-pod", "pod");
+        let mut table = GreptimeTable::new_test_table("test-pod", "pod");
         let req = create_insert_request(&table, columns, 1);
 
         // insert data
@@ -362,19 +362,12 @@ mod tests {
 
         // rename table
         greptime.mark_table_deleted(&db, table.clone()).await?;
-        let table_names = greptime.list_tables(&db, None, None, false).await?;
+        let tables = greptime.list_tables(&db, None, None, false).await?;
 
         // assert rename success
-        assert!(
-            !table_names.contains(&table),
-            "Original table should not exist"
-        );
-        let mut deleted_table = table.clone();
-        deleted_table.is_deleted = true;
-        assert!(
-            table_names.contains(&deleted_table),
-            "Deleted table should exist"
-        );
+        assert!(!tables.contains(&table), "Original table should not exist");
+        table.is_deleted = true;
+        assert!(tables.contains(&table), "Deleted table should exist");
         Ok(())
     }
 
