@@ -59,7 +59,10 @@ async fn main() {
             .unwrap();
 
         let table = tables.first().unwrap();
-        let rows = greptime.query(&db_resource, table, "*").await.unwrap();
+        let rows = greptime
+            .query(&db_resource, &table.format_name(), "*")
+            .await
+            .unwrap();
 
         tracing::debug!("Tables {tables:#?}");
         tracing::info!("Rows {rows:#?}");

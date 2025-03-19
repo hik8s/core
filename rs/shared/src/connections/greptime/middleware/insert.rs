@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use greptimedb_ingester::api::v1::{column, Column, ColumnDataType, InsertRequest, SemanticType};
 
-use crate::types::record::{classified::ClassifiedLogRecord, log::LogRecord};
+use crate::{
+    connections::greptime::greptime_connection::GreptimeTable,
+    types::record::{classified::ClassifiedLogRecord, log::LogRecord},
+};
 
 pub fn logs_to_insert_request(logs: &Vec<LogRecord>, key: &String) -> InsertRequest {
     let (timestamps, message, record_id) = fold_log_records(logs);
@@ -70,7 +73,7 @@ pub fn resource_to_insert_request(
     status: Option<String>,
     reason: Option<String>,
     message: Option<String>,
-    table_name: String,
+    table: GreptimeTable,
     timestamp: i64,
 ) -> InsertRequest {
     let mut columns: Vec<Column> = vec![
@@ -107,7 +110,7 @@ pub fn resource_to_insert_request(
     }
 
     InsertRequest {
-        table_name,
+        table_name: table.format_name(),
         columns,
         row_count: 1,
     }
@@ -125,12 +128,12 @@ pub fn create_string_columns(map: HashMap<&str, String>, ts: Option<i64>) -> Vec
 }
 
 pub fn create_insert_request(
-    table_name: &str,
+    table: &GreptimeTable,
     columns: Vec<Column>,
     row_count: u32,
 ) -> InsertRequest {
     InsertRequest {
-        table_name: table_name.to_string(),
+        table_name: table.format_name(),
         columns,
         row_count,
     }

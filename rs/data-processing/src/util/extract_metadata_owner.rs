@@ -30,13 +30,19 @@ pub fn extract_name_and_owner_name(metadata: &serde_json::Value) -> (String, Str
     (name, owner_name)
 }
 
+use backtrace::Backtrace;
 pub fn marked_uid() -> String {
     let uuid = uuid4().to_string();
-    format!("00000000{}", &uuid[8..])
+    let backtrace = Backtrace::new();
+    let marked_uid = format!("00000000{}", &uuid[8..]);
+    tracing::debug!("Generated marked UID: {marked_uid} - Called from:\n{backtrace:?}");
+    marked_uid
 }
 
 pub fn extract_uid_and_owner_uid(metadata: &serde_json::Value) -> (String, String) {
-    let uid = get_as_string(metadata, "uid").unwrap_or(marked_uid());
+    let uid = get_as_string(metadata, "uid")
+        .inspect_err(|e| tracing::error!("Error parsing uid: {e}"))
+        .unwrap_or(marked_uid());
     let owner_uid =
         extract_owner_aggregated_value(metadata, "ownerReferences", "uid").unwrap_or(uid.clone());
 

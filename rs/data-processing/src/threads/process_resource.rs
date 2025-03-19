@@ -16,7 +16,7 @@ use shared::types::kubeapidata::{KubeApiData, KubeEventType};
 use shared::utils::{
     extract_managed_field_timestamps, extract_timestamp, get_as_ref, get_as_string,
 };
-use shared::{log_error, log_error_continue, log_warn, log_warn_continue, GreptimeConnection};
+use shared::{log_error_continue, log_warn, log_warn_continue, GreptimeConnection};
 
 use crate::util::extract_metadata_owner::{extract_name_and_owner_name, extract_uid_and_owner_uid};
 
@@ -57,7 +57,7 @@ pub async fn process_resource(
         let (name, owner_name) = extract_name_and_owner_name(metadata);
         let (uid, owner_uid) = extract_uid_and_owner_uid(metadata);
 
-        let table = greptime.create_table_name(&kind, &namespace, &owner_name, &owner_uid);
+        let table = GreptimeTable::new(&kind, &namespace, &owner_name, &owner_uid);
 
         let insert_request = resource_to_insert_request(
             apiversion,
@@ -82,17 +82,14 @@ pub async fn process_resource(
             let tables = greptime
                 .list_tables(&db, Some(&uid), None, false)
                 // this would cause a thread exit
-                .await?
-                .iter()
-                .filter_map(|name| log_error!(GreptimeTable::try_from(name)).ok())
-                .collect::<Vec<GreptimeTable>>();
+                .await?;
 
             for table in tables {
                 if table.is_deleted {
                     continue;
                 }
                 greptime
-                    .mark_table_deleted(&db, &table.format_name(false))
+                    .mark_table_deleted(&db, table)
                     // this would cause a thread exit
                     .await?;
             }

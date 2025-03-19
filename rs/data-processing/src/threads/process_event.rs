@@ -6,6 +6,7 @@ use futures_util::StreamExt;
 use k8s_openapi::api::core::v1::Event;
 use shared::connections::dbname::DbName;
 use shared::connections::fluvio::util::get_record_key;
+use shared::connections::greptime::greptime_connection::GreptimeTable;
 use shared::connections::greptime::middleware::insert::resource_to_insert_request;
 
 use fluvio::consumer::ConsumerStream;
@@ -66,7 +67,7 @@ pub async fn process_event(
             .or_else(|| event.metadata.uid.clone())
             .unwrap_or_else(marked_uid);
 
-        let table = greptime.create_table_name(
+        let table = GreptimeTable::new(
             &resource_kind,
             &resource_namespace,
             &involved_name,

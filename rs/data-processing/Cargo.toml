@@ -6,6 +6,7 @@ version = "0.4.17"
 [dependencies]
 algorithm = {workspace = true}
 anyhow = {workspace = true}
+backtrace = {workspace = true}
 chrono = {workspace = true}
 dotenv = {workspace = true}
 fluvio = {workspace = true}
