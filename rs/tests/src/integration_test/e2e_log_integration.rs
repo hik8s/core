@@ -6,6 +6,7 @@ mod tests {
     use data_vectorizer::vectorize_class;
 
     use rstest::rstest;
+    use shared::connections::greptime::greptime_connection::GreptimeTable;
     use shared::constant::OPENAI_EMBEDDING_TOKEN_LIMIT;
     use shared::mock::rocket::get_test_client;
     use shared::qdrant_util::string_filter;
@@ -36,7 +37,7 @@ mod tests {
     #[case(TestCase::DataIntakeLimit)]
     #[case(TestCase::DataProcessingLimit)]
     // #[case(TestCase::OpenAiRateLimit)]
-    async fn test_log_integration(#[case] case: TestCase) -> Result<(), DataIntakeError> {
+    async fn e2e_log_integration(#[case] case: TestCase) -> Result<(), DataIntakeError> {
         setup_tracing(true);
         let num_cases = 3;
         let test_data = get_test_data(case);
@@ -62,7 +63,7 @@ mod tests {
 
         let greptime = GreptimeConnection::new().await?;
         let qdrant = QdrantConnection::new().await.unwrap();
-        let pod_name = test_data.metadata.pod_name.clone();
+        let table = GreptimeTable::from(&test_data.metadata);
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
         let db = DbName::Log.id(&customer_id);
         qdrant.create_collection(&db).await.unwrap();
@@ -74,10 +75,10 @@ mod tests {
 
         while start_time.elapsed() < timeout {
             // check greptime
-            rows = greptime.query(&db, &pod_name, "record_id").await?;
+            rows = greptime.query(&db, &table, "record_id").await.unwrap();
 
             // check qdrant
-            let filter = string_filter("key", &pod_name);
+            let filter = string_filter("key", &test_data.metadata.pod_name);
             let points = qdrant
                 .query_points(&db, Some(filter), 1000, true)
                 .await
@@ -87,11 +88,14 @@ mod tests {
                 "Classes: {}/{} | Pod: {}",
                 classes.len(),
                 test_data.expected_class.count,
-                pod_name
+                table.format_name()
             );
             if !rows.is_empty() && classes.len() == test_data.expected_class.count as usize {
                 // successfully received data
-                RECEIVED_LOGS.lock().unwrap().insert(pod_name.clone());
+                RECEIVED_LOGS
+                    .lock()
+                    .unwrap()
+                    .insert(table.format_name().clone());
                 break;
             }
             sleep(Duration::from_secs(1)).await;

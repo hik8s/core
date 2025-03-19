@@ -2,9 +2,11 @@ use std::collections::HashMap;
 
 use greptimedb_ingester::api::v1::{column, Column, ColumnDataType, InsertRequest, SemanticType};
 
-use crate::types::record::{classified::ClassifiedLogRecord, log::LogRecord};
+use crate::{
+    connections::greptime::greptime_connection::GreptimeTable, types::record::log::LogRecord,
+};
 
-pub fn logs_to_insert_request(logs: &Vec<LogRecord>, key: &String) -> InsertRequest {
+pub fn logs_to_insert_request(logs: &Vec<LogRecord>, table: GreptimeTable) -> InsertRequest {
     let (timestamps, message, record_id) = fold_log_records(logs);
 
     let columns: Vec<Column> = vec![
@@ -14,48 +16,9 @@ pub fn logs_to_insert_request(logs: &Vec<LogRecord>, key: &String) -> InsertRequ
     ];
 
     InsertRequest {
-        table_name: key.to_owned(),
+        table_name: table.format_name(),
         columns,
         row_count: logs.len() as u32,
-    }
-}
-
-pub fn classified_log_to_insert_request(log: ClassifiedLogRecord) -> InsertRequest {
-    let key_clone = log.key.to_owned();
-    let (
-        timestamp,
-        message,
-        record_id,
-        preprocessed_message,
-        length,
-        class_representation,
-        class_id,
-        similarity,
-        key,
-        namespace,
-        pod_uid,
-        container,
-    ) = fold_classified_records(&vec![log]);
-
-    let columns: Vec<Column> = vec![
-        timestamp_column(timestamp),
-        string_column("message", message),
-        tag_column("record_id", record_id),
-        string_column("preprocessed_message", preprocessed_message),
-        u64_column("length", length),
-        string_column("class_representation", class_representation),
-        string_column("class_id", class_id),
-        f64_column("similarity", similarity),
-        string_column("key", key),
-        string_column("namespace", namespace),
-        string_column("pod_uid", pod_uid),
-        string_column("container", container),
-    ];
-
-    InsertRequest {
-        table_name: key_clone,
-        columns,
-        row_count: 1,
     }
 }
 
@@ -70,7 +33,7 @@ pub fn resource_to_insert_request(
     status: Option<String>,
     reason: Option<String>,
     message: Option<String>,
-    table_name: String,
+    table: GreptimeTable,
     timestamp: i64,
 ) -> InsertRequest {
     let mut columns: Vec<Column> = vec![
@@ -107,7 +70,7 @@ pub fn resource_to_insert_request(
     }
 
     InsertRequest {
-        table_name,
+        table_name: table.format_name(),
         columns,
         row_count: 1,
     }
@@ -125,12 +88,12 @@ pub fn create_string_columns(map: HashMap<&str, String>, ts: Option<i64>) -> Vec
 }
 
 pub fn create_insert_request(
-    table_name: &str,
+    table: &GreptimeTable,
     columns: Vec<Column>,
     row_count: u32,
 ) -> InsertRequest {
     InsertRequest {
-        table_name: table_name.to_string(),
+        table_name: table.format_name(),
         columns,
         row_count,
     }
@@ -175,32 +138,6 @@ fn tag_column(column_name: &str, data: Vec<String>) -> Column {
     }
 }
 
-fn u64_column(column_name: &str, data: Vec<u64>) -> Column {
-    Column {
-        column_name: column_name.to_owned(),
-        values: Some(column::Values {
-            u64_values: data,
-            ..Default::default()
-        }),
-        semantic_type: SemanticType::Field as i32,
-        datatype: ColumnDataType::Uint64 as i32,
-        ..Default::default()
-    }
-}
-
-fn f64_column(column_name: &str, data: Vec<f64>) -> Column {
-    Column {
-        column_name: column_name.to_owned(),
-        values: Some(column::Values {
-            f64_values: data,
-            ..Default::default()
-        }),
-        semantic_type: SemanticType::Field as i32,
-        datatype: ColumnDataType::Float64 as i32,
-        ..Default::default()
-    }
-}
-
 // Macro to extract parts of logs into separate vectors
 macro_rules! fold_records {
     // Define the macro to take an expression ($logs) and a list of identifiers ($field)
@@ -236,37 +173,4 @@ macro_rules! fold_records {
 fn fold_log_records(logs: &Vec<LogRecord>) -> (Vec<i64>, Vec<String>, Vec<String>) {
     // Use the macro to extract the specified fields from the logs
     fold_records!(logs, timestamp, message, record_id)
-}
-fn fold_classified_records(
-    logs: &Vec<ClassifiedLogRecord>,
-) -> (
-    Vec<i64>,
-    Vec<String>,
-    Vec<String>,
-    Vec<String>,
-    Vec<u64>,
-    Vec<String>,
-    Vec<String>,
-    Vec<f64>,
-    Vec<String>,
-    Vec<String>,
-    Vec<String>,
-    Vec<String>,
-) {
-    // Use the macro to extract the specified fields from the logs
-    fold_records!(
-        logs,
-        timestamp,
-        message,
-        record_id,
-        preprocessed_message,
-        length,
-        class_representation,
-        class_id,
-        similarity,
-        key,
-        namespace,
-        pod_uid,
-        container
-    )
 }

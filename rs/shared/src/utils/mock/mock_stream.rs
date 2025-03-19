@@ -1,14 +1,12 @@
 use serde_json::json;
 
-use crate::utils::mock::mock_client::{generate_random_filename, get_test_path};
-
 use super::mock_data::TestData;
 
 pub fn get_multipart_stream(test_data: &TestData) -> String {
     let boundary = "boundary";
     let metadata_obj = json!({
-        "file": generate_random_filename(),
-        "path": get_test_path(&test_data.metadata.pod_name),
+        "file": test_data.metadata.filename,
+        "path": test_data.metadata.path,
     });
 
     let metadata = format!(

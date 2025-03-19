@@ -8,7 +8,7 @@ use shared::connections::fluvio::util::get_record_key;
 
 use fluvio::consumer::ConsumerStream;
 use fluvio::dataplane::{link::ErrorCode, record::ConsumerRecord};
-use shared::connections::greptime::greptime_connection::{parse_resource_name, GreptimeTable};
+use shared::connections::greptime::greptime_connection::GreptimeTable;
 use shared::connections::greptime::middleware::insert::resource_to_insert_request;
 use shared::constant::DEFAULT_NS;
 use shared::fluvio::commit_and_flush_offsets;
@@ -57,7 +57,7 @@ pub async fn process_resource(
         let (name, owner_name) = extract_name_and_owner_name(metadata);
         let (uid, owner_uid) = extract_uid_and_owner_uid(metadata);
 
-        let table = greptime.create_table_name(&kind, &namespace, &owner_name, &owner_uid);
+        let table = GreptimeTable::new(&kind, &namespace, &owner_name, &owner_uid);
 
         let insert_request = resource_to_insert_request(
             apiversion,
@@ -82,17 +82,14 @@ pub async fn process_resource(
             let tables = greptime
                 .list_tables(&db, Some(&uid), None, false)
                 // this would cause a thread exit
-                .await?
-                .iter()
-                .filter_map(|name| parse_resource_name(name))
-                .collect::<Vec<GreptimeTable>>();
+                .await?;
 
             for table in tables {
                 if table.is_deleted {
                     continue;
                 }
                 greptime
-                    .mark_table_deleted(&db, &table.format_name(false))
+                    .mark_table_deleted(&db, table)
                     // this would cause a thread exit
                     .await?;
             }

@@ -7,7 +7,7 @@ mod tests {
 
     use qdrant_client::qdrant::{ScoredPoint, Value};
     use rstest::rstest;
-    use shared::connections::greptime::greptime_connection::{parse_resource_name, GreptimeTable};
+    use shared::connections::greptime::greptime_connection::GreptimeTable;
 
     use shared::constant::OPENAI_EMBEDDING_TOKEN_LIMIT;
     use shared::mock::rocket::get_test_client;
@@ -95,7 +95,7 @@ mod tests {
         let mut received_greptime = false;
         let mut received_qdrant = false;
         let mut points = Vec::<ScoredPoint>::new();
-        let mut tables = Vec::<String>::new();
+        let mut tables = Vec::<GreptimeTable>::new();
         while start_time.elapsed() < timeout {
             let filter = match_any("resource_uid", &[resource_uid.clone()]);
             points = qdrant
@@ -127,7 +127,11 @@ mod tests {
                 TestType::Update => search_uid.to_owned(),
             };
 
-            if !received_greptime && tables.iter().any(|table| table.contains(&key)) {
+            if !received_greptime
+                && tables
+                    .iter()
+                    .any(|table| table.format_name().contains(&key))
+            {
                 RECEIVED_GREPTIME.lock().unwrap().insert(subdir.to_string());
                 received_greptime = true;
             }
@@ -186,25 +190,22 @@ mod tests {
             );
 
             // Parse all table names and ensure they're all marked as deleted
-            let parsed_tables: Vec<GreptimeTable> = tables
-                .iter()
-                .filter_map(|table| parse_resource_name(table))
-                .collect();
 
             assert!(
-                !parsed_tables.is_empty(),
+                !tables.is_empty(),
                 "Should have at least one table to check"
             );
 
             // Verify each table is marked as deleted
-            let all_deleted = parsed_tables.iter().all(|table| table.is_deleted);
+            let all_deleted = tables.iter().all(|table| table.is_deleted);
             assert!(
                 all_deleted,
                 "All tables should be marked as deleted, found non-deleted tables: {:?}",
-                parsed_tables
+                tables
                     .iter()
                     .filter(|t| !t.is_deleted)
-                    .collect::<Vec<_>>()
+                    .map(GreptimeTable::format_name)
+                    .collect::<Vec<String>>()
             );
         }
         assert!(received_qdrant);

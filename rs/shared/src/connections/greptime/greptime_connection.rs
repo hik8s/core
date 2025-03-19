@@ -1,5 +1,6 @@
 use crate::constant::GREPTIME_TABLE_KEY;
 use crate::log_error;
+use crate::types::metadata::Metadata;
 use crate::ConfigError;
 
 use super::config::GreptimeConfig;
@@ -12,6 +13,7 @@ use std::borrow::Cow;
 use std::fmt;
 use thiserror::Error;
 use tracing::error;
+use tracing::warn;
 
 #[derive(Clone)]
 pub struct GreptimeConnection {
@@ -30,6 +32,8 @@ pub enum GreptimeConnectionError {
     PostgresConnection(#[from] SqlxError),
     #[error("GreptimeDB streaming inserter error: {0}")]
     StreamingInserter(#[from] greptimedb_ingester::Error),
+    #[error("Failed to parse GreptimeTable from table name: {0}")]
+    TableParse(String),
 }
 
 impl GreptimeConnection {
@@ -51,10 +55,6 @@ impl GreptimeConnection {
             admin_psql,
             config,
         })
-    }
-    pub fn create_table_name(&self, kind: &str, namespace: &str, name: &str, uid: &str) -> String {
-        let kind_lc = kind.to_lowercase();
-        format!("{kind_lc}__{namespace}__{name}__{uid}")
     }
 
     pub fn streaming_inserter(&self, db: &str) -> Result<StreamInserter, GreptimeConnectionError> {
@@ -88,7 +88,7 @@ impl GreptimeConnection {
         Ok(pool)
     }
 
-    pub async fn rename_table(
+    async fn rename_table(
         &self,
         db: &str,
         table_name: &str,
@@ -106,10 +106,12 @@ impl GreptimeConnection {
     pub async fn mark_table_deleted(
         &self,
         db: &str,
-        table_name: &str,
+        mut table: GreptimeTable,
     ) -> Result<(), GreptimeConnectionError> {
-        let table_name_deleted = format!("{table_name}___deleted");
-        self.rename_table(db, table_name, &table_name_deleted).await
+        let table_name = table.format_name();
+        table.is_deleted = true;
+        let new_table_name = table.format_name();
+        self.rename_table(db, &table_name, &new_table_name).await
     }
 
     pub async fn list_tables(
@@ -118,7 +120,7 @@ impl GreptimeConnection {
         general_filter: Option<&str>,
         resource_filter: Option<&str>,
         exclude_deleted: bool,
-    ) -> Result<Vec<String>, GreptimeConnectionError> {
+    ) -> Result<Vec<GreptimeTable>, GreptimeConnectionError> {
         // TODO: handle error gracefully
         let psql = self.connect_db(db).await?;
 
@@ -147,18 +149,26 @@ impl GreptimeConnection {
 
         // Execute query and return results
         let rows = psql.fetch_all(query.as_str()).await?;
-        let tables = rows.iter().map(|row| row.get(GREPTIME_TABLE_KEY)).collect();
+        let tables = rows
+            .iter()
+            .map(|row| row.get::<String, _>(GREPTIME_TABLE_KEY))
+            .filter_map(|name| {
+                GreptimeTable::try_from(&name)
+                    .inspect_err(|err| warn!("Failed to parse table name '{}': {}", name, err))
+                    .ok()
+            })
+            .collect();
         Ok(tables)
     }
 
     pub async fn query(
         &self,
         db: &str,
-        table: &str,
+        table: &GreptimeTable,
         key: &str,
     ) -> Result<Vec<PgRow>, GreptimeConnectionError> {
         let psql = self.connect_db(db).await?;
-        let query = format!("SELECT {key} FROM \"{table}\"");
+        let query = format!("SELECT {key} FROM \"{}\"", table.format_name());
         let rows = psql.fetch_all(&*query).await?;
         Ok(rows)
     }
@@ -190,7 +200,7 @@ impl rocket::fairing::Fairing for GreptimeConnection {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct GreptimeTable {
     pub kind: String,
     pub namespace: String,
@@ -200,6 +210,20 @@ pub struct GreptimeTable {
 }
 
 impl GreptimeTable {
+    pub fn new(
+        kind: impl Into<String>,
+        namespace: impl Into<String>,
+        name: impl Into<String>,
+        uid: impl Into<String>,
+    ) -> Self {
+        Self {
+            kind: kind.into(),
+            namespace: namespace.into(),
+            name: name.into(),
+            uid: uid.into(),
+            is_deleted: false,
+        }
+    }
     pub fn new_test_table(case: impl fmt::Display, kind: &str) -> Self {
         Self {
             kind: kind.to_string(),
@@ -218,47 +242,66 @@ impl GreptimeTable {
             if self.is_deleted { " (deleted)" } else { "" }
         )
     }
-    pub fn format_name(&self, deleted: bool) -> String {
+    pub fn format_name(&self) -> String {
         let base_name = format!(
             "{}__{}__{}__{}",
             self.kind, self.namespace, self.name, self.uid
         );
-        if deleted {
+        if self.is_deleted {
             format!("{base_name}___deleted")
         } else {
             base_name
         }
     }
 }
+impl TryFrom<&str> for GreptimeTable {
+    type Error = GreptimeConnectionError;
 
-pub fn parse_resource_name(resource_name: &str) -> Option<GreptimeTable> {
-    // First check if the entire name contains the deleted suffix
-    let is_deleted = resource_name.contains("___deleted");
+    fn try_from(table_name: &str) -> Result<Self, Self::Error> {
+        // First check if the entire name contains the deleted suffix
+        let is_deleted = table_name.contains("___deleted");
 
-    // Split by double underscore
-    let parts: Vec<&str> = resource_name.split("__").collect();
+        // Split by double underscore
+        let parts: Vec<&str> = table_name.split("__").collect();
 
-    if parts.len() >= 4 {
-        // Handle the UID part which might contain the deleted suffix
-        let uid_part = parts[3];
-        let uid = match uid_part.split_once("___deleted") {
-            Some((uid, _)) => uid.to_string(),
-            None => uid_part.to_string(),
-        };
+        if parts.len() >= 4 {
+            // Handle the UID part which might contain the deleted suffix
+            let uid_part = parts[3];
+            let uid = match uid_part.split_once("___deleted") {
+                Some((uid, _)) => uid.to_string(),
+                None => uid_part.to_string(),
+            };
 
-        Some(GreptimeTable {
-            kind: parts[0].to_string(),
-            namespace: parts[1].to_string(),
-            name: parts[2].to_string(),
-            uid,
-            is_deleted,
-        })
-    } else {
-        tracing::warn!(
-            "Invalid resource name could not be converted to GreptimeTable and is skipped: {}",
-            resource_name
-        );
-        None
+            Ok(GreptimeTable {
+                kind: parts[0].to_string(),
+                namespace: parts[1].to_string(),
+                name: parts[2].to_string(),
+                uid,
+                is_deleted,
+            })
+        } else {
+            Err(GreptimeConnectionError::TableParse(table_name.to_string()))
+        }
+    }
+}
+impl TryFrom<&String> for GreptimeTable {
+    type Error = GreptimeConnectionError;
+
+    fn try_from(table_name: &String) -> Result<Self, Self::Error> {
+        // Simply delegate to the &str implementation
+        GreptimeTable::try_from(table_name.as_str())
+    }
+}
+
+impl From<&Metadata> for GreptimeTable {
+    fn from(metadata: &Metadata) -> Self {
+        GreptimeTable {
+            kind: "pod".to_string(),
+            namespace: metadata.namespace.clone(),
+            name: metadata.pod_name.clone(),
+            uid: metadata.pod_uid.clone(),
+            is_deleted: false,
+        }
     }
 }
 
@@ -275,11 +318,11 @@ mod tests {
     };
 
     #[test]
-    fn test_parse_resource_name() {
+    fn test_greptime_table() {
         setup_tracing(false);
         let table_name =
         "certificate__examples__hello-server-hik9s__692cf3ae-680c-4b00-949d-e26dbf781a40___deleted";
-        let parsed = parse_resource_name(table_name).unwrap();
+        let parsed = GreptimeTable::try_from(table_name).unwrap();
         tracing::debug!("{:?}", parsed);
         assert_eq!(parsed.kind, "certificate");
         assert_eq!(parsed.namespace, "examples");
@@ -289,7 +332,7 @@ mod tests {
 
         // Test a non-deleted table
         let non_deleted = "pod__default__nginx__abcd1234";
-        let parsed = parse_resource_name(non_deleted).unwrap();
+        let parsed = GreptimeTable::try_from(non_deleted).unwrap();
         assert!(!parsed.is_deleted, "Table should not be marked as deleted");
     }
 
@@ -308,9 +351,8 @@ mod tests {
         map.insert("kind", "Pod".to_string());
         let columns = create_string_columns(map, Some(1620000000));
 
-        let table_name = GreptimeTable::new_test_table("test-pod", "pod").format_name(false);
-        tracing::info!("Table name: {}", table_name);
-        let req = create_insert_request(&table_name, columns, 1);
+        let mut table = GreptimeTable::new_test_table("test-pod", "pod");
+        let req = create_insert_request(&table, columns, 1);
 
         // insert data
         greptime.create_database(&db).await?;
@@ -319,18 +361,13 @@ mod tests {
         inserter.finish().await?;
 
         // rename table
-        greptime.mark_table_deleted(&db, &table_name).await?;
-        let table_names = greptime.list_tables(&db, None, None, false).await?;
+        greptime.mark_table_deleted(&db, table.clone()).await?;
+        let tables = greptime.list_tables(&db, None, None, false).await?;
 
         // assert rename success
-        assert!(
-            !table_names.contains(&table_name),
-            "Original table should not exist"
-        );
-        assert!(
-            table_names.contains(&format!("{table_name}___deleted")),
-            "Deleted table should exist"
-        );
+        assert!(!tables.contains(&table), "Original table should not exist");
+        table.is_deleted = true;
+        assert!(tables.contains(&table), "Deleted table should exist");
         Ok(())
     }
 
@@ -359,11 +396,7 @@ mod tests {
             return Ok(());
         }
         // Check if delete filter filters all deleted tables
-        let active_tables_filtered_len = active_tables
-            .iter()
-            .filter_map(|name| parse_resource_name(name))
-            .filter(|i| !i.is_deleted)
-            .count();
+        let active_tables_filtered_len = active_tables.iter().filter(|i| !i.is_deleted).count();
         assert_eq!(
             active_tables.len(),
             active_tables_filtered_len,
@@ -385,26 +418,22 @@ mod tests {
         let greptime = GreptimeConnection::new().await?;
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
         let db = DbName::Resource.id(&customer_id);
-        let table_names: Vec<String> = greptime
+        let mut tables = greptime
             .list_tables(&db, None, None, false)
             .await
             .unwrap_or_default();
-        let mut parsed_resources = table_names
-            .iter()
-            .filter_map(|name| parse_resource_name(name))
-            .collect::<Vec<GreptimeTable>>();
 
-        let total = parsed_resources.len();
-        parsed_resources.retain(|r| !r.is_deleted);
-        let active = parsed_resources.len();
+        let total = tables.len();
+        tables.retain(|r| !r.is_deleted);
+        let active = tables.len();
 
-        if parsed_resources.is_empty() {
+        if tables.is_empty() {
             warn!("No active resources found");
         }
         tracing::debug!("Total resources: {}, Active resources: {}", total, active);
         tracing::debug!(
             "Active resources: {:?}",
-            parsed_resources
+            tables
                 .iter()
                 .map(|i| i.name.clone())
                 .collect::<Vec<String>>()

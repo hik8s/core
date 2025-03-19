@@ -11,7 +11,7 @@ use tracing::error;
 
 use crate::{
     connections::{
-        greptime::greptime_connection::parse_resource_name,
+        greptime::greptime_connection::GreptimeTable,
         openai::tool_args::{
             ClusterOverviewArgs, CreateDeploymentArgs, EventRetrievalArgs, LogRetrievalArgs,
             ResourceStatusRetrievalArgs,
@@ -362,16 +362,11 @@ impl Tool {
                 let mut result = String::new();
                 for resource in resources_to_query {
                     // TODO: handle error graceful
-                    let tables_raw: Vec<String> = greptime
+                    let tables = greptime
                         .list_tables(&db, None, resource, exclude_deleted)
                         .await
                         .inspect_err(|e| error!("{e:?}. Returning empty list"))
                         .unwrap_or_default();
-                    let tables = tables_raw
-                        .iter()
-                        .filter_map(|name| parse_resource_name(name))
-                        .map(|table| table.print_table())
-                        .collect::<Vec<String>>();
 
                     // Create header for this resource type
                     let header = match resource {
@@ -379,7 +374,13 @@ impl Tool {
                         None => format!("Found {} resources across all types", tables.len()),
                     };
                     result.push_str(&header);
-                    result.push_str(&tables.join("\n"));
+                    result.push_str(
+                        &tables
+                            .iter()
+                            .map(GreptimeTable::format_name)
+                            .collect::<Vec<String>>()
+                            .join("\n"),
+                    );
                 }
 
                 Ok(result)

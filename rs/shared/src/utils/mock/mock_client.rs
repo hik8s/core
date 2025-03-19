@@ -5,6 +5,7 @@ use rocket::{
     http::{ContentType, Header, Status},
     local::asynchronous::Client,
 };
+use uuid7::uuid4;
 
 use crate::{get_env_var, types::metadata::Metadata};
 
@@ -75,7 +76,7 @@ pub fn generate_podname(case: impl Display) -> String {
 
 pub fn get_test_path(podname: &str) -> String {
     let base_path = "/var/log/pods";
-    let pod_uid = "123-4123-53754";
+    let pod_uid = uuid4().to_string();
     let namespace = format!("test-ns-{}", generate_random_string(5));
     let container = "some-container";
     format!("{base_path}/{namespace}_{podname}_{pod_uid}/{container}")
