@@ -55,6 +55,7 @@ serde_json = {version = "1.0.132", features = ["preserve_order"]}
 serde_yaml = "0.9.34"
 shared = {path = "rs/shared"}
 sqlx = {version = "0.8.2", features = [
+    "chrono",
     "postgres",
     "runtime-tokio",
     "tls-rustls",
