@@ -1,5 +1,6 @@
 use crate::constant::GREPTIME_TABLE_KEY;
 use crate::log_error;
+use crate::types::metadata::Metadata;
 use crate::ConfigError;
 
 use super::config::GreptimeConfig;
@@ -289,6 +290,18 @@ impl TryFrom<&String> for GreptimeTable {
     fn try_from(table_name: &String) -> Result<Self, Self::Error> {
         // Simply delegate to the &str implementation
         GreptimeTable::try_from(table_name.as_str())
+    }
+}
+
+impl From<&Metadata> for GreptimeTable {
+    fn from(metadata: &Metadata) -> Self {
+        GreptimeTable {
+            kind: "pod".to_string(),
+            namespace: metadata.namespace.clone(),
+            name: metadata.pod_name.clone(),
+            uid: metadata.pod_uid.clone(),
+            is_deleted: false,
+        }
     }
 }
 

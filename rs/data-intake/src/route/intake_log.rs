@@ -4,6 +4,7 @@ use crate::error::DataIntakeError;
 use rocket::http::ContentType;
 use rocket::post;
 use rocket::Data;
+use shared::connections::greptime::greptime_connection::GreptimeTable;
 use shared::connections::greptime::middleware::insert::logs_to_insert_request;
 use shared::fluvio::TopicName;
 use shared::log_error;
@@ -49,8 +50,9 @@ pub async fn log_intake<'a>(
                 let mut logs = process_stream(field.data, &metadata)?;
 
                 // insert to greptime
+                let table = GreptimeTable::from(&metadata);
                 let stream_inserter = greptime.streaming_inserter(&db)?;
-                let insert_request = logs_to_insert_request(&logs, &metadata.pod_name);
+                let insert_request = logs_to_insert_request(&logs, table);
                 stream_inserter.insert(vec![insert_request]).await?;
                 stream_inserter.finish().await?;
 
