@@ -75,10 +75,7 @@ mod tests {
 
         while start_time.elapsed() < timeout {
             // check greptime
-            rows = greptime
-                .query(&db, &table.format_name(), "record_id")
-                .await
-                .unwrap();
+            rows = greptime.query(&db, &table, "record_id").await.unwrap();
 
             // check qdrant
             let filter = string_filter("key", &test_data.metadata.pod_name);

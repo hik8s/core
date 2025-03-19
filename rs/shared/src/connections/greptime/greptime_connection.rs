@@ -164,11 +164,11 @@ impl GreptimeConnection {
     pub async fn query(
         &self,
         db: &str,
-        table: &str,
+        table: &GreptimeTable,
         key: &str,
     ) -> Result<Vec<PgRow>, GreptimeConnectionError> {
         let psql = self.connect_db(db).await?;
-        let query = format!("SELECT {key} FROM \"{table}\"");
+        let query = format!("SELECT {key} FROM \"{}\"", table.format_name());
         let rows = psql.fetch_all(&*query).await?;
         Ok(rows)
     }
