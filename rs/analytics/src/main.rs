@@ -9,18 +9,23 @@ use std::env;
 use analyze_logs::analyze_logs;
 use analyze_resource::analyze_resource;
 use analyze_state::analyze_state;
-use shared::{get_env_var, setup_tracing, DbName, QdrantConnection, RedisConnection};
+use shared::{
+    get_env_var, setup_tracing, DbName, GreptimeConnection, QdrantConnection, RedisConnection,
+};
 use utils::create_map;
 
 #[tokio::main]
 async fn main() {
     setup_tracing(false);
     let limit = 1000000;
-    let run_analyze_resource = true;
+    let run_analyze_resource = false;
     let run_analyze_log = false;
     let run_analyze_state = false;
+    let run_export_greptime = false;
 
     env::set_var("QDRANT_HOST", "dev.qdrant.hik8s.ai");
+    env::set_var("GREPTIMEDB_HOST", "dev.greptime.hik8s.ai");
+
     let customer_id = get_env_var("ANALYTICS_CLIENT_ID").unwrap();
     let db_resource = DbName::Resource.id(&customer_id);
     let db_log = DbName::Log.id(&customer_id);
@@ -41,8 +46,22 @@ async fn main() {
     }
 
     // env::set_var("REDIS_HOST", "dev.qdrant.hik8s.ai");
-    let mut redis = RedisConnection::new().unwrap();
     if run_analyze_state {
+        let mut redis = RedisConnection::new().unwrap();
         analyze_state(&mut redis, &db_log).await;
+    }
+
+    if run_export_greptime {
+        let greptime = GreptimeConnection::new().await.unwrap();
+        let tables = greptime
+            .list_tables(&db_resource, None, None, false)
+            .await
+            .unwrap();
+
+        let table = tables.first().unwrap();
+        let rows = greptime.query(&db_resource, table, "*").await.unwrap();
+
+        tracing::debug!("Tables {tables:#?}");
+        tracing::info!("Rows {rows:#?}");
     }
 }
