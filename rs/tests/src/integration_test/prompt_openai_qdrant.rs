@@ -8,7 +8,10 @@ mod tests {
     };
     use bm25::{Language, SearchEngineBuilder};
 
-    use chat_backend::handle::handle_chat_completion::{process_user_message, RequestOptions};
+    use chat_backend::{
+        handle::handle_chat_completion::process_user_message,
+        route::route_chat_completion::RequestOptions,
+    };
     use data_vectorizer::vectorize::vectorizer::{vectorize_chunk, vectorize_class_batch};
     use rstest::rstest;
     use shared::{
@@ -49,7 +52,7 @@ mod tests {
         qdrant.upsert_points(points, &db).await.unwrap();
 
         // Prompt processing
-        let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
+        let request_option = RequestOptions::test(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
         let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
         process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
@@ -153,7 +156,7 @@ mod tests {
         .await;
 
         // Prompt processing
-        let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
+        let request_option = RequestOptions::test(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
         let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
         process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
@@ -222,7 +225,7 @@ mod tests {
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
 
         // Prompt processing
-        let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
+        let request_option = RequestOptions::test(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
         let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
         process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
@@ -289,7 +292,7 @@ mod tests {
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
 
         // Prompt processing
-        let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
+        let request_option = RequestOptions::test(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
         let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
         process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
@@ -357,7 +360,7 @@ mod tests {
         let customer_id = get_env_var("CLIENT_ID_LOCAL").unwrap();
 
         // Prompt processing
-        let request_option = RequestOptions::new(prompt, &customer_id);
+        let request_option = RequestOptions::test(prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
 
         let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
