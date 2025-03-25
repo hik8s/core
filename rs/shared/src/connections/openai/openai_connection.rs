@@ -40,7 +40,6 @@ impl OpenAIConnection {
         &self,
         messages: Vec<ChatCompletionRequestMessage>,
         model: &str,
-        max_tokens: u32,
         num_choices: Option<u8>,
         response_format: Option<ResponseFormat>,
         tools: Option<Vec<ChatCompletionTool>>,
@@ -48,7 +47,6 @@ impl OpenAIConnection {
         CreateChatCompletionRequest {
             model: model.to_string(),
             messages,
-            max_tokens: Some(max_tokens),
             n: num_choices,
             response_format,
             tools,
@@ -66,7 +64,7 @@ impl OpenAIConnection {
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
         let tools = list_all_tools();
-        self.request_builder(messages, model, 1024, Some(num_choices), None, Some(tools))
+        self.request_builder(messages, model, Some(num_choices), None, Some(tools))
     }
     // CHAT COMPLETION
     pub async fn create_completion(
@@ -145,7 +143,6 @@ impl OpenAIConnection {
         let request = self.request_builder(
             messages,
             OPENAI_CHAT_MODEL_MINI,
-            100,
             Some(1),
             Some(response_format),
             None,

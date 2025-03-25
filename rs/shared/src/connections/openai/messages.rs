@@ -1,10 +1,10 @@
 use async_openai::types::{
     ChatCompletionMessageToolCall, ChatCompletionRequestAssistantMessage,
-    ChatCompletionRequestAssistantMessageContent, ChatCompletionRequestFunctionMessage,
-    ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
-    ChatCompletionRequestSystemMessageContent, ChatCompletionRequestToolMessage,
-    ChatCompletionRequestToolMessageContent, ChatCompletionRequestUserMessage,
-    ChatCompletionRequestUserMessageContent,
+    ChatCompletionRequestAssistantMessageContent, ChatCompletionRequestDeveloperMessageContent,
+    ChatCompletionRequestFunctionMessage, ChatCompletionRequestMessage,
+    ChatCompletionRequestSystemMessage, ChatCompletionRequestSystemMessageContent,
+    ChatCompletionRequestToolMessage, ChatCompletionRequestToolMessageContent,
+    ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent,
 };
 use tracing::warn;
 
@@ -55,6 +55,7 @@ pub fn create_assistant_message(
         name: Some("assistant".to_string()),
         tool_calls,
         function_call: None,
+        audio: None,
     })
 }
 
@@ -110,5 +111,13 @@ pub fn extract_message_content(msg: &ChatCompletionRequestMessage) -> Option<Str
             }
         }
         ChatCompletionRequestMessage::Function(function_msg) => function_msg.content.clone(),
+        ChatCompletionRequestMessage::Developer(dev_msg) => {
+            if let ChatCompletionRequestDeveloperMessageContent::Text(text) = &dev_msg.content {
+                Some(text.clone())
+            } else {
+                warn!("Developer message with non text content");
+                None
+            }
+        }
     }
 }
