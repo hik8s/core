@@ -9,9 +9,9 @@ use tokio;
 use tokio::sync::mpsc;
 use tracing::error;
 
+use crate::handle::handle_chat_completion::{process_user_message, RequestOptions};
+
 use super::header::LastEventId;
-use super::process_chat::process_user_message;
-use super::process_chat::RequestOptions;
 
 #[post("/chat/completions", format = "json", data = "<payload>")]
 pub fn chat_completion(

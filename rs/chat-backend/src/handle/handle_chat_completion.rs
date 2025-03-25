@@ -1,4 +1,6 @@
-use async_openai::types::{ChatCompletionRequestMessage, FinishReason, CreateChatCompletionStreamResponse};
+use async_openai::types::{
+    ChatCompletionRequestMessage, CreateChatCompletionStreamResponse, FinishReason,
+};
 use shared::{
     constant::OPENAI_CHAT_MODEL_MINI,
     log_error,
@@ -11,7 +13,7 @@ use shared::{
 use tokio::sync::mpsc;
 use tracing::error;
 
-use super::{error::ChatProcessingError, tool_call_trace::ToolCallTrace};
+use crate::{route::error::ChatProcessingError, util::tool_call_trace::ToolCallTrace};
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct RequestOptions {
