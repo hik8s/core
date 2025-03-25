@@ -2,14 +2,14 @@
 mod tests {
     use std::{iter::zip, path::Path, time::Instant};
 
-    use async_openai::{error::OpenAIError, types::ChatCompletionRequestMessage};
+    use async_openai::{error::OpenAIError, types::{ChatCompletionRequestMessage, CreateChatCompletionStreamResponse}};
     use bm25::{Language, SearchEngineBuilder};
     use chat_backend::chat::process_chat::{process_user_message, RequestOptions};
 
     use data_vectorizer::vectorize::vectorizer::{vectorize_chunk, vectorize_class_batch};
     use rstest::rstest;
     use shared::{
-        connections::qdrant::EventQdrantMetadata,
+        connections::{openai::util::aggregate_answer, qdrant::EventQdrantMetadata},
         testdata::{UserTest, UserTestData},
         DbName, GreptimeConnection, OpenAIConnection, QdrantConnection,
     };
@@ -21,7 +21,7 @@ mod tests {
         types::tokenizer::Tokenizer, RateLimiter,
     };
 
-    use crate::util::read_yaml_files;
+    use crate::util::{read_yaml_files};
 
     #[tokio::test]
     #[rstest]
@@ -48,17 +48,16 @@ mod tests {
         // Prompt processing
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
-        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
         process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
             .await
             .unwrap();
 
         // Answer evaluation
-        let mut answer = String::new();
         rx.close();
-        while let Some(message_delta) = rx.recv().await {
-            answer.push_str(&message_delta);
-        }
+        
+        let answer = aggregate_answer(rx).await;
+
         tracing::debug!("Messages: {:#?}", messages);
         tracing::debug!("Answer: {}", answer);
         assert!(!answer.is_empty());
@@ -153,17 +152,16 @@ mod tests {
         // Prompt processing
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
-        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
         process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
             .await
             .unwrap();
 
         // Answer evaluation
-        let mut answer = String::new();
         rx.close();
-        while let Some(message_delta) = rx.recv().await {
-            answer.push_str(&message_delta);
-        }
+        
+        let answer = aggregate_answer(rx).await;
+
         tracing::debug!("Messages: {:#?}", messages);
         tracing::debug!("Answer: {}", answer);
         assert!(!answer.is_empty());
@@ -223,17 +221,15 @@ mod tests {
         // Prompt processing
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
-        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
         process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
             .await
             .unwrap();
 
         // Answer evaluation
-        let mut answer = String::new();
         rx.close();
-        while let Some(message_delta) = rx.recv().await {
-            answer.push_str(&message_delta);
-        }
+        let answer = aggregate_answer(rx).await;
+
         tracing::debug!("Messages: {:#?}", messages);
         tracing::debug!("Answer: {}", answer);
         assert!(!answer.is_empty());
@@ -292,17 +288,15 @@ mod tests {
         // Prompt processing
         let request_option = RequestOptions::new(&testdata.prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
-        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
         process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
             .await
             .unwrap();
 
         // Answer evaluation
-        let mut answer = String::new();
         rx.close();
-        while let Some(message_delta) = rx.recv().await {
-            answer.push_str(&message_delta);
-        }
+        
+        let answer = aggregate_answer(rx).await;
         tracing::debug!("Messages: {:#?}", messages);
         tracing::debug!("Answer: {}", answer);
         assert!(!answer.is_empty());
@@ -363,17 +357,16 @@ mod tests {
         let request_option = RequestOptions::new(prompt, &customer_id);
         let mut messages: Vec<ChatCompletionRequestMessage> = request_option.clone().into();
 
-        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (tx, mut rx) = mpsc::unbounded_channel::<CreateChatCompletionStreamResponse>();
         process_user_message(&greptime, &qdrant, &mut messages, &tx, request_option)
             .await
             .unwrap();
 
         // Answer evaluation
-        let mut answer = String::new();
         rx.close();
-        while let Some(message_delta) = rx.recv().await {
-            answer.push_str(&message_delta);
-        }
+        
+        let answer = aggregate_answer(rx).await;
+
         tracing::debug!("\nMESSAGE\n: {:#?}", messages);
         tracing::debug!("\nANSWER\n: {}", answer);
         Ok(())

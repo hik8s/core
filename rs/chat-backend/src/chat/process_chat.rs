@@ -1,4 +1,4 @@
-use async_openai::types::{ChatCompletionRequestMessage, FinishReason};
+use async_openai::types::{ChatCompletionRequestMessage, FinishReason, CreateChatCompletionStreamResponse};
 use shared::{
     constant::OPENAI_CHAT_MODEL_MINI,
     log_error,
@@ -65,7 +65,7 @@ pub async fn process_user_message(
     greptime: &GreptimeConnection,
     qdrant: &QdrantConnection,
     messages: &mut Vec<ChatCompletionRequestMessage>,
-    tx: &mpsc::UnboundedSender<String>,
+    tx: &mpsc::UnboundedSender<CreateChatCompletionStreamResponse>,
     options: RequestOptions,
 ) -> Result<ToolCallTrace, ChatProcessingError> {
     let openai = OpenAIConnection::new();

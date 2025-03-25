@@ -1,4 +1,4 @@
-use chat_backend::chat::route::chat_completion;
+use chat_backend::chat::{route_add_cluster::add_cluster, route_chat_completion::chat_completion};
 use rocket::{main, routes};
 use shared::{
     constant::CHAT_BACKEND_PORT,
@@ -29,7 +29,9 @@ async fn main() -> Result<(), ChatBackendError> {
         Connection::from(QdrantConnection::new().await?),
     ];
 
-    let rocket = build_rocket(&connections, routes![chat_completion]);
+    let routes = routes![chat_completion, add_cluster];
+
+    let rocket = build_rocket(&connections, routes);
 
     rocket.launch().await?;
     Ok(())
