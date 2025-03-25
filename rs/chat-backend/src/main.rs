@@ -1,4 +1,4 @@
-use chat_backend::chat::{route_add_cluster::add_cluster, route_chat_completion::chat_completion};
+use chat_backend::route::{route_add_cluster::add_cluster, route_chat_completion::chat_completion};
 use rocket::{main, routes};
 use shared::{
     constant::CHAT_BACKEND_PORT,

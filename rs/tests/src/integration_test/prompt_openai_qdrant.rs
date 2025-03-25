@@ -2,10 +2,13 @@
 mod tests {
     use std::{iter::zip, path::Path, time::Instant};
 
-    use async_openai::{error::OpenAIError, types::{ChatCompletionRequestMessage, CreateChatCompletionStreamResponse}};
+    use async_openai::{
+        error::OpenAIError,
+        types::{ChatCompletionRequestMessage, CreateChatCompletionStreamResponse},
+    };
     use bm25::{Language, SearchEngineBuilder};
-    use chat_backend::chat::process_chat::{process_user_message, RequestOptions};
 
+    use chat_backend::handle::handle_chat_completion::{process_user_message, RequestOptions};
     use data_vectorizer::vectorize::vectorizer::{vectorize_chunk, vectorize_class_batch};
     use rstest::rstest;
     use shared::{
@@ -21,7 +24,7 @@ mod tests {
         types::tokenizer::Tokenizer, RateLimiter,
     };
 
-    use crate::util::{read_yaml_files};
+    use crate::util::read_yaml_files;
 
     #[tokio::test]
     #[rstest]
@@ -55,7 +58,7 @@ mod tests {
 
         // Answer evaluation
         rx.close();
-        
+
         let answer = aggregate_answer(rx).await;
 
         tracing::debug!("Messages: {:#?}", messages);
@@ -159,7 +162,7 @@ mod tests {
 
         // Answer evaluation
         rx.close();
-        
+
         let answer = aggregate_answer(rx).await;
 
         tracing::debug!("Messages: {:#?}", messages);
@@ -295,7 +298,7 @@ mod tests {
 
         // Answer evaluation
         rx.close();
-        
+
         let answer = aggregate_answer(rx).await;
         tracing::debug!("Messages: {:#?}", messages);
         tracing::debug!("Answer: {}", answer);
@@ -364,7 +367,6 @@ mod tests {
 
         // Answer evaluation
         rx.close();
-        
         let answer = aggregate_answer(rx).await;
 
         tracing::debug!("\nMESSAGE\n: {:#?}", messages);
