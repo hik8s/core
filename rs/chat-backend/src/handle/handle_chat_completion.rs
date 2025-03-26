@@ -3,7 +3,6 @@ use async_openai::types::{
 };
 use shared::{
     connections::openai::messages::{create_final_message, create_iteration_loop_message},
-    constant::DEFAULT_ITERATION_DEPTH,
     log_error,
     openai_util::{
         collect_tool_call_chunks, create_assistant_message, create_tool_message,
