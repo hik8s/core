@@ -90,6 +90,6 @@ pub async fn process_user_message(
         }
         trace.depth += 1;
     }
-    info!("{}", trace.format_final_message());
+    info!("{}", trace.format_final_message(max_depth));
     Ok(())
 }

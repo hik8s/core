@@ -34,11 +34,12 @@ impl ToolCallTrace {
         )
     }
 
-    pub fn format_final_message(&self) -> String {
+    pub fn format_final_message(&self, max_depth: usize) -> String {
         format!(
-            "<- Number of tool calls: {}, iteration depth: {}",
+            "<- Number of tool calls: {}, iteration depth: {}/{} (actual/max)",
             self.trace.len(),
             self.depth,
+            max_depth
         )
     }
 
