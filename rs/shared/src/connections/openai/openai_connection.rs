@@ -109,19 +109,17 @@ impl OpenAIConnection {
             if let Some(ref tool_call_chunk) = choice.delta.tool_calls {
                 tool_call_chunks.extend_from_slice(tool_call_chunk);
             }
-            let response_clone = response.clone();
-            if let Some(ref _delta) = choice.delta.content {
-                // Only try sending if the client is still connected
-                // if let Some(ref _delta) = choice.delta.content {
-                //     tx.send(response_clone).unwrap();
-                // }
-                if !client_disconnected && tx.send(response_clone).is_err() {
-                    tracing::warn!("Client disconnected. Will still finish reading stream.");
-                    client_disconnected = true;
-                }
+
+            if !client_disconnected
+                && choice.delta.content.is_some()
+                && tx.send(response.clone()).is_err()
+            {
+                tracing::warn!("Client disconnected. Will still finish reading stream.");
+                client_disconnected = true;
             }
             finish_reason = choice.finish_reason;
         }
+
         Ok((finish_reason, tool_call_chunks))
     }
 
