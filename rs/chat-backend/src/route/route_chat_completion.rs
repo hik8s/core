@@ -30,13 +30,10 @@ pub fn chat_completion(
     let mut messages: Vec<ChatCompletionRequestMessage> = request_options.clone().into();
 
     tokio::spawn(async move {
-        let trace = process_user_message(&greptime, &qdrant, &mut messages, &tx, request_options)
+        process_user_message(&greptime, &qdrant, &mut messages, &tx, request_options)
             .await
             .map_err(|e| error!("{e}"))
             .ok();
-        if let Some(trace) = trace {
-            tracing::info!("{}", trace.format_trace());
-        }
     });
 
     // consumer: client (rx)

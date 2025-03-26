@@ -22,25 +22,24 @@ impl ToolCallTrace {
         self.trace.push(tool.clone());
     }
 
-    /// Returns the tool trace as a formatted string for debugging or logging
-    pub fn format_trace(&self) -> String {
-        let mut result = format!(
-            "Number of tool calls: {}, iteration depth: {}, for: \"{}\"\n",
+    pub fn format_request(&self) -> String {
+        format!("-> Handling request for prompt: \"{}\"", self.user_message)
+    }
+    pub fn format_tool_call(&self, tool: &Tool) -> String {
+        format!(
+            "  {}: {} ({})",
+            self.depth,
+            tool,
+            format_tool_args(&tool.get_args())
+        )
+    }
+
+    pub fn format_final_message(&self) -> String {
+        format!(
+            "<- Number of tool calls: {}, iteration depth: {}",
             self.trace.len(),
             self.depth,
-            self.user_message
-        );
-
-        for (i, tool) in self.trace.iter().enumerate() {
-            result.push_str(&format!(
-                "{}. {} ({})\n",
-                i + 1,
-                tool,
-                format_tool_args(&tool.get_args())
-            ));
-        }
-
-        result
+        )
     }
 
     pub fn summary(&self) -> String {
