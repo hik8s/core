@@ -2,6 +2,7 @@ use async_openai::types::{
     ChatCompletionRequestMessage, CreateChatCompletionStreamResponse, FinishReason,
 };
 use shared::{
+    connections::openai::messages::{create_final_message, create_iteration_loop_message},
     log_error,
     openai_util::{
         collect_tool_call_chunks, create_assistant_message, create_tool_message,
@@ -10,7 +11,7 @@ use shared::{
     GreptimeConnection, OpenAIConnection, QdrantConnection,
 };
 use tokio::sync::mpsc;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{
     route::{error::ChatProcessingError, route_chat_completion::RequestOptions},
@@ -23,10 +24,12 @@ pub async fn process_user_message(
     messages: &mut Vec<ChatCompletionRequestMessage>,
     tx: &mpsc::UnboundedSender<CreateChatCompletionStreamResponse>,
     options: RequestOptions,
-) -> Result<ToolCallTrace, ChatProcessingError> {
+) -> Result<(), ChatProcessingError> {
     let openai = OpenAIConnection::new();
     let user_message = extract_last_user_text_message(messages);
-    let mut trace = ToolCallTrace::new(user_message.clone());
+    let mut trace = ToolCallTrace::new(user_message.clone(), options.iteration_depth);
+    info!("{}", trace.format_request());
+
     loop {
         let request = openai.chat_complete_request(messages.clone(), &options.model, 1);
         let stream = openai
@@ -43,6 +46,7 @@ pub async fn process_user_message(
         }
 
         let tool_calls = collect_tool_call_chunks(tool_call_chunks)?;
+        let is_tool_called = !tool_calls.is_empty();
 
         let assistant_tool_request =
             create_assistant_message("Tool request", Some(tool_calls.clone()));
@@ -52,7 +56,7 @@ pub async fn process_user_message(
 
             let tool_output = match Tool::try_from(tool_call.function) {
                 Ok(tool) => {
-                    trace.add_tool(&tool);
+                    info!("{}", trace.format_tool_call(&tool));
                     let tool_output = tool
                         .request(greptime, qdrant, &user_message, &options.client_id)
                         .await;
@@ -76,7 +80,15 @@ pub async fn process_user_message(
             let tool_submission = create_tool_message(&tool_output, &tool_call.id);
             messages.push(tool_submission);
         }
+        if is_tool_called {
+            if trace.depth < trace.max_depth - 1 {
+                messages.push(create_iteration_loop_message(trace.depth));
+            } else {
+                messages.push(create_final_message(trace.depth));
+            }
+        }
         trace.depth += 1;
     }
-    Ok(trace)
+    info!("{}", trace.format_final_message());
+    Ok(())
 }

@@ -1,19 +1,24 @@
-use shared::{connections::openai::tool_args::format_tool_args, openai_util::Tool};
+use shared::{
+    connections::openai::tool_args::format_tool_args, constant::DEFAULT_ITERATION_DEPTH,
+    openai_util::Tool,
+};
 
 #[derive(Debug)]
 pub struct ToolCallTrace {
     pub trace: Vec<Tool>,
     pub user_message: String,
     pub depth: usize,
+    pub max_depth: usize,
 }
 
 impl ToolCallTrace {
     /// Creates a new ToolCallTrace instance that captures tool calls and the user message
-    pub fn new(user_message: String) -> Self {
+    pub fn new(user_message: String, max_depth: Option<usize>) -> Self {
         Self {
             trace: Vec::new(),
             user_message,
             depth: 0,
+            max_depth: max_depth.unwrap_or(DEFAULT_ITERATION_DEPTH),
         }
     }
 
@@ -22,25 +27,25 @@ impl ToolCallTrace {
         self.trace.push(tool.clone());
     }
 
-    /// Returns the tool trace as a formatted string for debugging or logging
-    pub fn format_trace(&self) -> String {
-        let mut result = format!(
-            "Number of tool calls: {}, iteration depth: {}, for: \"{}\"\n",
+    pub fn format_request(&self) -> String {
+        format!("-> Handling request for prompt: \"{}\"", self.user_message)
+    }
+    pub fn format_tool_call(&self, tool: &Tool) -> String {
+        format!(
+            "  {}: {} ({})",
+            self.depth,
+            tool,
+            format_tool_args(&tool.get_args())
+        )
+    }
+
+    pub fn format_final_message(&self) -> String {
+        format!(
+            "<- Number of tool calls: {}, iteration depth: {}/{} (actual/max)",
             self.trace.len(),
             self.depth,
-            self.user_message
-        );
-
-        for (i, tool) in self.trace.iter().enumerate() {
-            result.push_str(&format!(
-                "{}. {} ({})\n",
-                i + 1,
-                tool,
-                format_tool_args(&tool.get_args())
-            ));
-        }
-
-        result
+            self.max_depth
+        )
     }
 
     pub fn summary(&self) -> String {

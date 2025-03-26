@@ -40,7 +40,6 @@ impl OpenAIConnection {
         &self,
         messages: Vec<ChatCompletionRequestMessage>,
         model: &str,
-        max_tokens: u32,
         num_choices: Option<u8>,
         response_format: Option<ResponseFormat>,
         tools: Option<Vec<ChatCompletionTool>>,
@@ -48,7 +47,6 @@ impl OpenAIConnection {
         CreateChatCompletionRequest {
             model: model.to_string(),
             messages,
-            max_tokens: Some(max_tokens),
             n: num_choices,
             response_format,
             tools,
@@ -66,7 +64,7 @@ impl OpenAIConnection {
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
         let tools = list_all_tools();
-        self.request_builder(messages, model, 1024, Some(num_choices), None, Some(tools))
+        self.request_builder(messages, model, Some(num_choices), None, Some(tools))
     }
     // CHAT COMPLETION
     pub async fn create_completion(
@@ -111,19 +109,17 @@ impl OpenAIConnection {
             if let Some(ref tool_call_chunk) = choice.delta.tool_calls {
                 tool_call_chunks.extend_from_slice(tool_call_chunk);
             }
-            let response_clone = response.clone();
-            if let Some(ref _delta) = choice.delta.content {
-                // Only try sending if the client is still connected
-                // if let Some(ref _delta) = choice.delta.content {
-                //     tx.send(response_clone).unwrap();
-                // }
-                if !client_disconnected && tx.send(response_clone).is_err() {
-                    tracing::warn!("Client disconnected. Will still finish reading stream.");
-                    client_disconnected = true;
-                }
+
+            if !client_disconnected
+                && choice.delta.content.is_some()
+                && tx.send(response.clone()).is_err()
+            {
+                tracing::warn!("Client disconnected. Will still finish reading stream.");
+                client_disconnected = true;
             }
             finish_reason = choice.finish_reason;
         }
+
         Ok((finish_reason, tool_call_chunks))
     }
 
@@ -145,7 +141,6 @@ impl OpenAIConnection {
         let request = self.request_builder(
             messages,
             OPENAI_CHAT_MODEL_MINI,
-            100,
             Some(1),
             Some(response_format),
             None,

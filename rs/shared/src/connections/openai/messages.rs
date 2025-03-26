@@ -1,6 +1,7 @@
 use async_openai::types::{
     ChatCompletionMessageToolCall, ChatCompletionRequestAssistantMessage,
-    ChatCompletionRequestAssistantMessageContent, ChatCompletionRequestFunctionMessage,
+    ChatCompletionRequestAssistantMessageContent, ChatCompletionRequestDeveloperMessage,
+    ChatCompletionRequestDeveloperMessageContent, ChatCompletionRequestFunctionMessage,
     ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
     ChatCompletionRequestSystemMessageContent, ChatCompletionRequestToolMessage,
     ChatCompletionRequestToolMessageContent, ChatCompletionRequestUserMessage,
@@ -55,6 +56,26 @@ pub fn create_assistant_message(
         name: Some("assistant".to_string()),
         tool_calls,
         function_call: None,
+        audio: None,
+    })
+}
+pub fn create_iteration_loop_message(depth: usize) -> ChatCompletionRequestMessage {
+    let message = r#"You received data from submitted tool calls. 
+Evaluate if this data allows you to judge the completion of the user request. 
+If not, continue with tool calls. 
+Use different arguments for the same tool call to get different results."#;
+    ChatCompletionRequestMessage::Developer(ChatCompletionRequestDeveloperMessage {
+        content: ChatCompletionRequestDeveloperMessageContent::Text(message.to_string()),
+        name: Some(format!("iteration-{depth}")),
+    })
+}
+pub fn create_final_message(depth: usize) -> ChatCompletionRequestMessage {
+    let message = r#"You received data from submitted tool calls over multiple iterations. 
+If you have not enough data to judge the completion of the user request, state that to the user. 
+If you have enough evidence, complete the user request."#;
+    ChatCompletionRequestMessage::Developer(ChatCompletionRequestDeveloperMessage {
+        content: ChatCompletionRequestDeveloperMessageContent::Text(message.to_string()),
+        name: Some(format!("iteration-{depth}")),
     })
 }
 
@@ -110,5 +131,13 @@ pub fn extract_message_content(msg: &ChatCompletionRequestMessage) -> Option<Str
             }
         }
         ChatCompletionRequestMessage::Function(function_msg) => function_msg.content.clone(),
+        ChatCompletionRequestMessage::Developer(dev_msg) => {
+            if let ChatCompletionRequestDeveloperMessageContent::Text(text) = &dev_msg.content {
+                Some(text.clone())
+            } else {
+                warn!("Developer message with non text content");
+                None
+            }
+        }
     }
 }

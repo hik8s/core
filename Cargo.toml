@@ -21,7 +21,7 @@ edition = "2021"
 [workspace.dependencies]
 algorithm = {path = "rs/algorithm"}
 anyhow = "1.0.93"
-async-openai = "0.26.0"
+async-openai = "0.28.0"
 backtrace = "0.3"
 bm25 = "2.0.1"
 chat-backend = {path = "rs/chat-backend"}
