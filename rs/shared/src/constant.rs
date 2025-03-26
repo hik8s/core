@@ -2,6 +2,7 @@
 pub const CHAT_BACKEND_PORT: &str = "8080";
 pub const OPENAI_CHAT_MODEL: &str = "gpt-4o-2024-08-06";
 pub const OPENAI_CHAT_MODEL_MINI: &str = "gpt-4o-mini-2024-07-18";
+pub const DEFAULT_ITERATION_DEPTH: usize = 10;
 
 // logs
 pub const LOG_PREFIX: &str = "logs";

@@ -56,6 +56,7 @@ pub struct RequestOptions {
     pub client_id: String,
     pub temperature: Option<f32>,
     pub top_p: Option<f32>,
+    pub iteration_depth: Option<usize>,
 }
 impl RequestOptions {
     pub fn test(input: &str, client_id: &str) -> Self {
@@ -74,6 +75,7 @@ impl RequestOptions {
             client_id: client_id.to_owned(),
             temperature: None,
             top_p: None,
+            iteration_depth: Some(1),
         }
     }
 }

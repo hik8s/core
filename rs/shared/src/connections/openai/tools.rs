@@ -620,6 +620,7 @@ mod tests {
     use rstest::rstest;
     use tokio::sync::mpsc;
 
+    use crate::connections::openai::messages::create_iteration_loop_message;
     use crate::connections::openai::tool_args::{
         ClusterOverviewArgs, EventRetrievalArgs, LogRetrievalArgs, ResourceStatusRetrievalArgs,
     };
@@ -653,7 +654,7 @@ mod tests {
         let num_choices = 1;
 
         // base request
-        let messages = vec![
+        let mut messages = vec![
             create_system_message(),
             create_user_message(&testdata.prompt),
         ];
@@ -663,7 +664,25 @@ mod tests {
             .create_completion(request)
             .await
             .expect("Failed to create completion");
-
+        if let Some(tool_calls) = &response.choices.first().unwrap().message.tool_calls {
+            let assistant_tool_request =
+                create_assistant_message("Tool request", Some(tool_calls.clone()));
+            messages.push(assistant_tool_request);
+            for tool_call in tool_calls {
+                let tool = Tool::try_from(tool_call.function.to_owned()).unwrap();
+                let tool_output = tool.test_request();
+                let tool_submission = create_tool_message(&tool_output, &tool_call.id);
+                messages.push(tool_submission);
+            }
+        }
+        messages.push(create_iteration_loop_message(1));
+        tracing::debug!("Messages: {:#?}", messages);
+        let request =
+            openai.chat_complete_request(messages.clone(), OPENAI_CHAT_MODEL_MINI, num_choices);
+        let response = openai
+            .create_completion(request)
+            .await
+            .expect("Failed to create completion");
         // check response
         assert!(response.choices.len() == 1);
         tracing::debug!("Response: {:#?}", response.choices.first().unwrap().message);
@@ -821,7 +840,6 @@ mod tests {
             .await
             .map_err(|e| log_error!(e))?;
 
-        
         rx.close();
         let answer = aggregate_answer(rx).await;
 
