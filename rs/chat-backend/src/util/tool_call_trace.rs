@@ -1,19 +1,24 @@
-use shared::{connections::openai::tool_args::format_tool_args, openai_util::Tool};
+use shared::{
+    connections::openai::tool_args::format_tool_args, constant::DEFAULT_ITERATION_DEPTH,
+    openai_util::Tool,
+};
 
 #[derive(Debug)]
 pub struct ToolCallTrace {
     pub trace: Vec<Tool>,
     pub user_message: String,
     pub depth: usize,
+    pub max_depth: usize,
 }
 
 impl ToolCallTrace {
     /// Creates a new ToolCallTrace instance that captures tool calls and the user message
-    pub fn new(user_message: String) -> Self {
+    pub fn new(user_message: String, max_depth: Option<usize>) -> Self {
         Self {
             trace: Vec::new(),
             user_message,
             depth: 0,
+            max_depth: max_depth.unwrap_or(DEFAULT_ITERATION_DEPTH),
         }
     }
 
@@ -34,12 +39,12 @@ impl ToolCallTrace {
         )
     }
 
-    pub fn format_final_message(&self, max_depth: usize) -> String {
+    pub fn format_final_message(&self) -> String {
         format!(
             "<- Number of tool calls: {}, iteration depth: {}/{} (actual/max)",
             self.trace.len(),
             self.depth,
-            max_depth
+            self.max_depth
         )
     }
 

@@ -28,9 +28,9 @@ pub async fn process_user_message(
 ) -> Result<(), ChatProcessingError> {
     let openai = OpenAIConnection::new();
     let user_message = extract_last_user_text_message(messages);
-    let mut trace = ToolCallTrace::new(user_message.clone());
+    let mut trace = ToolCallTrace::new(user_message.clone(), options.iteration_depth);
     info!("{}", trace.format_request());
-    let max_depth = options.iteration_depth.unwrap_or(DEFAULT_ITERATION_DEPTH);
+
     loop {
         let request = openai.chat_complete_request(messages.clone(), &options.model, 1);
         let stream = openai
@@ -82,7 +82,7 @@ pub async fn process_user_message(
             messages.push(tool_submission);
         }
         if is_tool_called {
-            if trace.depth < max_depth - 1 {
+            if trace.depth < trace.max_depth - 1 {
                 messages.push(create_iteration_loop_message(trace.depth));
             } else {
                 messages.push(create_final_message(trace.depth));
@@ -90,6 +90,6 @@ pub async fn process_user_message(
         }
         trace.depth += 1;
     }
-    info!("{}", trace.format_final_message(max_depth));
+    info!("{}", trace.format_final_message());
     Ok(())
 }
