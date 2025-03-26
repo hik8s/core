@@ -29,7 +29,7 @@ pub async fn process_user_message(
     let openai = OpenAIConnection::new();
     let user_message = extract_last_user_text_message(messages);
     let mut trace = ToolCallTrace::new(user_message.clone());
-    tracing::info!("{}", trace.format_request());
+    info!("{}", trace.format_request());
     let max_depth = options.iteration_depth.unwrap_or(DEFAULT_ITERATION_DEPTH);
     loop {
         let request = openai.chat_complete_request(messages.clone(), &options.model, 1);
@@ -57,7 +57,7 @@ pub async fn process_user_message(
 
             let tool_output = match Tool::try_from(tool_call.function) {
                 Ok(tool) => {
-                    tracing::info!("{}", trace.format_tool_call(&tool));
+                    info!("{}", trace.format_tool_call(&tool));
                     let tool_output = tool
                         .request(greptime, qdrant, &user_message, &options.client_id)
                         .await;
