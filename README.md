@@ -72,20 +72,30 @@ Resume cluster:
 fluvio cluster resume
 ```
 
-## Data Intake
+## Development
+
+Curl commands to ingest data.
+
+```bash
+TESTFILE="/tmp/records.txt"
+URL="http://localhost:8000"
+```
+
+Create a test file
+
+```bash
+cat > $TESTFILE << EOF
+This is line 1
+This is line 2
+EOF
+```
 
 Test command for data-intake.
 
 ```bash
-# FILE=/tmp/records.txt
-# URL="https://dev.api.hik8s.ai"
-# URL="https://stag.api.hik8s.ai"
-FILE="/tmp/records.txt"
-# URL="https://dev.api.hik8s.ai"
-URL="http://localhost:8000"
 curl -X POST \
      -H "Authorization: Bearer $AUTH_TOKEN" \
      -F 'metadata={"path": "/var/log/pods/ns_my-pod-'$RANDOM'_uid-123/container", "file": "file_name_value"};type=application/json' \
-     -F "stream=@$FILE;type=application/octet-stream" \
+     -F "stream=@$TESTFILE;type=application/octet-stream" \
      $URL/logs
 ```
