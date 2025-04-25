@@ -1,8 +1,8 @@
 # HiK8s Core
 
-This repository contains **data processing** and **backend** of the HiK8s Kubernetes chatbot.
+This repository contains the **data processing** and **backend** of the HiK8s Kubernetes chatbot.
 
-**Note** This code is not under active development anymore. We recommend to use tools like [kagent](https://github.com/kagent-dev/kagent) or [k8sgpt](https://github.com/k8sgpt-ai/k8sgpt).
+**Note:** This code is no longer actively developed. We recommend the use of tools such as [kagent](https://github.com/kagent-dev/kagent) or [k8sgpt](https://github.com/k8sgpt-ai/k8sgpt).
 
 ## Introduction
 
